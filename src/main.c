@@ -90,7 +90,7 @@ bool makeMoveOnBoard(Board* b, uint8_t index) {
     }
 
     // Check if last stone was placed on score field
-    if (index == SCORE_P1 || index == SCORE_P2) {
+    if ((index == SCORE_P1 && !b->turn) || (index == SCORE_P2 && b->turn)) {
         return true;
     }
 
@@ -98,15 +98,34 @@ bool makeMoveOnBoard(Board* b, uint8_t index) {
     // If yes "Steal" stones
     if (b->cells[index] == 1) {
         int targetIndex = 12 - index;
-        // Branchless computation for who gets the stones
-        // TODO: Check if this actually works :D
-        b->cells[SCORE_P1 + (SCORE_P2 - SCORE_P1) * (index / (SCORE_P1 + 1))] += b->cells[targetIndex] + 1;
-        b->cells[targetIndex] = 0;
-        b->cells[index] = 0;
+        // Make sure there even are stones on the other side
+        int targetValue = b->cells[targetIndex];
+        if (targetValue > 0) {
+            // If player 2 made move
+            if (b->turn && index > SCORE_P1 && targetValue > 0) {
+                b->cells[SCORE_P2] += targetValue + 1;
+            // Player 1 made move
+            } else if (!b->turn && index < SCORE_P1) {
+                b->cells[SCORE_P1] += b->cells[targetIndex] + 1;
+            }
+            b->cells[targetIndex] = 0;
+            b->cells[index] = 0;
+        }
     }
 
     // Return no extra move
+    b->turn = !b->turn;
     return false;
+}
+
+// Check if player ones side is empty
+bool isBoardPlayerOneEmpty(Board* b) {
+    return !(*(int64_t*)b->cells & 0x0000FFFFFFFFFFFF);
+}
+
+// Check if player twos side is empty
+bool isBoardPlayerTwoEmpty(Board* b) {
+    return !(*(int64_t*)(b->cells + 7) & 0x0000FFFFFFFFFFFF);
 }
 
 int main(int argc, char const *argv[])
