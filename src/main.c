@@ -24,11 +24,8 @@ struct Board
 
 typedef struct Board Board;
 
-
-Board* newBoard() {
-    // Allocate memory for new board
-    Board* b = malloc(sizeof(Board));
-
+// Construct board at pointer
+void newBoard(Board* b) {
     // Assign start values
     for (int i = 0; i < 14; i++) {
         b->cells[i] = START_VALUE;
@@ -37,21 +34,12 @@ Board* newBoard() {
     b->cells[SCORE_P2] = 0;
 
     // Assign starting player
-    b->turn = false;
-
-    // Return finished board
-    return b;
+    b->turn = true;
 }
 
-Board* copyBoard(const Board* b) {
-    // Allocate memory for new board
-    Board* bCopy = malloc(sizeof(Board));
-
+void copyBoard(const Board* b, Board* bCopy) {
     // Copy values
     memcpy(bCopy, b, sizeof(Board));
-
-    // Return copied board
-    return bCopy;
 }
 
 // Just dont question it
@@ -87,8 +75,37 @@ void renderBoard(const Board *b) {
     printf("──┘\n");
 }
 
-// Returns if recieved second move
-bool makeMoveOnBoard(Board* b, int index) {
+// Returns relative evaluation
+int getBoardEvaluation(const Board* b) {
+    return b->cells[SCORE_P2] - b->cells[SCORE_P1];
+}
+
+// Check if player ones side is empty
+bool isBoardPlayerOneEmpty(const Board* b) {
+    return !(*(int64_t*)b->cells & 0x0000FFFFFFFFFFFF);
+}
+
+// Check if player twos side is empty
+bool isBoardPlayerTwoEmpty(const Board* b) {
+    return !(*(int64_t*)(b->cells + 7) & 0x0000FFFFFFFFFFFF);
+}
+
+void processBoardTerminal(Board* b) {
+    // Check for finish
+    if (isBoardPlayerOneEmpty(b)) {
+        for (int i = 7; i < 13; i++) {
+            b->cells[SCORE_P2] += b->cells[i];
+            b->cells[i] = 0;
+        }
+    } else if (isBoardPlayerTwoEmpty(b)) {
+        for (int i = 0; i < 6; i++) {
+            b->cells[SCORE_P1] += b->cells[i];
+            b->cells[i] = 0;
+        }
+    }
+}
+
+void makeMoveOnBoard(Board* b, int index) {
     // Propagate stones
     int stones = b->cells[index];
     b->cells[index] = 0;
@@ -100,8 +117,10 @@ bool makeMoveOnBoard(Board* b, int index) {
     }
 
     // Check if last stone was placed on score field
-    if ((index == SCORE_P1 && !b->turn) || (index == SCORE_P2 && b->turn)) {
-        return true;
+    // If yes return without inverting turn
+    if ((index == SCORE_P1 && b->turn) || (index == SCORE_P2 && !b->turn)) {
+        processBoardTerminal(b);
+        return;
     }
 
     // Check if last stone was placed on empty field
@@ -112,12 +131,12 @@ bool makeMoveOnBoard(Board* b, int index) {
         int targetValue = b->cells[targetIndex];
         if (targetValue > 0) {
             // If player 2 made move
-            if (b->turn && index > SCORE_P1 && targetValue > 0) {
+            if (!b->turn && index > SCORE_P1 && targetValue > 0) {
                 b->cells[SCORE_P2] += targetValue + 1;
                 b->cells[targetIndex] = 0;
                 b->cells[index] = 0;
             // Player 1 made move
-            } else if (!b->turn && index < SCORE_P1) {
+            } else if (b->turn && index < SCORE_P1) {
                 b->cells[SCORE_P1] += b->cells[targetIndex] + 1;
                 b->cells[targetIndex] = 0;
                 b->cells[index] = 0;
@@ -125,25 +144,14 @@ bool makeMoveOnBoard(Board* b, int index) {
         }
     }
 
+    // Check if this resulted in terminality
+    processBoardTerminal(b);
+
     // Return no extra move
     b->turn = !b->turn;
-    return false;
 }
 
-// Returns relative evaluation
-int getBoardEvaluation(const Board* b) {
-    return b->cells[SCORE_P1] - b->cells[SCORE_P2];
-} 
 
-// Check if player ones side is empty
-bool isBoardPlayerOneEmpty(const Board* b) {
-    return !(*(int64_t*)b->cells & 0x0000FFFFFFFFFFFF);
-}
-
-// Check if player twos side is empty
-bool isBoardPlayerTwoEmpty(const Board* b) {
-    return !(*(int64_t*)(b->cells + 7) & 0x0000FFFFFFFFFFFF);
-}
 
 // Min
 int min(int a, int b) {
@@ -156,41 +164,26 @@ int max(int a, int b) {
 }
 
 /* MINIMAX */
-int minimax(Board* b, int depth, int alpha, int beta) {
+int minimax(Board* b, int alpha, int beta) {
     // Check if we are at terminal state
     // If yes add up all remaining stones and return
-    int i;
-    if (isBoardPlayerOneEmpty(b)) {
-        for (i = 0; i < 13; i++) {
-            b->cells[SCORE_P1] += b->cells[i];
-        }
-        return getBoardEvaluation(b);
-    }
-
-    if (isBoardPlayerTwoEmpty(b)) {
-        for (i = 0; i < 7; i++) {
-            b->cells[SCORE_P2] += b->cells[i];
-        }
-        return getBoardEvaluation(b);
-    }
-
-    // Check if we are at max depth
-    if (depth < 1) {
+    if (isBoardPlayerOneEmpty(b) || isBoardPlayerTwoEmpty(b)) {
         return getBoardEvaluation(b);
     }
 
     // Basic MinMax code
     int reference;
-    Board* bCopy;
+    int i;
     if (b->turn) {
         reference = INT32_MAX;
         for (i = 0; i < 6; i++) {
-            if (b->cells[i]) {
+            if (b->cells[i] == 0) {
                 continue;
             }
-            bCopy = copyBoard(b);
-            makeMoveOnBoard(bCopy, i);
-            reference = min(reference, minimax(bCopy, depth - 1, alpha, beta));
+            Board bCopy;
+            copyBoard(b, &bCopy);
+            makeMoveOnBoard(&bCopy, i);
+            reference = min(reference, minimax(&bCopy, alpha, beta));
             if (reference <= alpha) {
                 break;
             }
@@ -199,12 +192,13 @@ int minimax(Board* b, int depth, int alpha, int beta) {
     } else {
         reference = INT32_MIN;
         for (i = 7; i < 13; i++) {
-            if (b->cells[i]) {
+            if (b->cells[i] == 0) {
                 continue;
             }
-            bCopy = copyBoard(b);
-            makeMoveOnBoard(bCopy, i);
-            reference = max(reference, minimax(bCopy, depth - 1, alpha, beta));
+            Board bCopy;
+            copyBoard(b, &bCopy);
+            makeMoveOnBoard(&bCopy, i);
+            reference = max(reference, minimax(&bCopy, alpha, beta));
             if (reference >= beta) {
                 break;
             }
@@ -216,48 +210,65 @@ int minimax(Board* b, int depth, int alpha, int beta) {
     return reference;
 }
 
-Board* minimaxRoot(Board* b, int depth) {
+void minimaxRoot(Board* b, int* move, int* evaluation) {
     int bestValue;
-    Board* bestChild = NULL;
+    int bestIndex;
 
     if (b->turn) {
         bestValue = INT32_MAX;
         for (int i = 0; i < 6; i++) {
-            if (b->cells[i]) {
+            if (b->cells[i] == 0) {
                 continue;
             }
-            Board* bCopy = copyBoard(b);
-            makeMoveOnBoard(bCopy, i);
-            int value = minimax(bCopy, depth - 1, INT32_MIN, INT32_MAX);
+            Board bCopy;
+            copyBoard(b, &bCopy);
+            makeMoveOnBoard(&bCopy, i);
+            int value = minimax(&bCopy, INT32_MIN, INT32_MAX);
             if (value < bestValue) {
-                bestChild = bCopy;
+                bestIndex = i;
                 bestValue = value;
             }
         }
     } else {
-       bestValue = INT32_MIN;
+        bestValue = INT32_MIN;
         for (int i = 7; i < 13; i++) {
-            if (b->cells[i]) {
+            if (b->cells[i] == 0) {
                 continue;
             }
-            Board* bCopy = copyBoard(b);
-            makeMoveOnBoard(bCopy, i);
-            int value = minimax(bCopy, depth - 1, INT32_MIN, INT32_MAX);
+            Board bCopy;
+            copyBoard(b, &bCopy);
+            makeMoveOnBoard(&bCopy, i);
+            int value = minimax(&bCopy, INT32_MIN, INT32_MAX);
             if (value > bestValue) {
-                bestChild = bCopy;
+                bestIndex = i;
                 bestValue = value;
             }
         }
     }
 
-    return bestChild;
+    *move = bestIndex;
+    *evaluation = bestValue;
+}
+
+void renderBoardWithNextMove(const Board* b) {
+    renderBoard(b);
+    printf("Move: %d\n", b->turn);
 }
 
 int main(int argc, char const *argv[])
 {
-    Board* myBoard = newBoard();
-    renderBoard(myBoard);
-    myBoard = minimaxRoot(myBoard, 6);
-    renderBoard(myBoard);
+    Board b;
+    newBoard(&b);
+    renderBoardWithNextMove(&b);
+
+    while (!(isBoardPlayerOneEmpty(&b) || isBoardPlayerTwoEmpty(&b))) {
+        int index;
+        int eval;
+        minimaxRoot(&b, &index, &eval);
+        makeMoveOnBoard(&b, index);
+        renderBoardWithNextMove(&b);
+        printf("Eval: %d\n", eval);
+    }
+
     return 0;
 }
