@@ -18,7 +18,7 @@
 // Construct board at pointer
 void newBoard(uint8_t *cells, bool *turn) {
     // Assign start values
-    for (int i = 0; i < 14; i++) {
+    for (int32_t i = 0; i < 14; i++) {
         cells[i] = START_VALUE;
     }
     cells[SCORE_P1] = 0;
@@ -36,38 +36,38 @@ void copyBoard(const uint8_t *cells, uint8_t *cellsCopy) {
 // Just dont question it
 void renderBoard(const uint8_t *cells) {
     printf("    ┌─");
-    for (int i = 0; i < 5; ++i) {
+    for (int32_t i = 0; i < 5; ++i) {
         printf("──┬─");
     }
     printf("──┐\n");
 
     printf("┌───┤");
-    for (int i = 12; i > 7; --i) {
+    for (int32_t i = 12; i > 7; --i) {
         printf("%2d │", cells[i]);
     }
     printf("%2d ├───┐\n", cells[7]);
 
     printf("│%2d ├─", cells[SCORE_P2]);
-    for (int i = 0; i < 5; ++i) {
+    for (int32_t i = 0; i < 5; ++i) {
         printf("──┼─");
     }
     printf("──┤%2d │\n", cells[SCORE_P1]);
 
     printf("└───┤");
-    for (int i = 0; i < 5; ++i) {
+    for (int32_t i = 0; i < 5; ++i) {
         printf("%2d │", cells[i]);
     }
     printf("%2d ├───┘\n", cells[5]);
 
     printf("    └─");
-    for (int i = 0; i < 5; ++i) {
+    for (int32_t i = 0; i < 5; ++i) {
         printf("──┴─");
     }
     printf("──┘\n");
 }
 
 // Returns relative evaluation
-int getBoardEvaluation(const uint8_t *cells) {
+int32_t getBoardEvaluation(const uint8_t *cells) {
     return cells[SCORE_P2] - cells[SCORE_P1];
 }
 
@@ -84,28 +84,28 @@ bool isBoardPlayerTwoEmpty(const uint8_t *cells) {
 void processBoardTerminal(uint8_t *cells) {
     // Check for finish
     if (isBoardPlayerOneEmpty(cells)) {
-        for (int i = 7; i < 13; i++) {
+        for (int32_t i = 7; i < 13; i++) {
             cells[SCORE_P2] += cells[i];
             cells[i] = 0;
         }
     } else if (isBoardPlayerTwoEmpty(cells)) {
-        for (int i = 0; i < 6; i++) {
+        for (int32_t i = 0; i < 6; i++) {
             cells[SCORE_P1] += cells[i];
             cells[i] = 0;
         }
     }
 }
 
-void makeMoveOnBoard(uint8_t *cells, bool *turn, int index) {
+void makeMoveOnBoard(uint8_t *cells, bool *turn, int32_t index) {
     // Propagate stones
-    int stones = cells[index];
+    int32_t stones = cells[index];
     cells[index] = 0;
-    while (stones > 0) {
-        index++;
-        index %= 14;
-        cells[index]++;
-        stones--;
+
+    int i = index + 1;
+    for(; i < index + stones + 1; i++) {
+        cells[i % 14]++;
     }
+    index = (i - 1) % 14;
 
     // Check if last stone was placed on score field
     // If yes return without inverting turn
@@ -117,12 +117,12 @@ void makeMoveOnBoard(uint8_t *cells, bool *turn, int index) {
     // Check if last stone was placed on empty field
     // If yes "Steal" stones
     if (cells[index] == 1) {
-        int targetIndex = 12 - index;
+        int32_t targetIndex = 12 - index;
         // Make sure there even are stones on the other side
-        int targetValue = cells[targetIndex];
-        if (targetValue > 0) {
+        int32_t targetValue = cells[targetIndex];
+        if (targetValue != 0) {
             // If player 2 made move
-            if (!*turn && index > SCORE_P1 && targetValue > 0) {
+            if (!*turn && index > SCORE_P1) {
                 cells[SCORE_P2] += targetValue + 1;
                 cells[targetIndex] = 0;
                 cells[index] = 0;
@@ -143,17 +143,17 @@ void makeMoveOnBoard(uint8_t *cells, bool *turn, int index) {
 }
 
 // Min
-int min(int a, int b) {
+int32_t min(int32_t a, int32_t b) {
     return (a < b) ? a : b;
 }
 
 // Max
-int max(int a, int b) {
+int32_t max(int32_t a, int32_t b) {
     return (a > b) ? a : b;
 }
 
 /* MINIMAX */
-int minimax(uint8_t *cells, bool turn, int depth, int alpha, int beta) {
+int32_t minimax(uint8_t *cells, bool turn, int32_t depth, int32_t alpha, int32_t beta) {
     // Check if we are at terminal state
     // If yes add up all remaining stones and return
     if (isBoardPlayerOneEmpty(cells) || isBoardPlayerTwoEmpty(cells)) {
@@ -167,8 +167,8 @@ int minimax(uint8_t *cells, bool turn, int depth, int alpha, int beta) {
     // Needed for remaining code
     uint8_t cellsCopy[14];
     bool newTurn;
-    int reference;
-    int i;
+    int32_t reference;
+    int32_t i;
 
     // Seperation by whos turn it is
     if (turn) {
@@ -207,13 +207,13 @@ int minimax(uint8_t *cells, bool turn, int depth, int alpha, int beta) {
     return reference;
 }
 
-void minimaxRoot(uint8_t *cells, bool turn, int depth, int* move, int* evaluation) {
-    int bestValue;
-    int bestIndex;
+void minimaxRoot(uint8_t *cells, bool turn, int32_t depth, int32_t* move, int32_t* evaluation) {
+    int32_t bestValue;
+    int32_t bestIndex;
 
     if (turn) {
         bestValue = INT32_MAX;
-        for (int i = 0; i < 6; i++) {
+        for (int32_t i = 0; i < 6; i++) {
             if (cells[i] == 0) {
                 continue;
             }
@@ -221,7 +221,7 @@ void minimaxRoot(uint8_t *cells, bool turn, int depth, int* move, int* evaluatio
             bool newTurn = turn;
             copyBoard(cells, cellsCopy);
             makeMoveOnBoard(cellsCopy, &newTurn, i);
-            int value = minimax(cellsCopy, newTurn, depth - 1, INT32_MIN, INT32_MAX);
+            int32_t value = minimax(cellsCopy, newTurn, depth - 1, INT32_MIN, INT32_MAX);
             if (value < bestValue) {
                 bestIndex = i;
                 bestValue = value;
@@ -229,7 +229,7 @@ void minimaxRoot(uint8_t *cells, bool turn, int depth, int* move, int* evaluatio
         }
     } else {
         bestValue = INT32_MIN;
-        for (int i = 7; i < 13; i++) {
+        for (int32_t i = 7; i < 13; i++) {
             if (cells[i] == 0) {
                 continue;
             }
@@ -237,7 +237,7 @@ void minimaxRoot(uint8_t *cells, bool turn, int depth, int* move, int* evaluatio
             bool newTurn = turn;
             copyBoard(cells, cellsCopy);
             makeMoveOnBoard(cellsCopy, &newTurn, i);
-            int value = minimax(cellsCopy, newTurn, depth - 1, INT32_MIN, INT32_MAX);
+            int32_t value = minimax(cellsCopy, newTurn, depth - 1, INT32_MIN, INT32_MAX);
             if (value > bestValue) {
                 bestIndex = i;
                 bestValue = value;
@@ -254,7 +254,7 @@ void renderBoardWithNextMove(const uint8_t *cells, const bool turn) {
     printf("Move: %d\n", turn);
 }
 
-int main(int argc, char const *argv[])
+int32_t main(int32_t argc, char const *argv[])
 {
     uint8_t cells[14];
     bool turn = true;
@@ -262,8 +262,8 @@ int main(int argc, char const *argv[])
     renderBoardWithNextMove(cells, turn);
 
     while (!(isBoardPlayerOneEmpty(cells) || isBoardPlayerTwoEmpty(cells))) {
-        int index;
-        int eval;
+        int32_t index;
+        int32_t eval;
         minimaxRoot(cells, turn, 16, &index, &eval);
         makeMoveOnBoard(cells, &turn, index);
         renderBoardWithNextMove(cells, turn);
