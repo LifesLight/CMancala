@@ -110,7 +110,6 @@ void makeMoveOnBoard(uint8_t *cells, bool *turn, int32_t index) {
     // Check if last stone was placed on score field
     // If yes return without inverting turn
     if ((index == SCORE_P1 && *turn) || (index == SCORE_P2 && !*turn)) {
-        processBoardTerminal(cells);
         return;
     }
 
@@ -135,11 +134,13 @@ void makeMoveOnBoard(uint8_t *cells, bool *turn, int32_t index) {
         }
     }
 
-    // Check if this resulted in terminality
-    processBoardTerminal(cells);
-
     // Return no extra move
     *turn = !*turn;
+}
+
+void makeMoveManual(uint8_t *cells, bool *turn, int index) {
+    makeMoveOnBoard(cells, turn, index);
+    processBoardTerminal(cells);
 }
 
 // Min
@@ -157,6 +158,7 @@ int32_t minimax(uint8_t *cells, bool turn, int32_t depth, int32_t alpha, int32_t
     // Check if we are at terminal state
     // If yes add up all remaining stones and return
     if (isBoardPlayerOneEmpty(cells) || isBoardPlayerTwoEmpty(cells)) {
+        processBoardTerminal(cells);
         return getBoardEvaluation(cells);
     }
 
@@ -264,8 +266,8 @@ int32_t main(int32_t argc, char const *argv[])
     while (!(isBoardPlayerOneEmpty(cells) || isBoardPlayerTwoEmpty(cells))) {
         int32_t index;
         int32_t eval;
-        minimaxRoot(cells, turn, 16, &index, &eval);
-        makeMoveOnBoard(cells, &turn, index);
+        minimaxRoot(cells, turn, 14, &index, &eval);
+        makeMoveManual(cells, &turn, index);
         renderBoardWithNextMove(cells, turn);
         printf("Eval: %d\n", -eval);
     }
