@@ -97,7 +97,6 @@ bool processBoardTerminal(uint8_t *cells) {
         return true;
     }
 
-
     if (isBoardPlayerTwoEmpty(cells)) {
         for (int32_t i = 0; i < 6; i++) {
             cells[SCORE_P1] += cells[i];
@@ -182,7 +181,7 @@ int32_t max(int32_t a, int32_t b) {
 }
 
 /* MINIMAX */
-int32_t minimax(uint8_t *cells, bool turn, int32_t alpha, int32_t beta, int32_t depth) {
+int32_t minimax(uint8_t *restrict cells, const bool turn, int32_t alpha, int32_t beta, const int32_t depth) {
     // Check if we are at terminal state
     // If yes add up all remaining stones and return
     // Otherwise force terminal with depth
@@ -239,7 +238,7 @@ typedef struct {
     bool turn;
     int32_t evaluation;
     int32_t depth;
-    int move;
+    int32_t move;
 } ThreadArgs;
 
 // Worker function
@@ -320,7 +319,7 @@ int32_t main(int32_t argc, char const* argv[]) {
         int32_t index;
         int32_t eval;
 
-        minimaxRoot(cells, turn, &index, &eval, 18);
+        minimaxRoot(cells, turn, &index, &eval, 16);
         makeMoveManual(cells, &turn, index);
         renderBoardWithNextMove(cells, turn);
         printf("Eval: %d\n", -eval);
