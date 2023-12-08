@@ -1,3 +1,7 @@
+/**
+ * Copyright Alexander Kurtz 2023
+*/
+
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdlib.h>
