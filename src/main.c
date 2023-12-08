@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <pthread.h>
 
 /*
  * Board is constructed like this:
@@ -165,6 +166,11 @@ void makeMoveManual(uint8_t *cells, bool *turn, int32_t index) {
     processBoardTerminal(cells);
 }
 
+void renderBoardWithNextMove(const uint8_t *cells, const bool turn) {
+    renderBoard(cells);
+    printf("Move: %d\n", turn);
+}
+
 // Min
 int32_t min(int32_t a, int32_t b) {
     return (a < b) ? a : b;
@@ -227,51 +233,81 @@ int32_t minimax(uint8_t *cells, bool turn, int32_t alpha, int32_t beta, int32_t 
     return reference;
 }
 
+// Data for threads
+typedef struct {
+    uint8_t *cells;
+    bool turn;
+    int32_t evaluation;
+    int32_t depth;
+    int move;
+} ThreadArgs;
+
+// Worker function
+void* minimaxThreadFunc(void *vargp) {
+    ThreadArgs *args = (ThreadArgs*)vargp;
+
+    uint8_t cellsCopy[14];
+    bool newTurn = args->turn;
+    copyBoard(args->cells, cellsCopy);
+    makeMoveOnBoard(cellsCopy, &newTurn, args->move);
+    args->evaluation = minimax(cellsCopy, newTurn, INT32_MIN, INT32_MAX, args->depth - 1);
+
+    return NULL;
+}
+
+// We start one thread per possible move and compare them after
 void minimaxRoot(uint8_t *cells, bool turn, int32_t* move, int32_t* evaluation, int32_t depth) {
+    ThreadArgs threadArgs[6];
+
+    int moveOffset = turn ? 0 : 7;
+    pthread_t threadIDs[6];
+
+    // Create threads
+    for (int i = 0; i < 6; i++) {
+        threadArgs[i].cells = cells;
+        threadArgs[i].turn = turn;
+        threadArgs[i].depth = depth;
+        threadArgs[i].evaluation = turn ? INT32_MAX : INT32_MIN;
+        threadArgs[i].move = i + moveOffset;
+
+        if (cells[threadArgs[i].move] == 0) {
+            continue;
+        }
+
+        pthread_create(&threadIDs[i], NULL, minimaxThreadFunc, &threadArgs[i]);
+    }
+
+    // Join threads
+    for (int i = 0; i < 6; i++) {
+        pthread_join(threadIDs[i], NULL);
+    }
+
+    // Compare results
     int32_t bestValue;
     int32_t bestIndex;
-
     if (turn) {
         bestValue = INT32_MAX;
-        for (int32_t i = 0; i < 6; i++) {
-            if (cells[i] == 0) {
-                continue;
-            }
-            uint8_t cellsCopy[14];
-            bool newTurn = turn;
-            copyBoard(cells, cellsCopy);
-            makeMoveOnBoard(cellsCopy, &newTurn, i);
-            int32_t value = minimax(cellsCopy, newTurn, INT32_MIN, INT32_MAX, depth - 1);
-            if (value < bestValue) {
-                bestIndex = i;
-                bestValue = value;
+        for (int i = 0; i < 6; i++) {
+            ThreadArgs args = threadArgs[i];
+            if (args.evaluation < bestValue) {
+                bestIndex = args.move;
+                bestValue = args.evaluation;
             }
         }
     } else {
         bestValue = INT32_MIN;
-        for (int32_t i = 7; i < 13; i++) {
-            if (cells[i] == 0) {
-                continue;
-            }
-            uint8_t cellsCopy[14];
-            bool newTurn = turn;
-            copyBoard(cells, cellsCopy);
-            makeMoveOnBoard(cellsCopy, &newTurn, i);
-            int32_t value = minimax(cellsCopy, newTurn, INT32_MIN, INT32_MAX, depth - 1);
-            if (value > bestValue) {
-                bestIndex = i;
-                bestValue = value;
+        for (int i = 0; i < 6; i++) {
+            ThreadArgs args = threadArgs[i];
+            if (args.evaluation > bestValue) {
+                bestIndex = args.move;
+                bestValue = args.evaluation;
             }
         }
     }
 
+    // Assign best results
     *move = bestIndex;
     *evaluation = bestValue;
-}
-
-void renderBoardWithNextMove(const uint8_t *cells, const bool turn) {
-    renderBoard(cells);
-    printf("Move: %d\n", turn);
 }
 
 int32_t main(int32_t argc, char const* argv[]) {
@@ -284,15 +320,7 @@ int32_t main(int32_t argc, char const* argv[]) {
         int32_t index;
         int32_t eval;
 
-        if (turn) {
-            // Player One's turn - get input
-            printf("Enter your move (0-5): ");
-            scanf("%d", &index);
-        } else {
-            // AI's turn
-            minimaxRoot(cells, turn, &index, &eval, 16);
-        }
-
+        minimaxRoot(cells, turn, &index, &eval, 18);
         makeMoveManual(cells, &turn, index);
         renderBoardWithNextMove(cells, turn);
         printf("Eval: %d\n", -eval);
