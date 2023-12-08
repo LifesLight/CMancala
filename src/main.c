@@ -81,19 +81,27 @@ bool isBoardPlayerTwoEmpty(const uint8_t *cells) {
     return !(*(int64_t*)(cells + 7) & 0x0000FFFFFFFFFFFF);
 }
 
-void processBoardTerminal(uint8_t *cells) {
+// Returns wether the game finished
+bool processBoardTerminal(uint8_t *cells) {
     // Check for finish
     if (isBoardPlayerOneEmpty(cells)) {
         for (int32_t i = 7; i < 13; i++) {
             cells[SCORE_P2] += cells[i];
             cells[i] = 0;
         }
-    } else if (isBoardPlayerTwoEmpty(cells)) {
+        return true;
+    }
+
+
+    if (isBoardPlayerTwoEmpty(cells)) {
         for (int32_t i = 0; i < 6; i++) {
             cells[SCORE_P1] += cells[i];
             cells[i] = 0;
         }
+        return true;
     }
+
+    return false;
 }
 
 void makeMoveOnBoard(uint8_t *cells, bool *turn, int32_t index) {
@@ -154,15 +162,10 @@ int32_t max(int32_t a, int32_t b) {
 }
 
 /* MINIMAX */
-int32_t minimax(uint8_t *cells, bool turn, int32_t depth, int32_t alpha, int32_t beta) {
+int32_t minimax(uint8_t *cells, bool turn, int32_t alpha, int32_t beta) {
     // Check if we are at terminal state
     // If yes add up all remaining stones and return
-    if (isBoardPlayerOneEmpty(cells) || isBoardPlayerTwoEmpty(cells)) {
-        processBoardTerminal(cells);
-        return getBoardEvaluation(cells);
-    }
-
-    if (depth == 0) {
+    if (processBoardTerminal(cells)) {
         return getBoardEvaluation(cells);
     }
 
@@ -182,7 +185,7 @@ int32_t minimax(uint8_t *cells, bool turn, int32_t depth, int32_t alpha, int32_t
             newTurn = turn;
             copyBoard(cells, cellsCopy);
             makeMoveOnBoard(cellsCopy, &newTurn, i);
-            reference = min(reference, minimax(cellsCopy, newTurn, depth -1, alpha, beta));
+            reference = min(reference, minimax(cellsCopy, newTurn, alpha, beta));
             if (reference <= alpha) {
                 break;
             }
@@ -197,7 +200,7 @@ int32_t minimax(uint8_t *cells, bool turn, int32_t depth, int32_t alpha, int32_t
             newTurn = turn;
             copyBoard(cells, cellsCopy);
             makeMoveOnBoard(cellsCopy, &newTurn, i);
-            reference = max(reference, minimax(cellsCopy, newTurn, depth - 1, alpha, beta));
+            reference = max(reference, minimax(cellsCopy, newTurn, alpha, beta));
             if (reference >= beta) {
                 break;
             }
@@ -209,7 +212,7 @@ int32_t minimax(uint8_t *cells, bool turn, int32_t depth, int32_t alpha, int32_t
     return reference;
 }
 
-void minimaxRoot(uint8_t *cells, bool turn, int32_t depth, int32_t* move, int32_t* evaluation) {
+void minimaxRoot(uint8_t *cells, bool turn, int32_t* move, int32_t* evaluation) {
     int32_t bestValue;
     int32_t bestIndex;
 
@@ -223,7 +226,7 @@ void minimaxRoot(uint8_t *cells, bool turn, int32_t depth, int32_t* move, int32_
             bool newTurn = turn;
             copyBoard(cells, cellsCopy);
             makeMoveOnBoard(cellsCopy, &newTurn, i);
-            int32_t value = minimax(cellsCopy, newTurn, depth - 1, INT32_MIN, INT32_MAX);
+            int32_t value = minimax(cellsCopy, newTurn, INT32_MIN, INT32_MAX);
             if (value < bestValue) {
                 bestIndex = i;
                 bestValue = value;
@@ -239,7 +242,7 @@ void minimaxRoot(uint8_t *cells, bool turn, int32_t depth, int32_t* move, int32_
             bool newTurn = turn;
             copyBoard(cells, cellsCopy);
             makeMoveOnBoard(cellsCopy, &newTurn, i);
-            int32_t value = minimax(cellsCopy, newTurn, depth - 1, INT32_MIN, INT32_MAX);
+            int32_t value = minimax(cellsCopy, newTurn, INT32_MIN, INT32_MAX);
             if (value > bestValue) {
                 bestIndex = i;
                 bestValue = value;
@@ -266,7 +269,7 @@ int32_t main(int32_t argc, char const *argv[])
     while (!(isBoardPlayerOneEmpty(cells) || isBoardPlayerTwoEmpty(cells))) {
         int32_t index;
         int32_t eval;
-        minimaxRoot(cells, turn, 14, &index, &eval);
+        minimaxRoot(cells, turn, &index, &eval);
         makeMoveManual(cells, &turn, index);
         renderBoardWithNextMove(cells, turn);
         printf("Eval: %d\n", -eval);
