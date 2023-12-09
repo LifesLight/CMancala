@@ -91,6 +91,12 @@ void randomizeCells(u8 *cells, i32 stones) {
 
 // Renders representation of cell
 void renderBoard(const u8 *cells) {
+    // Print indecies
+    printf("IDX:  ");
+    for (i32 i = 1; i < 7; i++) {
+        printf("%d   ", i);
+    }
+    printf("\n");
     printf("    ┌─");
     for (i32 i = 0; i < 5; ++i) {
         printf("──┬─");
@@ -164,26 +170,31 @@ bool processBoardTerminal(u8 *cells) {
     return false;
 }
 
-void makeMoveOnBoard(u8 *cells, bool *turn, i32 index) {
+void makeMoveOnBoard(u8 *cells, bool *turn, i32 actionIndex) {
     // Propagate stones
-    const u8 stones = cells[index];
-    cells[index] = 0;
+    const u8 stones = cells[actionIndex];
+    cells[actionIndex] = 0;
 
     // Get blocked index for this player
     const i32 blockedIndex = (*turn) ? SCORE_P2 : SCORE_P1;
 
+    // Index is the current working index
+    i32 index;
+
     // Propagate stones
-    i32 modItterator;
-    for(i32 i = index + 1; i < index + stones + 1; i++) {
-        modItterator = i % 14;
-        if (modItterator != blockedIndex) {
-            cells[modItterator]++;
+    for(i32 i = actionIndex + 1; i < actionIndex + stones + 1; i++) {
+        // Modulo to wrap around board
+        index = i % 14;
+        if (index != blockedIndex) {
+            // Add stone to cell
+            cells[index]++;
         } else {
-            index++;
+            // Offset the loop by one to make up for the blocked index
+            actionIndex++;
         }
     }
-    // Assign final index correctly
-    index = modItterator;
+
+    // Working with index after propagation
 
     // Check if last stone was placed on score field
     // If yes return without inverting turn
@@ -197,6 +208,8 @@ void makeMoveOnBoard(u8 *cells, bool *turn, i32 index) {
         const i32 targetIndex = 12 - index;
         // Make sure there even are stones on the other side
         const u8 targetValue = cells[targetIndex];
+
+        // If there are stones on the other side steal them
         if (targetValue != 0) {
             // If player 2 made move
             if (!*turn && index > SCORE_P1) {
@@ -308,29 +321,39 @@ void* minimaxThreadFunc(void *vargp) {
 
 // We start one thread per possible move and compare them after
 void minimaxRoot(u8 *cells, bool turn, i32* move, i32* evaluation, i32 depth) {
+    // Arguments for threads
     ThreadArgs threadArgs[6];
 
+    // Offset for player 2
     i32 moveOffset = turn ? 0 : 7;
     pthread_t threadIDs[6];
+    bool spawnedThreads[6] = {false};
 
     // Create threads
     for (i32 i = 0; i < 6; i++) {
+        // Create argument struct for thread
         threadArgs[i].cells = cells;
         threadArgs[i].turn = turn;
         threadArgs[i].depth = depth;
         threadArgs[i].evaluation = turn ? INT32_MAX : INT32_MIN;
         threadArgs[i].move = i + moveOffset;
 
+        // If no move to be made don't create thread
         if (cells[threadArgs[i].move] == 0) {
             continue;
         }
 
+        // Start thread
+        spawnedThreads[i] = true;
         pthread_create(&threadIDs[i], NULL, minimaxThreadFunc, &threadArgs[i]);
     }
 
     // Join threads
     for (i32 i = 0; i < 6; i++) {
-        pthread_join(threadIDs[i], NULL);
+        // Check if thread was spawned
+        if (spawnedThreads[i]) {
+            pthread_join(threadIDs[i], NULL);
+        }
     }
 
     // Compare results
@@ -362,19 +385,46 @@ void minimaxRoot(u8 *cells, bool turn, i32* move, i32* evaluation, i32 depth) {
 }
 
 i32 main(i32 argc, char const* argv[]) {
+    // The working board
     u8 cells[14];
     bool turn = true;
 
+    // Minimax search depth
+    const int aiDepth = 15;
+
+    // Options to init board
     newBoard(cells, &turn);
-    //newBoardCustomStones(cells, &turn, 6);
+    //newBoardCustomStones(cells, &turn, 3);
     //randomizeCells(cells, 60);
 
     i32 index;
-    i32 eval;
+    i32 eval = 0;
     renderBoard(cells);
     printf("Turn: %s\n", turn ? "P1" : "P2");
     while (!(isBoardPlayerOneEmpty(cells) || isBoardPlayerTwoEmpty(cells))) {
-        minimaxRoot(cells, turn, &index, &eval, 14);
+        // Check if human or ai turn
+        if (turn) {
+            printf("Enter move: ");
+            // Catch non integer input
+            if (scanf("%d", &index) != 1) {
+                printf("Invalid move\n");
+                // Clear input buffer
+                while (getchar() != '\n');
+                continue;
+            }
+            // Check bounds
+            if (index < 1 || index > 6 || cells[index - 1] == 0) {
+                printf("Invalid move\n");
+                continue;
+            }
+            // Translate to 0 start index
+            index -= 1;
+        } else {
+            // Call ai
+            minimaxRoot(cells, turn, &index, &eval, aiDepth);
+        }
+
+        // Perform move
         makeMoveManual(cells, &turn, index);
         renderBoard(cells);
         printf("Turn: %s; Evaluation: %d;\n", turn ? "P1" : "P2", -eval);
