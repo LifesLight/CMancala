@@ -20,6 +20,15 @@
 #define SCORE_P2 13
 #define START_VALUE 4
 
+// Data for threads
+typedef struct {
+    uint8_t *cells;
+    bool turn;
+    int32_t evaluation;
+    int32_t depth;
+    int32_t move;
+} ThreadArgs;
+
 // Construct board at pointer
 void newBoard(uint8_t *cells, bool *turn) {
     // Assign start values
@@ -231,15 +240,6 @@ int32_t minimax(uint8_t *restrict cells, const bool turn, int32_t alpha, int32_t
     // Return board evaluation
     return reference;
 }
-
-// Data for threads
-typedef struct {
-    uint8_t *cells;
-    bool turn;
-    int32_t evaluation;
-    int32_t depth;
-    int32_t move;
-} ThreadArgs;
 
 // Worker function
 void* minimaxThreadFunc(void *vargp) {
