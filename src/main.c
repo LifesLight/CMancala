@@ -1,5 +1,5 @@
 /**
- * Copyright Alexander Kurtz 2023
+ * Copyright (c) Alexander Kurtz 2023
 */
 
 #include <stdint.h>
@@ -21,6 +21,7 @@ typedef uint8_t u8;
 typedef int32_t i32;
 typedef int64_t i64;
 
+// Index of the score cells for each player
 #define SCORE_P1 6
 #define SCORE_P2 13
 
@@ -45,6 +46,8 @@ void newBoardCustomStones(u8 *cells, bool *turn, i32 stones) {
     for (i32 i = 0; i < 14; i++) {
         cells[i] = stones;
     }
+
+    // Overwrite score cells to 0
     cells[SCORE_P1] = 0;
     cells[SCORE_P2] = 0;
 
@@ -86,7 +89,7 @@ void randomizeCells(u8 *cells, i32 stones) {
     }
 }
 
-// Just dont question it
+// Renders representation of cell
 void renderBoard(const u8 *cells) {
     printf("    ┌─");
     for (i32 i = 0; i < 5; ++i) {
@@ -121,6 +124,7 @@ void renderBoard(const u8 *cells) {
 
 // Returns relative evaluation
 i32 getBoardEvaluation(const u8 *cells) {
+    // Calculate score delta
     return cells[SCORE_P2] - cells[SCORE_P1];
 }
 
@@ -141,6 +145,7 @@ bool isBoardPlayerTwoEmpty(const u8 *cells) {
 bool processBoardTerminal(u8 *cells) {
     // Check for finish
     if (isBoardPlayerOneEmpty(cells)) {
+        // Add up opposing players stones to non empty players score
         for (i32 i = 7; i < 13; i++) {
             cells[SCORE_P2] += cells[i];
             cells[i] = 0;
@@ -164,8 +169,8 @@ void makeMoveOnBoard(u8 *cells, bool *turn, i32 index) {
     const u8 stones = cells[index];
     cells[index] = 0;
 
-    // Calculate blocked index
-    i32 blockedIndex = (*turn) ? SCORE_P2 : SCORE_P1;
+    // Get blocked index for this player
+    const i32 blockedIndex = (*turn) ? SCORE_P2 : SCORE_P1;
 
     // Propagate stones
     i32 modItterator;
@@ -189,9 +194,9 @@ void makeMoveOnBoard(u8 *cells, bool *turn, i32 index) {
     // Check if last stone was placed on empty field
     // If yes "Steal" stones
     if (cells[index] == 1) {
-        i32 targetIndex = 12 - index;
+        const i32 targetIndex = 12 - index;
         // Make sure there even are stones on the other side
-        u8 targetValue = cells[targetIndex];
+        const u8 targetValue = cells[targetIndex];
         if (targetValue != 0) {
             // If player 2 made move
             if (!*turn && index > SCORE_P1) {
@@ -211,14 +216,10 @@ void makeMoveOnBoard(u8 *cells, bool *turn, i32 index) {
     *turn = !*turn;
 }
 
+// Make move but also automatically handles terminality
 void makeMoveManual(u8 *cells, bool *turn, i32 index) {
     makeMoveOnBoard(cells, turn, index);
     processBoardTerminal(cells);
-}
-
-void renderBoardWithNextMove(const u8 *cells, const bool turn) {
-    renderBoard(cells);
-    printf("Move: %d\n", turn);
 }
 
 // Min
@@ -232,7 +233,7 @@ i32 max(i32 a, i32 b) {
 }
 
 // Standard Minimax implementation
-i32 minimax(u8 *restrict cells, const bool turn, i32 alpha, i32 beta, const i32 depth) {
+i32 minimax(u8 *cells, const bool turn, i32 alpha, i32 beta, const i32 depth) {
     // Check if we are at terminal state
     // If yes add up all remaining stones and return
     // Otherwise force terminal with depth
@@ -370,12 +371,13 @@ i32 main(i32 argc, char const* argv[]) {
 
     i32 index;
     i32 eval;
-    renderBoardWithNextMove(cells, turn);
+    renderBoard(cells);
+    printf("Turn: %s\n", turn ? "P1" : "P2");
     while (!(isBoardPlayerOneEmpty(cells) || isBoardPlayerTwoEmpty(cells))) {
         minimaxRoot(cells, turn, &index, &eval, 14);
         makeMoveManual(cells, &turn, index);
-        renderBoardWithNextMove(cells, turn);
-        printf("Eval: %d\n", -eval);
+        renderBoard(cells);
+        printf("Turn: %s; Evaluation: %d;\n", turn ? "P1" : "P2", -eval);
     }
 
     return 0;
