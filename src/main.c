@@ -263,7 +263,7 @@ i32 minimax(u8 *cells, const bool turn, i32 alpha, i32 beta, const i32 depth) {
     // Seperation by whos turn it is
     if (turn) {
         reference = INT32_MAX;
-        for (i = 0; i < 6; i++) {
+        for (i = 5; i >= 0; i--) {
             // Filter invalid moves
             if (cells[i] == 0) {
                 continue;
@@ -283,7 +283,7 @@ i32 minimax(u8 *cells, const bool turn, i32 alpha, i32 beta, const i32 depth) {
     } else {
         // Same logic as above just for other player optimization
         reference = INT32_MIN;
-        for (i = 7; i < 13; i++) {
+        for (i = 12; i >= 7; i--) {
             if (cells[i] == 0) {
                 continue;
             }
@@ -390,7 +390,7 @@ i32 main(i32 argc, char const* argv[]) {
     bool turn = true;
 
     // Minimax search depth
-    const int aiDepth = 15;
+    const int aiDepth = 18;
 
     // Options to init board
     newBoard(cells, &turn);
