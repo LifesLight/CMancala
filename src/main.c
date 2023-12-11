@@ -7,7 +7,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <pthread.h>
 #include <time.h>
 
 /*
@@ -25,14 +24,6 @@ typedef int64_t i64;
 #define SCORE_P1 6
 #define SCORE_P2 13
 
-// Data for threads
-typedef struct {
-    u8 *cells;
-    bool turn;
-    i32 evaluation;
-    i32 depth;
-    i32 move;
-} ThreadArgs;
 
 // Construct board at pointer with specified cell values
 void newBoardCustomStones(u8 *cells, bool *turn, i32 stones) {
@@ -302,86 +293,53 @@ i32 minimax(u8 *cells, const bool turn, i32 alpha, i32 beta, const i32 depth) {
     return reference;
 }
 
-/**
- * Threading code, we just seperate the possible moves on different threads to improve performance
-*/
 
-// Worker function
-void* minimaxThreadFunc(void *vargp) {
-    ThreadArgs *args = (ThreadArgs*)vargp;
-
-    u8 cellsCopy[14];
-    bool newTurn = args->turn;
-    copyBoard(args->cells, cellsCopy);
-    makeMoveOnBoard(cellsCopy, &newTurn, args->move);
-    args->evaluation = minimax(cellsCopy, newTurn, INT32_MIN, INT32_MAX, args->depth - 1);
-
-    return NULL;
-}
-
-// We start one thread per possible move and compare them after
+// Root call to minimax, saves best move so we can get a move and not just a eval
 void minimaxRoot(u8 *cells, bool turn, i32* move, i32* evaluation, i32 depth) {
-    // Arguments for threads
-    ThreadArgs threadArgs[6];
+    i32 alpha = INT32_MIN;
+    i32 beta = INT32_MAX;
+    i32 reference;
 
-    // Offset for player 2
-    i32 moveOffset = turn ? 0 : 7;
-    pthread_t threadIDs[6];
-    bool spawnedThreads[6] = {false};
-
-    // Create threads
-    for (i32 i = 0; i < 6; i++) {
-        // Create argument struct for thread
-        threadArgs[i].cells = cells;
-        threadArgs[i].turn = turn;
-        threadArgs[i].depth = depth;
-        threadArgs[i].evaluation = turn ? INT32_MAX : INT32_MIN;
-        threadArgs[i].move = i + moveOffset;
-
-        // If no move to be made don't create thread
-        if (cells[threadArgs[i].move] == 0) {
-            continue;
-        }
-
-        // Start thread
-        spawnedThreads[i] = true;
-        pthread_create(&threadIDs[i], NULL, minimaxThreadFunc, &threadArgs[i]);
-    }
-
-    // Join threads
-    for (i32 i = 0; i < 6; i++) {
-        // Check if thread was spawned
-        if (spawnedThreads[i]) {
-            pthread_join(threadIDs[i], NULL);
-        }
-    }
-
-    // Compare results
-    i32 bestValue;
-    i32 bestIndex;
     if (turn) {
-        bestValue = INT32_MAX;
-        for (i32 i = 0; i < 6; i++) {
-            ThreadArgs args = threadArgs[i];
-            if (args.evaluation < bestValue) {
-                bestIndex = args.move;
-                bestValue = args.evaluation;
+        reference = INT32_MAX;
+        for (i32 i = 5; i >= 0; i--) {
+            // Filter invalid moves
+            if (cells[i] == 0) {
+                continue;
             }
+            // Make copied board with move made
+            bool newTurn = turn;
+            u8 cellsCopy[14];
+            copyBoard(cells, cellsCopy);
+            makeMoveOnBoard(cellsCopy, &newTurn, i);
+            i32 eval = minimax(cellsCopy, newTurn, alpha, beta, depth - 1);
+            if (eval < reference) {
+                *move = i;
+                reference = eval;
+            }
+            beta = min(reference, beta);
         }
     } else {
-        bestValue = INT32_MIN;
-        for (i32 i = 0; i < 6; i++) {
-            ThreadArgs args = threadArgs[i];
-            if (args.evaluation > bestValue) {
-                bestIndex = args.move;
-                bestValue = args.evaluation;
+        // Same logic as above just for other player optimization
+        reference = INT32_MIN;
+        for (i32 i = 12; i >= 7; i--) {
+            if (cells[i] == 0) {
+                continue;
             }
+            bool newTurn = turn;
+            u8 cellsCopy[14];
+            copyBoard(cells, cellsCopy);
+            makeMoveOnBoard(cellsCopy, &newTurn, i);
+            i32 eval = minimax(cellsCopy, newTurn, alpha, beta, depth - 1);
+            if (eval > reference) {
+                *move = i;
+                reference = eval;
+            }
+            alpha = max(reference, alpha);
         }
     }
 
-    // Assign best results
-    *move = bestIndex;
-    *evaluation = bestValue;
+    *evaluation = reference;
 }
 
 i32 main(i32 argc, char const* argv[]) {
