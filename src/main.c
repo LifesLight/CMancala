@@ -269,7 +269,7 @@ i32_t minimax(u8_t *cells, const bool turn, i32_t alpha, i32_t beta, const i32_t
             // Recursively call function to get eval and compare, optimizing for small values
             reference = min(reference, minimax(cellsCopy, newTurn, alpha, beta, depth - 1));
             // If better eval exists discard this branch since player before will never allow this position
-            if (reference <= alpha) {
+            if (reference < alpha) {
                 break;
             }
             beta = min(reference, beta);
@@ -285,7 +285,7 @@ i32_t minimax(u8_t *cells, const bool turn, i32_t alpha, i32_t beta, const i32_t
             copyBoard(cells, cellsCopy);
             makeMoveOnBoard(cellsCopy, &newTurn, i);
             reference = max(reference, minimax(cellsCopy, newTurn, alpha, beta, depth - 1));
-            if (reference >= beta) {
+            if (reference > beta) {
                 break;
             }
             alpha = max(reference, alpha);
@@ -361,7 +361,7 @@ i32_t main(i32_t argc, char const* argv[]) {
      * Search depth for ai
      * Can also just write number into minimaxRoot param for ai vs ai with different depth...
     */
-    const int aiDepth = 18;
+    const int aiDepth = 22;
 
     /**
      * Initialize board here
