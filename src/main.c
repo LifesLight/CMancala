@@ -163,31 +163,30 @@ bool processBoardTerminal(u8_t *cells) {
 }
 
 // Performs move on the board, the provided turn bool is updated accordingly
-void makeMoveOnBoard(u8_t *cells, bool *turn, i32_t actionIndex) {
+void makeMoveOnBoard(u8_t *cells, bool *turn, u8_t actionIndex) {
     // Propagate stones
     const u8_t stones = cells[actionIndex];
     cells[actionIndex] = 0;
 
     // Get blocked index for this player
-    const i32_t blockedIndex = (*turn) ? SCORE_P2 : SCORE_P1;
-
-    // Index is the current working index
-    i32_t index;
+    const u8_t blockedIndex = (*turn) ? SCORE_P2 : SCORE_P1;
+    u8_t index = actionIndex;
 
     // Propagate stones
-    for(i32_t i = actionIndex + 1; i < actionIndex + stones + 1; i++) {
-        // Modulo to wrap around board
-        index = i % 14;
-        if (index != blockedIndex) {
-            // Add stone to cell
-            cells[index]++;
-        } else {
-            // Offset the loop by one to make up for the blocked index
-            actionIndex++;
-        }
-    }
+    for (u8_t i = 0; i < stones; i++) {
+        // Increment index
+        index++;
 
-    // Working with index after propagation
+        // Check for invalid indecies
+        if (index > 13) {
+            index = 0;
+        } else if (index == blockedIndex) {
+            index++;
+        }
+
+        // Increment cell
+        cells[index]++;
+    }
 
     // Check if last stone was placed on score field
     // If yes return without inverting turn
