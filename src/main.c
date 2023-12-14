@@ -375,7 +375,6 @@ i32_t main(i32_t argc, char const* argv[]) {
     //newBoardCustomStones(cells, &turn, 3);
     //randomizeCells(cells, 60);
 
-
     /**
      * Inital rendering of board
     */
