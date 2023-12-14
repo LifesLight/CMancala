@@ -185,7 +185,7 @@ void makeMoveOnBoard(u8_t *cells, bool *turn, u8_t actionIndex) {
 
         // Wrap around bounds
         if (index > 13) {
-            index = index % 14;
+            index = index - 14;
         }
 
         // Increment cell
