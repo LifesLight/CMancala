@@ -136,7 +136,8 @@ bool isBoardPlayerOneEmpty(const u8_t *cells) {
 // Check if player twos side is empty
 bool isBoardPlayerTwoEmpty(const u8_t *cells) {
     // Same logic as ^ just offset the pointer to check the other side
-    return !(*(i64_t*)(cells + 7) & 0x0000FFFFFFFFFFFF);
+    // Also slightly different mask to check from other side (array bounds)
+    return !(*(i64_t*)(cells + 5) & 0xFFFFFFFFFFFF0000);
 }
 
 // Returns wether the game finished
@@ -174,14 +175,17 @@ void makeMoveOnBoard(u8_t *cells, bool *turn, u8_t actionIndex) {
 
     // Propagate stones
     for (u8_t i = 0; i < stones; i++) {
-        // Increment index
-        index++;
-
-        // Check for invalid indecies
-        if (index > 13) {
-            index = 0;
-        } else if (index == blockedIndex) {
+        // Skip blocked index
+        if (index == blockedIndex) {
+            index += 2;
+        } else {
+            // If not blocked, normal increment
             index++;
+        }
+
+        // Wrap around bounds
+        if (index > 13) {
+            index = index % 14;
         }
 
         // Increment cell
@@ -360,7 +364,7 @@ i32_t main(i32_t argc, char const* argv[]) {
      * Search depth for ai
      * Can also just write number into minimaxRoot param for ai vs ai with different depth...
     */
-    const int aiDepth = 22;
+    const int aiDepth = 20;
 
     /**
      * Initialize board here
@@ -405,6 +409,7 @@ i32_t main(i32_t argc, char const* argv[]) {
         } else {
             // Call ai
             minimaxRoot(cells, turn, &index, &eval, aiDepth);
+            printf("AI move: %d\n", 13 - index);
         }
 
         // Perform move
