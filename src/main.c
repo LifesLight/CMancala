@@ -12,8 +12,8 @@
 /*
  * Board is constructed like this:
  * Score cells are 6 and 13
- * Indecies P1: 0 - 5
- * Indecies P2: 7 - 12
+ * Indicies P1: 0 - 5
+ * Indicies P2: 7 - 12
  */
 
 typedef uint8_t u8_t;
@@ -65,7 +65,7 @@ void randomizeCells(u8_t *cells, i32_t stones) {
 
     // Check for u8_t bounds
     if (stones > UINT8_MAX / 2) {
-        printf("[WARNING]: Reducing %d totoal stones to %d to avoid u8_t overflow\n", stones * 2, UINT8_MAX / 2 * 2);
+        printf("[WARNING]: Reducing %d total stones to %d to avoid u8_t overflow\n", stones * 2, UINT8_MAX / 2 * 2);
         stones = UINT8_MAX / 2;
     }
 
@@ -83,7 +83,7 @@ void randomizeCells(u8_t *cells, i32_t stones) {
 
 // Renders representation of cell
 void renderBoard(const u8_t *cells) {
-    // Print indecies
+    // Print indices
     printf("IDX:  ");
     for (i32_t i = 1; i < 7; i++) {
         printf("%d   ", i);
@@ -129,7 +129,7 @@ i32_t getBoardEvaluation(const u8_t *cells) {
 // Check if player ones side is empty
 bool isBoardPlayerOneEmpty(const u8_t *cells) {
     // Casting the array to a single i64_t,
-    // mask out the last 2 indecies and if that i64_t is 0 the side is empty
+    // mask out the last 2 indices and if that i64_t is 0 the side is empty
     return !(*(i64_t*)cells & 0x0000FFFFFFFFFFFF);
 }
 
@@ -164,7 +164,7 @@ bool processBoardTerminal(u8_t *cells) {
 }
 
 // Performs move on the board, the provided turn bool is updated accordingly
-void makeMoveOnBoard(u8_t *cells, bool *turn, u8_t actionIndex) {
+void makeMoveOnBoard(u8_t *cells, bool *turn, const u8_t actionIndex) {
     // Propagate stones
     const u8_t stones = cells[actionIndex];
     cells[actionIndex] = 0;
@@ -225,7 +225,7 @@ void makeMoveOnBoard(u8_t *cells, bool *turn, u8_t actionIndex) {
     *turn = !*turn;
 }
 
-// Make move but also automatically handles terminality
+// Make move but also automatically handles terminal state
 void makeMoveManual(u8_t *cells, bool *turn, i32_t index) {
     makeMoveOnBoard(cells, turn, index);
     processBoardTerminal(cells);
@@ -256,7 +256,7 @@ i32_t minimax(u8_t *cells, const bool turn, i32_t alpha, i32_t beta, const i32_t
     i32_t reference;
     i32_t i;
 
-    // Seperation by whos turn it is
+    // Separation by who's turn it is
     if (turn) {
         reference = INT32_MAX;
         // Going backwards is way faster with alpha beta pruning
