@@ -24,6 +24,34 @@ typedef int64_t i64_t;
 #define SCORE_P1 6
 #define SCORE_P2 13
 
+#ifdef _WIN32
+// Windows cant render unicode by default
+const char* HL = "-";
+const char* VL = "|";
+const char* TL = "+";
+const char* TR = "+";
+const char* BL = "+";
+const char* BR = "+";
+const char* EL = "+";
+const char* ER = "+";
+const char* ET = "+";
+const char* EB = "+";
+const char* CR = "+";
+#else
+// Unicode characters for rendering
+const char* HL = "─";  // Horizontal Line
+const char* VL = "│";  // Vertical Line
+const char* TL = "┌";  // Top Left Corner
+const char* TR = "┐";  // Top Right Corner
+const char* BL = "└";  // Bottom Left Corner
+const char* BR = "┘";  // Bottom Right Corner
+const char* EL = "├";  // Edge Left
+const char* ER = "┤";  // Edge Right
+const char* ET = "┬";  // Edge Top
+const char* EB = "┴";  // Edge Bottom
+const char* CR = "┼";  // Cross
+#endif
+
 
 // Construct board at pointer with specified cell values
 void newBoardCustomStones(u8_t *cells, bool *turn, i32_t stones) {
@@ -81,7 +109,6 @@ void randomizeCells(u8_t *cells, i32_t stones) {
     }
 }
 
-// Renders representation of cell
 void renderBoard(const u8_t *cells) {
     // Print indices
     printf("IDX:  ");
@@ -89,35 +116,41 @@ void renderBoard(const u8_t *cells) {
         printf("%d   ", i);
     }
     printf("\n");
-    printf("    ┌─");
-    for (i32_t i = 0; i < 5; ++i) {
-        printf("──┬─");
-    }
-    printf("──┐\n");
 
-    printf("┌───┤");
+    // Top header
+    printf("    %s%s", TL, HL);
+    for (i32_t i = 0; i < 5; ++i) {
+        printf("%s%s%s%s", HL, HL, ET, HL);
+    }
+    printf("%s%s%s\n", HL, HL, TR);
+
+    // Upper row
+    printf("%s%s%s%s%s", TL, HL, HL, HL, ER);
     for (i32_t i = 12; i > 7; --i) {
-        printf("%3d│", cells[i]);
+        printf("%3d%s", cells[i], VL);
     }
-    printf("%3d├───┐\n", cells[7]);
+    printf("%3d%s%s%s%s%s\n", cells[7], EL, HL, HL, HL, TR);
 
-    printf("│%3d├─", cells[SCORE_P2]);
+    // Middle separator
+    printf("%s%3d%s%s", VL, cells[SCORE_P2], EL, HL);
     for (i32_t i = 0; i < 5; ++i) {
-        printf("──┼─");
+        printf("%s%s%s%s", HL, HL, CR, HL);
     }
-    printf("──┤%3d│\n", cells[SCORE_P1]);
+    printf("%s%s%s%3d%s\n", HL, HL, ER, cells[SCORE_P1], VL);
 
-    printf("└───┤");
+    // Lower row
+    printf("%s%s%s%s%s", BL, HL, HL, HL, ER);
     for (i32_t i = 0; i < 5; ++i) {
-        printf("%3d│", cells[i]);
+        printf("%3d%s", cells[i], VL);
     }
-    printf("%3d├───┘\n", cells[5]);
+    printf("%3d%s%s%s%s%s\n", cells[5], EL, HL, HL, HL, BR);
 
-    printf("    └─");
+    // Bottom footer
+    printf("    %s%s", BL, HL);
     for (i32_t i = 0; i < 5; ++i) {
-        printf("──┴─");
+        printf("%s%s%s%s", HL, HL, EB, HL);
     }
-    printf("──┘\n");
+    printf("%s%s%s\n", HL, HL, BR);
 }
 
 // Returns relative evaluation
@@ -364,7 +397,7 @@ i32_t main(i32_t argc, char const* argv[]) {
      * Search depth for ai
      * Can also just write number into minimaxRoot param for ai vs ai with different depth...
     */
-    const int aiDepth = 20;
+    const int aiDepth = 25;
 
     /**
      * Initialize board here
