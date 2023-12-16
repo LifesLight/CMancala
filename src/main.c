@@ -397,7 +397,7 @@ i32_t main(i32_t argc, char const* argv[]) {
      * Search depth for ai
      * Can also just write number into minimaxRoot param for ai vs ai with different depth...
     */
-    const int aiDepth = 25;
+    const int aiDepth = 21;
 
     /**
      * Initialize board here
