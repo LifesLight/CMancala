@@ -170,7 +170,7 @@ void makeMoveOnBoard(u8_t *cells, bool *turn, const u8_t actionIndex) {
     cells[actionIndex] = 0;
 
     // Get blocked index for this player
-    const u8_t blockedIndex = (*turn) ? SCORE_P2 : SCORE_P1;
+    const u8_t blockedIndex = (*turn) ? (SCORE_P2 - 1) : (SCORE_P1 - 1);
     u8_t index = actionIndex;
 
     // Propagate stones
