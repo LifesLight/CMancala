@@ -17,6 +17,7 @@
  */
 
 typedef uint8_t u8_t;
+typedef int8_t i8_t;
 typedef int32_t i32_t;
 typedef int64_t i64_t;
 
@@ -52,9 +53,20 @@ const char* EB = "┴";  // Edge Bottom
 const char* CR = "┼";  // Cross
 #endif
 
+typedef struct 
+{
+    u8_t cells[14];
+    i8_t color;
+} Board;
+
+
+// Copies board to target pointer
+void copyBoard(const Board *board, Board *target) {
+    memcpy(target, board, sizeof(Board));
+}
 
 // Construct board at pointer with specified cell values
-void newBoardCustomStones(u8_t *cells, bool *turn, i32_t stones) {
+void newBoardCustomStones(Board *board, i32_t stones) {
     // Bounds checking
     if (stones * 12 > UINT8_MAX) {
         printf("[WARNING]: Reducing %d stones per cell to %d to avoid u8_t overflow\n", stones, UINT8_MAX / 12);
@@ -63,31 +75,25 @@ void newBoardCustomStones(u8_t *cells, bool *turn, i32_t stones) {
 
     // Assign start values
     for (i32_t i = 0; i < 14; i++) {
-        cells[i] = stones;
+        board->cells[i] = stones;
     }
 
     // Overwrite score cells to 0
-    cells[SCORE_P1] = 0;
-    cells[SCORE_P2] = 0;
+    board->cells[SCORE_P1] = 0;
+    board->cells[SCORE_P2] = 0;
 
     // Assign starting player
-    (*turn) = true;
+    board->color = 1;
 }
 
 // Construct board at pointer with default values
-void newBoard(u8_t *cells, bool *turn) {
-    newBoardCustomStones(cells, turn, 4);
-}
-
-// Copies board to target pointer
-void copyBoard(const u8_t *cells, u8_t *cellsCopy) {
-    // Copy values
-    memcpy(cellsCopy, cells, 14 * sizeof(u8_t));
+void newBoard(Board *board) {
+    newBoardCustomStones(board, 4);
 }
 
 // Needs to be even number otherwise rounding down
 // Stones is total stones in game
-void randomizeCells(u8_t *cells, i32_t stones) {
+void randomizeCells(Board *board, i32_t stones) {
     // Since we are double assigning per 
     stones = stones / 2;
 
@@ -98,18 +104,18 @@ void randomizeCells(u8_t *cells, i32_t stones) {
     }
 
     // Reset board to 0
-    memset(cells, 0, 14 * sizeof(u8_t));
+    memset(board->cells, 0, sizeof(board->cells));
 
     // Assign mirrored random stones
     srand(time(NULL));
     for (i32_t i = 0; i < stones; i++) {
         i32_t index = rand() % 6;
-        cells[index] += 1;
-        cells[index + SCORE_P1 + 1] += 1;
+        board->cells[index] += 1;
+        board->cells[index + SCORE_P1 + 1] += 1;
     }
 }
 
-void renderBoard(const u8_t *cells) {
+void renderBoard(const Board *board) {
     // Print indices
     printf("IDX:  ");
     for (i32_t i = 1; i < 7; i++) {
@@ -127,23 +133,23 @@ void renderBoard(const u8_t *cells) {
     // Upper row
     printf("%s%s%s%s%s", TL, HL, HL, HL, ER);
     for (i32_t i = 12; i > 7; --i) {
-        printf("%3d%s", cells[i], VL);
+        printf("%3d%s", board->cells[i], VL);
     }
-    printf("%3d%s%s%s%s%s\n", cells[7], EL, HL, HL, HL, TR);
+    printf("%3d%s%s%s%s%s\n", board->cells[7], EL, HL, HL, HL, TR);
 
     // Middle separator
-    printf("%s%3d%s%s", VL, cells[SCORE_P2], EL, HL);
+    printf("%s%3d%s%s", VL, board->cells[SCORE_P2], EL, HL);
     for (i32_t i = 0; i < 5; ++i) {
         printf("%s%s%s%s", HL, HL, CR, HL);
     }
-    printf("%s%s%s%3d%s\n", HL, HL, ER, cells[SCORE_P1], VL);
+    printf("%s%s%s%3d%s\n", HL, HL, ER, board->cells[SCORE_P1], VL);
 
     // Lower row
     printf("%s%s%s%s%s", BL, HL, HL, HL, ER);
     for (i32_t i = 0; i < 5; ++i) {
-        printf("%3d%s", cells[i], VL);
+        printf("%3d%s", board->cells[i], VL);
     }
-    printf("%3d%s%s%s%s%s\n", cells[5], EL, HL, HL, HL, BR);
+    printf("%3d%s%s%s%s%s\n", board->cells[5], EL, HL, HL, HL, BR);
 
     // Bottom footer
     printf("    %s%s", BL, HL);
@@ -154,41 +160,41 @@ void renderBoard(const u8_t *cells) {
 }
 
 // Returns relative evaluation
-i32_t getBoardEvaluation(const u8_t *cells) {
+i32_t getBoardEvaluation(const Board *board) {
     // Calculate score delta
-    return cells[SCORE_P2] - cells[SCORE_P1];
+    return board->cells[SCORE_P1] - board->cells[SCORE_P2];
 }
 
 // Check if player ones side is empty
-bool isBoardPlayerOneEmpty(const u8_t *cells) {
+bool isBoardPlayerOneEmpty(const Board *board) {
     // Casting the array to a single i64_t,
     // mask out the last 2 indices and if that i64_t is 0 the side is empty
-    return !(*(i64_t*)cells & 0x0000FFFFFFFFFFFF);
+    return !(*(i64_t*)board->cells & 0x0000FFFFFFFFFFFF);
 }
 
 // Check if player twos side is empty
-bool isBoardPlayerTwoEmpty(const u8_t *cells) {
+bool isBoardPlayerTwoEmpty(const Board *board) {
     // Same logic as ^ just offset the pointer to check the other side
     // Also slightly different mask to check from other side (array bounds)
-    return !(*(i64_t*)(cells + 5) & 0xFFFFFFFFFFFF0000);
+    return !(*(i64_t*)(board->cells + 5) & 0xFFFFFFFFFFFF0000);
 }
 
 // Returns wether the game finished
-bool processBoardTerminal(u8_t *cells) {
+bool processBoardTerminal(Board *board) {
     // Check for finish
-    if (isBoardPlayerOneEmpty(cells)) {
+    if (isBoardPlayerOneEmpty(board)) {
         // Add up opposing players stones to non empty players score
         for (i32_t i = 7; i < 13; i++) {
-            cells[SCORE_P2] += cells[i];
-            cells[i] = 0;
+            board->cells[SCORE_P2] += board->cells[i];
+            board->cells[i] = 0;
         }
         return true;
     }
 
-    if (isBoardPlayerTwoEmpty(cells)) {
+    if (isBoardPlayerTwoEmpty(board)) {
         for (i32_t i = 0; i < 6; i++) {
-            cells[SCORE_P1] += cells[i];
-            cells[i] = 0;
+            board->cells[SCORE_P1] += board->cells[i];
+            board->cells[i] = 0;
         }
         return true;
     }
@@ -197,13 +203,15 @@ bool processBoardTerminal(u8_t *cells) {
 }
 
 // Performs move on the board, the provided turn bool is updated accordingly
-void makeMoveOnBoard(u8_t *cells, bool *turn, const u8_t actionIndex) {
+void makeMoveOnBoard(Board *board, const u8_t actionIndex) {
     // Propagate stones
-    const u8_t stones = cells[actionIndex];
-    cells[actionIndex] = 0;
+    const u8_t stones = board->cells[actionIndex];
+    board->cells[actionIndex] = 0;
+
+    const bool turn = board->color == 1;
 
     // Get blocked index for this player
-    const u8_t blockedIndex = (*turn) ? (SCORE_P2 - 1) : (SCORE_P1 - 1);
+    const u8_t blockedIndex = turn ? (SCORE_P2 - 1) : (SCORE_P1 - 1);
     u8_t index = actionIndex;
 
     // Propagate stones
@@ -222,46 +230,46 @@ void makeMoveOnBoard(u8_t *cells, bool *turn, const u8_t actionIndex) {
         }
 
         // Increment cell
-        cells[index]++;
+        board->cells[index]++;
     }
 
     // Check if last stone was placed on score field
     // If yes return without inverting turn
-    if ((index == SCORE_P1 && *turn) || (index == SCORE_P2 && !*turn)) {
+    if ((index == SCORE_P1 && turn) || (index == SCORE_P2 && !turn)) {
         return;
     }
 
     // Check if last stone was placed on empty field
     // If yes "Steal" stones
-    if (cells[index] == 1) {
+    if (board->cells[index] == 1) {
         const i32_t targetIndex = 12 - index;
         // Make sure there even are stones on the other side
-        const u8_t targetValue = cells[targetIndex];
+        const u8_t targetValue = board->cells[targetIndex];
 
         // If there are stones on the other side steal them
         if (targetValue != 0) {
             // If player 2 made move
-            if (!*turn && index > SCORE_P1) {
-                cells[SCORE_P2] += targetValue + 1;
-                cells[targetIndex] = 0;
-                cells[index] = 0;
+            if (!turn && index > SCORE_P1) {
+                board->cells[SCORE_P2] += targetValue + 1;
+                board->cells[targetIndex] = 0;
+                board->cells[index] = 0;
             // Player 1 made move
-            } else if (*turn && index < SCORE_P1) {
-                cells[SCORE_P1] += cells[targetIndex] + 1;
-                cells[targetIndex] = 0;
-                cells[index] = 0;
+            } else if (turn && index < SCORE_P1) {
+                board->cells[SCORE_P1] += board->cells[targetIndex] + 1;
+                board->cells[targetIndex] = 0;
+                board->cells[index] = 0;
             }
         }
     }
 
     // Return no extra move
-    *turn = !*turn;
+    board->color = -board->color;
 }
 
 // Make move but also automatically handles terminal state
-void makeMoveManual(u8_t *cells, bool *turn, i32_t index) {
-    makeMoveOnBoard(cells, turn, index);
-    processBoardTerminal(cells);
+void makeMoveManual(Board* board, i32_t index) {
+    makeMoveOnBoard(board, index);
+    processBoardTerminal(board);
 }
 
 // Min
@@ -274,113 +282,45 @@ i32_t max(i32_t a, i32_t b) {
     return (a > b) ? a : b;
 }
 
-// Standard Minimax implementation
-i32_t minimax(u8_t *cells, const bool turn, i32_t alpha, i32_t beta, const i32_t depth) {
-    // Check if we are at terminal state
-    // If yes add up all remaining stones and return
-    // Otherwise force terminal with depth
-    if (processBoardTerminal(cells) || depth == 0) {
-        return getBoardEvaluation(cells);
+i32_t negamax(Board *board, i32_t alpha, i32_t beta, const i32_t depth) {
+    // Terminally check
+    if (processBoardTerminal(board) || depth == 0) {
+        return board->color * getBoardEvaluation(board);
     }
 
-    // Needed for remaining code
-    u8_t cellsCopy[14];
-    bool newTurn;
-    i32_t reference;
-    i32_t i;
+    i32_t reference = INT32_MIN;
+    i32_t score;
 
-    // Separation by who's turn it is
-    if (turn) {
-        reference = INT32_MAX;
-        // Going backwards is way faster with alpha beta pruning
-        for (i = 5; i >= 0; i--) {
-            // Filter invalid moves
-            if (cells[i] == 0) {
-                continue;
-            }
-            // Make copied board with move made
-            newTurn = turn;
-            copyBoard(cells, cellsCopy);
-            makeMoveOnBoard(cellsCopy, &newTurn, i);
-            // Recursively call function to get eval and compare, optimizing for small values
-            reference = min(reference, minimax(cellsCopy, newTurn, alpha, beta, depth - 1));
-            // If better eval exists discard this branch since player before will never allow this position
-            if (reference < alpha) {
-                break;
-            }
-            beta = min(reference, beta);
+    const i8_t start = (board->color == 1) ? 5 : 12;
+    const i8_t end = (board->color == 1) ? 0 : 7;
+
+    Board boardCopy;
+
+    for (i8_t i = start; i >= end; i--) {
+        // Filter invalid moves
+        if (board->cells[i] == 0) {
+            continue;
         }
-    } else {
-        // Same logic as above just for other player optimization
-        reference = INT32_MIN;
-        for (i = 12; i >= 7; i--) {
-            if (cells[i] == 0) {
-                continue;
-            }
-            newTurn = turn;
-            copyBoard(cells, cellsCopy);
-            makeMoveOnBoard(cellsCopy, &newTurn, i);
-            reference = max(reference, minimax(cellsCopy, newTurn, alpha, beta, depth - 1));
-            if (reference > beta) {
-                break;
-            }
-            alpha = max(reference, alpha);
+        // Make copied board with move made
+        copyBoard(board, &boardCopy);
+        makeMoveOnBoard(&boardCopy, i);
+
+        // Recursively call function to get eval and compare, optimizing for small values
+        if (board->color == boardCopy.color)
+            score = negamax(&boardCopy, alpha, beta, depth - 1);
+        else
+            score = -negamax(&boardCopy, -beta, -alpha, depth - 1);
+
+        reference = max(reference, score);
+
+        alpha = max(alpha, reference);
+
+        if (alpha >= beta) {
+            break; 
         }
     }
 
-    // Return board evaluation
     return reference;
-}
-
-
-// Root call to minimax, saves best move so we can get a move and not just a eval
-void minimaxRoot(u8_t *cells, bool turn, i32_t* move, i32_t* evaluation, i32_t depth) {
-    // Needed for remaining code
-    i32_t alpha = INT32_MIN;
-    i32_t beta = INT32_MAX;
-    i32_t reference;
-
-    if (turn) {
-        reference = INT32_MAX;
-        for (i32_t i = 5; i >= 0; i--) {
-            // Filter invalid moves
-            if (cells[i] == 0) {
-                continue;
-            }
-            // Make copied board with move made
-            bool newTurn = turn;
-            u8_t cellsCopy[14];
-            copyBoard(cells, cellsCopy);
-            makeMoveOnBoard(cellsCopy, &newTurn, i);
-            i32_t eval = minimax(cellsCopy, newTurn, alpha, beta, depth - 1);
-            if (eval < reference) {
-                *move = i;
-                reference = eval;
-            }
-            beta = min(reference, beta);
-        }
-    } else {
-        // Same logic as above just for other player optimization
-        reference = INT32_MIN;
-        for (i32_t i = 12; i >= 7; i--) {
-            if (cells[i] == 0) {
-                continue;
-            }
-            bool newTurn = turn;
-            u8_t cellsCopy[14];
-            copyBoard(cells, cellsCopy);
-            makeMoveOnBoard(cellsCopy, &newTurn, i);
-            i32_t eval = minimax(cellsCopy, newTurn, alpha, beta, depth - 1);
-            if (eval > reference) {
-                *move = i;
-                reference = eval;
-            }
-            alpha = max(reference, alpha);
-        }
-    }
-
-    // "Return" evaluation
-    *evaluation = reference;
 }
 
 
@@ -390,65 +330,33 @@ void minimaxRoot(u8_t *cells, bool turn, i32_t* move, i32_t* evaluation, i32_t d
 */
 i32_t main(i32_t argc, char const* argv[]) {
     // "Main" board and turn
-    u8_t cells[14];
-    bool turn = true;
+    Board board;
 
     /**
      * Search depth for ai
      * Can also just write number into minimaxRoot param for ai vs ai with different depth...
     */
-    const int aiDepth = 21;
+    const int aiDepth = 24;
 
     /**
      * Initialize board here
      * Choose from the following functions or write your own init
      * just make sure that total stones are < 256
     */
-    newBoard(cells, &turn);
+    newBoard(&board);
+    makeMoveManual(&board, 5);
     //newBoardCustomStones(cells, &turn, 3);
     //randomizeCells(cells, 60);
 
     /**
      * Inital rendering of board
     */
-    i32_t index;
-    i32_t eval = 0;
-    renderBoard(cells);
-    printf("Turn: %s\n", turn ? "P1" : "P2");
+    renderBoard(&board);
+    printf("Turn: %d\n", board.color);
 
-    /**
-     * Game loop
-     * Make modifications for human vs human, human vs ai, ai vs ai here
-    */
-    while (!(isBoardPlayerOneEmpty(cells) || isBoardPlayerTwoEmpty(cells))) {
-        // Check if human or ai turn
-        if (turn) {
-            printf("Enter move: ");
-            // Catch non integer input
-            if (scanf("%d", &index) != 1) {
-                printf("Invalid move\n");
-                // Clear input buffer
-                while (getchar() != '\n');
-                continue;
-            }
-            // Check bounds
-            if (index < 1 || index > 6 || cells[index - 1] == 0) {
-                printf("Invalid move\n");
-                continue;
-            }
-            // Translate to 0 start index
-            index -= 1;
-        } else {
-            // Call ai
-            minimaxRoot(cells, turn, &index, &eval, aiDepth);
-            printf("AI move: %d\n", 13 - index);
-        }
+    int32_t eval = -negamax(&board, INT32_MIN, INT32_MAX, aiDepth);
 
-        // Perform move
-        makeMoveManual(cells, &turn, index);
-        renderBoard(cells);
-        printf("Turn: %s; Evaluation: %d;\n", turn ? "P1" : "P2", -eval);
-    }
+    printf("Eval: %d\n", eval);
 
     return 0;
 }
