@@ -323,6 +323,49 @@ i32_t negamax(Board *board, i32_t alpha, i32_t beta, const i32_t depth) {
     return reference;
 }
 
+void negamaxRoot(Board *board, i32_t *move, i32_t *evaluation, i32_t depth) {
+    i32_t alpha = INT32_MIN + 1;
+    // +1 to avoid INT32_MIN overflow
+    i32_t beta = INT32_MAX;
+
+    i32_t score;
+    i32_t bestScore = INT32_MIN;
+    i32_t bestMove = -1;
+    Board boardCopy;
+
+    const i8_t start = (board->color == 1) ? 5 : 12;
+    const i8_t end = (board->color == 1) ? 0 : 7;
+
+    for (int i = start; i >= end; --i) {
+        // Filter invalid moves
+        if (board->cells[i] == 0) {
+            continue;
+        }
+
+        // Make copied board with move made
+        copyBoard(board, &boardCopy);
+        makeMoveOnBoard(&boardCopy, i);
+
+        // Recursively call function to get eval and compare, optimizing for small values
+        if (board->color == boardCopy.color)
+            score = negamax(&boardCopy, alpha, beta, depth - 1);
+        else
+            score = -negamax(&boardCopy, -beta, -alpha, depth - 1);
+
+        // Update best move
+        if (score > bestScore) {
+            bestScore = score;
+            bestMove = i;
+        }
+
+        // Update alpha
+        alpha = max(alpha, bestScore);
+    }
+
+    *move = bestMove;
+    *evaluation = bestScore;
+}
+
 
 /**
  * Main function
@@ -336,7 +379,7 @@ i32_t main(i32_t argc, char const* argv[]) {
      * Search depth for ai
      * Can also just write number into minimaxRoot param for ai vs ai with different depth...
     */
-    const int aiDepth = 24;
+    const int aiDepth = 22;
 
     /**
      * Initialize board here
@@ -347,15 +390,47 @@ i32_t main(i32_t argc, char const* argv[]) {
     //newBoardCustomStones(cells, &turn, 3);
     //randomizeCells(cells, 60);
 
-    /**
+     /**
      * Inital rendering of board
     */
+    i32_t index;
+    i32_t eval = 0;
     renderBoard(&board);
-    printf("Turn: %d\n", board.color);
+    printf("Turn: %s\n", board.color == 1 ? "P1" : "P2");
 
-    int32_t eval = -negamax(&board, -1000, 1000, aiDepth);
+    /**
+     * Game loop
+     * Make modifications for human vs human, human vs ai, ai vs ai here
+    */
+    while (!(isBoardPlayerOneEmpty(&board) || isBoardPlayerTwoEmpty(&board))) {
+        // Check if human or ai turn
+        if (board.color == 1) {
+            printf("Enter move: ");
+            // Catch non integer input
+            if (scanf("%d", &index) != 1) {
+                printf("Invalid move\n");
+                // Clear input buffer
+                while (getchar() != '\n');
+                continue;
+            }
+            // Check bounds
+            if (index < 1 || index > 6 || board.cells[index - 1] == 0) {
+                printf("Invalid move\n");
+                continue;
+            }
+            // Translate to 0 start index
+            index -= 1;
+        } else {
+            // Call ai
+            negamaxRoot(&board, &index, &eval, aiDepth);
+            printf("AI move: %d\n", 13 - index);
+        }
 
-    printf("Eval: %d\n", eval);
+        // Perform move
+        makeMoveManual(&board, index);
+        renderBoard(&board);
+        printf("Turn: %s; Evaluation: %d;\n", board.color == 1 ? "P1" : "P2", eval * board.color);
+    }
 
     return 0;
 }
