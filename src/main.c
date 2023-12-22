@@ -323,25 +323,26 @@ i32_t negamax(Board *board, i32_t alpha, i32_t beta, const i32_t depth) {
     return reference;
 }
 
-void negamaxRoot(Board *board, i32_t *move, i32_t *evaluation, i32_t depth) {
-    i32_t alpha = INT32_MIN + 1;
-    // +1 to avoid INT32_MIN overflow
-    i32_t beta = INT32_MAX;
+i32_t negamaxWithMove(Board *board, i32_t *bestMove, i32_t alpha, i32_t beta, const i32_t depth) {
+    // Terminally check
+    if (processBoardTerminal(board) || depth == 0) {
+        *bestMove = -1;
+        return board->color * getBoardEvaluation(board);
+    }
 
+    i32_t reference = INT32_MIN;
     i32_t score;
-    i32_t bestScore = INT32_MIN;
-    i32_t bestMove = -1;
-    Board boardCopy;
 
     const i8_t start = (board->color == 1) ? 5 : 12;
     const i8_t end = (board->color == 1) ? 0 : 7;
 
-    for (int i = start; i >= end; --i) {
+    Board boardCopy;
+
+    for (i8_t i = start; i >= end; i--) {
         // Filter invalid moves
         if (board->cells[i] == 0) {
             continue;
         }
-
         // Make copied board with move made
         copyBoard(board, &boardCopy);
         makeMoveOnBoard(&boardCopy, i);
@@ -352,18 +353,53 @@ void negamaxRoot(Board *board, i32_t *move, i32_t *evaluation, i32_t depth) {
         else
             score = -negamax(&boardCopy, -beta, -alpha, depth - 1);
 
-        // Update best move
-        if (score > bestScore) {
-            bestScore = score;
-            bestMove = i;
+        if (score > reference) {
+            reference = score;
+            *bestMove = i;
         }
 
-        // Update alpha
-        alpha = max(alpha, bestScore);
+        alpha = max(alpha, reference);
+
+        if (alpha >= beta) {
+            break;
+        }
     }
 
+    return reference;
+}
+
+void negamaxRoot(Board *board, i32_t *move, i32_t *evaluation, i32_t depth) {
+    // Aspiration window
+    const i32_t startDepth = max(4, depth / 4);
+    const i32_t aspirationWindow = 1;
+    i32_t currentDepth = startDepth;
+    i32_t previousScore = INT32_MIN;
+    i32_t localWindow = 0;
+    bool first = true;
+    i32_t bestMove;
+
+    do {
+        // Calculate search window
+        i32_t alpha = first ? INT32_MIN + 1 : previousScore - aspirationWindow - localWindow;
+        i32_t beta = first ? INT32_MAX : previousScore + aspirationWindow + localWindow;
+        first = false;
+
+        // Call negamax
+        i32_t score = negamaxWithMove(board, &bestMove, alpha, beta, currentDepth);
+
+        // Check if score is within window
+        if (score < alpha || score > beta) {
+            localWindow += aspirationWindow;
+            printf("Aspiration window increased to %d\n", localWindow + aspirationWindow);
+        } else {
+            previousScore = score;
+            currentDepth++;
+            localWindow = 0;
+        }
+    } while (currentDepth <= depth);
+
     *move = bestMove;
-    *evaluation = bestScore;
+    *evaluation = previousScore;
 }
 
 
@@ -379,7 +415,7 @@ i32_t main(i32_t argc, char const* argv[]) {
      * Search depth for ai
      * Can also just write number into minimaxRoot param for ai vs ai with different depth...
     */
-    const int aiDepth = 22;
+    const int aiDepth = 24;
 
     /**
      * Initialize board here
@@ -395,6 +431,7 @@ i32_t main(i32_t argc, char const* argv[]) {
     */
     i32_t index;
     i32_t eval = 0;
+    i32_t referenceEval = 0;
     renderBoard(&board);
     printf("Turn: %s\n", board.color == 1 ? "P1" : "P2");
 
@@ -423,13 +460,14 @@ i32_t main(i32_t argc, char const* argv[]) {
         } else {
             // Call ai
             negamaxRoot(&board, &index, &eval, aiDepth);
+            referenceEval = eval * board.color;
             printf("AI move: %d\n", 13 - index);
         }
 
         // Perform move
         makeMoveManual(&board, index);
         renderBoard(&board);
-        printf("Turn: %s; Evaluation: %d;\n", board.color == 1 ? "P1" : "P2", eval * board.color);
+        printf("Turn: %s; Evaluation: %d;\n", board.color == 1 ? "P1" : "P2", referenceEval);
     }
 
     return 0;
