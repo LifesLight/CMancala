@@ -410,6 +410,55 @@ void negamaxRoot(Board *board, i32_t *move, i32_t *evaluation, i32_t depth) {
     *evaluation = previousScore;
 }
 
+// Negamax root with aspiration window
+void negamaxRootTime(Board *board, i32_t *move, i32_t *evaluation, double timeInSeconds) {
+    // Aspiration window stuff
+    const i32_t aspirationWindow = 1;
+    i32_t alpha = INT32_MIN + 1;
+    i32_t beta = INT32_MAX;
+    i32_t previousScore = INT32_MIN;
+
+    i32_t currentDepth = 1;
+    i32_t localWindow = 0;
+    i32_t bestMove;
+
+    clock_t start = clock();
+
+    do {
+        // Call negamax
+        // We also store the best move here
+        i32_t score = negamaxWithMove(board, &bestMove, alpha, beta, currentDepth);
+
+        // Check if score is within window, if not increase window
+        if (score < alpha || score > beta) {
+            localWindow += aspirationWindow;
+        } else {
+            previousScore = score;
+            currentDepth++;
+            localWindow = 0;
+
+            // Break the loop if the time limit is reached
+            // Only on valid window
+            clock_t currentTime = clock();
+            double elapsedTime = ((double) (currentTime - start)) / CLOCKS_PER_SEC;
+
+            if (elapsedTime >= timeInSeconds) {
+                break;
+            }
+        }
+
+        // Update alpha and beta
+        alpha = previousScore - aspirationWindow - localWindow;
+        beta = previousScore + aspirationWindow + localWindow;
+
+    // Check if we are finished
+    } while (true);
+
+    // Last best move will be the best move
+    *move = bestMove;
+    *evaluation = previousScore;
+}
+
 
 /**
  * Main function
@@ -442,6 +491,7 @@ i32_t main(i32_t argc, char const* argv[]) {
     i32_t referenceEval = 0;
     renderBoard(&board);
     printf("Turn: %s\n", board.color == 1 ? "P1" : "P2");
+    board.color = 1;
 
     /**
      * Game loop
@@ -467,7 +517,7 @@ i32_t main(i32_t argc, char const* argv[]) {
             index -= 1;
         } else {
             // Call ai
-            negamaxRoot(&board, &index, &eval, aiDepth);
+            negamaxRootTime(&board, &index, &eval, 5);
             referenceEval = eval * board.color;
             printf("AI move: %d\n", 13 - index);
         }
