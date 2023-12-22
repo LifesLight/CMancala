@@ -316,7 +316,7 @@ i32_t negamax(Board *board, i32_t alpha, i32_t beta, const i32_t depth) {
         alpha = max(alpha, reference);
 
         if (alpha >= beta) {
-            break; 
+            break;
         }
     }
 
@@ -344,7 +344,6 @@ i32_t main(i32_t argc, char const* argv[]) {
      * just make sure that total stones are < 256
     */
     newBoard(&board);
-    makeMoveManual(&board, 5);
     //newBoardCustomStones(cells, &turn, 3);
     //randomizeCells(cells, 60);
 
@@ -354,7 +353,7 @@ i32_t main(i32_t argc, char const* argv[]) {
     renderBoard(&board);
     printf("Turn: %d\n", board.color);
 
-    int32_t eval = -negamax(&board, INT32_MIN, INT32_MAX, aiDepth);
+    int32_t eval = -negamax(&board, -1000, 1000, aiDepth);
 
     printf("Eval: %d\n", eval);
 
