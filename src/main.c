@@ -25,6 +25,8 @@ typedef int64_t i64_t;
 #define SCORE_P1 6
 #define SCORE_P2 13
 
+//#define AVALANCHE
+
 #ifdef _WIN32
 // Windows cant render unicode by default
 const char* HL = "-";
@@ -202,6 +204,7 @@ bool processBoardTerminal(Board *board) {
     return false;
 }
 
+#ifndef AVALANCHE
 // Performs move on the board, the provided turn bool is updated accordingly
 void makeMoveOnBoard(Board *board, const u8_t actionIndex) {
     // Propagate stones
@@ -265,6 +268,52 @@ void makeMoveOnBoard(Board *board, const u8_t actionIndex) {
     // Return no extra move
     board->color = -board->color;
 }
+#else
+// Avalanche mode
+void makeMoveOnBoard(Board *board, const u8_t actionIndex) {
+    const bool turn = board->color == 1;
+
+    // Get blocked index for this player
+    const u8_t blockedIndex = turn ? (SCORE_P2 - 1) : (SCORE_P1 - 1);
+    u8_t index = actionIndex;
+
+    do {
+        // Propagate stones
+        u8_t stones = board->cells[index];
+        board->cells[index] = 0;
+
+        // Propagate stones
+        for (u8_t i = 0; i < stones; i++) {
+            // Skip blocked index
+            if (index == blockedIndex) {
+                index += 2;
+            } else {
+                // If not blocked, normal increment
+                index++;
+            }
+
+            // Wrap around bounds
+            if (index > 13) {
+                index = index - 14;
+            }
+
+            // Increment cell
+            board->cells[index]++;
+        }
+
+        // Check if last stone was placed on score field
+        // If yes return without inverting turn
+        if ((index == SCORE_P1 && turn) || (index == SCORE_P2 && !turn)) {
+            return;
+        }
+
+    // Check if last stone was placed on empty field
+    } while (board->cells[index] > 1);
+
+    // Return no extra move
+    board->color = -board->color;
+}
+#endif
 
 // Make move but also automatically handles terminal state
 void makeMoveManual(Board* board, i32_t index) {
@@ -459,6 +508,8 @@ void negamaxRootTime(Board *board, i32_t *move, i32_t *evaluation, double timeIn
     // Check if we are finished
     } while (true);
 
+    printf("Depth reached: %d\n", currentDepth - 1);
+
     // Last best move will be the best move
     *move = bestMove;
     *evaluation = previousScore;
@@ -477,7 +528,7 @@ i32_t main(i32_t argc, char const* argv[]) {
      * "Max" time for AI to think
      * This is not a hard limit, the AI will finish the current iteration
     */
-    const double timeLimit = 1.5;
+    const double timeLimit = 2.5;
 
     /**
      * Initialize board here
