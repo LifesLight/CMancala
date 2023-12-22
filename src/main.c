@@ -282,6 +282,7 @@ i32_t max(i32_t a, i32_t b) {
     return (a > b) ? a : b;
 }
 
+// Negamax implementation
 i32_t negamax(Board *board, i32_t alpha, i32_t beta, const i32_t depth) {
     // Terminally check
     if (processBoardTerminal(board) || depth == 0) {
@@ -323,6 +324,7 @@ i32_t negamax(Board *board, i32_t alpha, i32_t beta, const i32_t depth) {
     return reference;
 }
 
+// Negamax implementation with move return
 i32_t negamaxWithMove(Board *board, i32_t *bestMove, i32_t alpha, i32_t beta, const i32_t depth) {
     // Terminally check
     if (processBoardTerminal(board) || depth == 0) {
@@ -368,36 +370,42 @@ i32_t negamaxWithMove(Board *board, i32_t *bestMove, i32_t alpha, i32_t beta, co
     return reference;
 }
 
+// Negamax root with aspiration window
 void negamaxRoot(Board *board, i32_t *move, i32_t *evaluation, i32_t depth) {
-    // Aspiration window
-    const i32_t startDepth = max(4, depth / 4);
+    // Aspiration window stuff
+    const i32_t startDepth = 1;
     const i32_t aspirationWindow = 1;
-    i32_t currentDepth = startDepth;
+
+    i32_t alpha = INT32_MIN + 1;
+    i32_t beta = INT32_MAX;
     i32_t previousScore = INT32_MIN;
+
+    i32_t currentDepth = startDepth;
     i32_t localWindow = 0;
-    bool first = true;
     i32_t bestMove;
 
     do {
-        // Calculate search window
-        i32_t alpha = first ? INT32_MIN + 1 : previousScore - aspirationWindow - localWindow;
-        i32_t beta = first ? INT32_MAX : previousScore + aspirationWindow + localWindow;
-        first = false;
-
         // Call negamax
+        // We also store the best move here
         i32_t score = negamaxWithMove(board, &bestMove, alpha, beta, currentDepth);
 
-        // Check if score is within window
+        // Check if score is within window, if not increase window
         if (score < alpha || score > beta) {
             localWindow += aspirationWindow;
-            printf("Aspiration window increased to %d\n", localWindow + aspirationWindow);
         } else {
             previousScore = score;
             currentDepth++;
             localWindow = 0;
         }
+
+        // Update alpha and beta
+        alpha = previousScore - aspirationWindow - localWindow;
+        beta = previousScore + aspirationWindow + localWindow;
+
+    // Check if we are finished
     } while (currentDepth <= depth);
 
+    // Last best move will be the best move
     *move = bestMove;
     *evaluation = previousScore;
 }
@@ -415,7 +423,7 @@ i32_t main(i32_t argc, char const* argv[]) {
      * Search depth for ai
      * Can also just write number into minimaxRoot param for ai vs ai with different depth...
     */
-    const int aiDepth = 24;
+    const int aiDepth = 22;
 
     /**
      * Initialize board here
@@ -423,8 +431,8 @@ i32_t main(i32_t argc, char const* argv[]) {
      * just make sure that total stones are < 256
     */
     newBoard(&board);
-    //newBoardCustomStones(cells, &turn, 3);
-    //randomizeCells(cells, 60);
+    //newBoardCustomStones(&board, &turn, 3);
+    //randomizeCells(&board, 60);
 
      /**
      * Inital rendering of board
