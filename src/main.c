@@ -437,6 +437,11 @@ void negamaxRootTime(Board *board, i32_t *move, i32_t *evaluation, double timeIn
             currentDepth++;
             localWindow = 0;
 
+            // Check if we are finished
+            if (currentDepth > 250) {
+                break;
+            }
+
             // Break the loop if the time limit is reached
             // Only on valid window
             clock_t currentTime = clock();
@@ -469,18 +474,17 @@ i32_t main(i32_t argc, char const* argv[]) {
     Board board;
 
     /**
-     * Search depth for ai
-     * Can also just write number into minimaxRoot param for ai vs ai with different depth...
+     * "Max" time for AI to think
+     * This is not a hard limit, the AI will finish the current iteration
     */
-    const int aiDepth = 22;
+    const double timeLimit = 1.5;
 
     /**
      * Initialize board here
      * Choose from the following functions or write your own init
      * just make sure that total stones are < 256
     */
-    newBoard(&board);
-    //newBoardCustomStones(&board, &turn, 3);
+    newBoardCustomStones(&board, 3);
     //randomizeCells(&board, 60);
 
      /**
@@ -517,7 +521,7 @@ i32_t main(i32_t argc, char const* argv[]) {
             index -= 1;
         } else {
             // Call ai
-            negamaxRootTime(&board, &index, &eval, 5);
+            negamaxRootTime(&board, &index, &eval, timeLimit);
             referenceEval = eval * board.color;
             printf("AI move: %d\n", 13 - index);
         }
