@@ -16,16 +16,26 @@
  * Indicies P2: 7 - 12
  */
 
+// Choose between normal and avalanche mode
+//#define AVALANCHE
+
 typedef uint8_t u8_t;
 typedef int8_t i8_t;
 typedef int32_t i32_t;
 typedef int64_t i64_t;
 
-// Index of the score cells for each player
-#define SCORE_P1 6
-#define SCORE_P2 13
+// Relevant indicies
+const i8_t LBOUND_P1 = 0;
+const i8_t HBOUND_P1 = 5;
 
-//#define AVALANCHE
+const i8_t LBOUND_P2 = 7;
+const i8_t HBOUND_P2 = 12;
+
+const i8_t SCORE_P1 = 6;
+const i8_t SCORE_P2 = 13;
+
+const i8_t ASIZE = 14;
+
 
 #ifdef _WIN32
 // Windows cant render unicode by default
@@ -55,9 +65,9 @@ const char* EB = "┴";  // Edge Bottom
 const char* CR = "┼";  // Cross
 #endif
 
-typedef struct 
-{
-    u8_t cells[14];
+// Board struct
+typedef struct {
+    u8_t cells[ASIZE];
     i8_t color;
 } Board;
 
@@ -76,7 +86,7 @@ void newBoardCustomStones(Board *board, i32_t stones) {
     }
 
     // Assign start values
-    for (i32_t i = 0; i < 14; i++) {
+    for (i32_t i = 0; i < ASIZE; i++) {
         board->cells[i] = stones;
     }
 
@@ -120,42 +130,42 @@ void randomizeCells(Board *board, i32_t stones) {
 void renderBoard(const Board *board) {
     // Print indices
     printf("IDX:  ");
-    for (i32_t i = 1; i < 7; i++) {
+    for (i32_t i = 1; i < LBOUND_P2; i++) {
         printf("%d   ", i);
     }
     printf("\n");
 
     // Top header
     printf("    %s%s", TL, HL);
-    for (i32_t i = 0; i < 5; ++i) {
+    for (i32_t i = LBOUND_P1; i < HBOUND_P1; ++i) {
         printf("%s%s%s%s", HL, HL, ET, HL);
     }
     printf("%s%s%s\n", HL, HL, TR);
 
     // Upper row
     printf("%s%s%s%s%s", TL, HL, HL, HL, ER);
-    for (i32_t i = 12; i > 7; --i) {
+    for (i32_t i = HBOUND_P2; i > LBOUND_P2; --i) {
         printf("%3d%s", board->cells[i], VL);
     }
-    printf("%3d%s%s%s%s%s\n", board->cells[7], EL, HL, HL, HL, TR);
+    printf("%3d%s%s%s%s%s\n", board->cells[LBOUND_P2], EL, HL, HL, HL, TR);
 
     // Middle separator
     printf("%s%3d%s%s", VL, board->cells[SCORE_P2], EL, HL);
-    for (i32_t i = 0; i < 5; ++i) {
+    for (i32_t i = LBOUND_P1; i < HBOUND_P1; ++i) {
         printf("%s%s%s%s", HL, HL, CR, HL);
     }
     printf("%s%s%s%3d%s\n", HL, HL, ER, board->cells[SCORE_P1], VL);
 
     // Lower row
     printf("%s%s%s%s%s", BL, HL, HL, HL, ER);
-    for (i32_t i = 0; i < 5; ++i) {
+    for (i32_t i = LBOUND_P1; i < HBOUND_P1; ++i) {
         printf("%3d%s", board->cells[i], VL);
     }
-    printf("%3d%s%s%s%s%s\n", board->cells[5], EL, HL, HL, HL, BR);
+    printf("%3d%s%s%s%s%s\n", board->cells[HBOUND_P1], EL, HL, HL, HL, BR);
 
     // Bottom footer
     printf("    %s%s", BL, HL);
-    for (i32_t i = 0; i < 5; ++i) {
+    for (i32_t i = LBOUND_P1; i < HBOUND_P1; ++i) {
         printf("%s%s%s%s", HL, HL, EB, HL);
     }
     printf("%s%s%s\n", HL, HL, BR);
@@ -186,7 +196,7 @@ bool processBoardTerminal(Board *board) {
     // Check for finish
     if (isBoardPlayerOneEmpty(board)) {
         // Add up opposing players stones to non empty players score
-        for (i32_t i = 7; i < 13; i++) {
+        for (i32_t i = LBOUND_P2; i < 13; i++) {
             board->cells[SCORE_P2] += board->cells[i];
             board->cells[i] = 0;
         }
@@ -204,71 +214,8 @@ bool processBoardTerminal(Board *board) {
     return false;
 }
 
-#ifndef AVALANCHE
-// Performs move on the board, the provided turn bool is updated accordingly
-void makeMoveOnBoard(Board *board, const u8_t actionIndex) {
-    // Propagate stones
-    const u8_t stones = board->cells[actionIndex];
-    board->cells[actionIndex] = 0;
-
-    const bool turn = board->color == 1;
-
-    // Get blocked index for this player
-    const u8_t blockedIndex = turn ? (SCORE_P2 - 1) : (SCORE_P1 - 1);
-    u8_t index = actionIndex;
-
-    // Propagate stones
-    for (u8_t i = 0; i < stones; i++) {
-        // Skip blocked index
-        if (index == blockedIndex) {
-            index += 2;
-        } else {
-            // If not blocked, normal increment
-            index++;
-        }
-
-        // Wrap around bounds
-        if (index > 13) {
-            index = index - 14;
-        }
-
-        // Increment cell
-        board->cells[index]++;
-    }
-
-    // Check if last stone was placed on score field
-    // If yes return without inverting turn
-    if ((index == SCORE_P1 && turn) || (index == SCORE_P2 && !turn)) {
-        return;
-    }
-
-    // Check if last stone was placed on empty field
-    // If yes "Steal" stones
-    if (board->cells[index] == 1) {
-        const i32_t targetIndex = 12 - index;
-        // Make sure there even are stones on the other side
-        const u8_t targetValue = board->cells[targetIndex];
-
-        // If there are stones on the other side steal them
-        if (targetValue != 0) {
-            // If player 2 made move
-            if (!turn && index > SCORE_P1) {
-                board->cells[SCORE_P2] += targetValue + 1;
-                board->cells[targetIndex] = 0;
-                board->cells[index] = 0;
-            // Player 1 made move
-            } else if (turn && index < SCORE_P1) {
-                board->cells[SCORE_P1] += board->cells[targetIndex] + 1;
-                board->cells[targetIndex] = 0;
-                board->cells[index] = 0;
-            }
-        }
-    }
-
-    // Return no extra move
-    board->color = -board->color;
-}
-#else
+// Performs move on the board, the provided player color is updated accordingly
+#ifdef AVALANCHE
 // Avalanche mode
 void makeMoveOnBoard(Board *board, const u8_t actionIndex) {
     const bool turn = board->color == 1;
@@ -294,7 +241,7 @@ void makeMoveOnBoard(Board *board, const u8_t actionIndex) {
 
             // Wrap around bounds
             if (index > 13) {
-                index = index - 14;
+                index = index - ASIZE;
             }
 
             // Increment cell
@@ -309,6 +256,70 @@ void makeMoveOnBoard(Board *board, const u8_t actionIndex) {
 
     // Check if last stone was placed on empty field
     } while (board->cells[index] > 1);
+
+    // Return no extra move
+    board->color = -board->color;
+}
+#else
+// Normal mode
+void makeMoveOnBoard(Board *board, const u8_t actionIndex) {
+    // Propagate stones
+    const u8_t stones = board->cells[actionIndex];
+    board->cells[actionIndex] = 0;
+
+    const bool turn = board->color == 1;
+
+    // Get blocked index for this player
+    const u8_t blockedIndex = turn ? (SCORE_P2 - 1) : (SCORE_P1 - 1);
+    u8_t index = actionIndex;
+
+    // Propagate stones
+    for (u8_t i = 0; i < stones; i++) {
+        // Skip blocked index
+        if (index == blockedIndex) {
+            index += 2;
+        } else {
+            // If not blocked, normal increment
+            index++;
+        }
+
+        // Wrap around bounds
+        if (index > 13) {
+            index = index - ASIZE;
+        }
+
+        // Increment cell
+        board->cells[index]++;
+    }
+
+    // Check if last stone was placed on score field
+    // If yes return without inverting turn
+    if ((index == SCORE_P1 && turn) || (index == SCORE_P2 && !turn)) {
+        return;
+    }
+
+    // Check if last stone was placed on empty field
+    // If yes "Steal" stones
+    if (board->cells[index] == 1) {
+        const i32_t targetIndex = HBOUND_P2 - index;
+        // Make sure there even are stones on the other side
+        const u8_t targetValue = board->cells[targetIndex];
+
+        // If there are stones on the other side steal them
+        if (targetValue != 0) {
+            // If player 2 made move
+            if (!turn && index > SCORE_P1) {
+                board->cells[SCORE_P2] += targetValue + 1;
+                board->cells[targetIndex] = 0;
+                board->cells[index] = 0;
+            // Player 1 made move
+            } else if (turn && index < SCORE_P1) {
+                board->cells[SCORE_P1] += board->cells[targetIndex] + 1;
+                board->cells[targetIndex] = 0;
+                board->cells[index] = 0;
+            }
+        }
+    }
 
     // Return no extra move
     board->color = -board->color;
@@ -332,7 +343,7 @@ i32_t max(i32_t a, i32_t b) {
 }
 
 // Negamax implementation
-i32_t negamax(Board *board, i32_t alpha, i32_t beta, const i32_t depth) {
+i32_t negamax(Board *board, i32_t alpha, const i32_t beta, const i32_t depth) {
     // Terminally check
     if (processBoardTerminal(board) || depth == 0) {
         return board->color * getBoardEvaluation(board);
@@ -341,8 +352,8 @@ i32_t negamax(Board *board, i32_t alpha, i32_t beta, const i32_t depth) {
     i32_t reference = INT32_MIN;
     i32_t score;
 
-    const i8_t start = (board->color == 1) ? 5 : 12;
-    const i8_t end = (board->color == 1) ? 0 : 7;
+    const i8_t start = (board->color == 1) ?    HBOUND_P1 : HBOUND_P2;
+    const i8_t end = (board->color == 1) ?      LBOUND_P1 : LBOUND_P2;
 
     Board boardCopy;
 
@@ -373,7 +384,7 @@ i32_t negamax(Board *board, i32_t alpha, i32_t beta, const i32_t depth) {
     return reference;
 }
 
-// Negamax implementation with move return
+// Negamax implementation with best move return
 i32_t negamaxWithMove(Board *board, i32_t *bestMove, i32_t alpha, i32_t beta, const i32_t depth) {
     // Terminally check
     if (processBoardTerminal(board) || depth == 0) {
@@ -384,8 +395,8 @@ i32_t negamaxWithMove(Board *board, i32_t *bestMove, i32_t alpha, i32_t beta, co
     i32_t reference = INT32_MIN;
     i32_t score;
 
-    const i8_t start = (board->color == 1) ? 5 : 12;
-    const i8_t end = (board->color == 1) ? 0 : 7;
+    const i8_t start = (board->color == 1) ?    HBOUND_P1 : HBOUND_P2;
+    const i8_t end = (board->color == 1) ?      LBOUND_P1 : LBOUND_P2;
 
     Board boardCopy;
 
@@ -419,8 +430,8 @@ i32_t negamaxWithMove(Board *board, i32_t *bestMove, i32_t alpha, i32_t beta, co
     return reference;
 }
 
-// Negamax root with aspiration window
-void negamaxRoot(Board *board, i32_t *move, i32_t *evaluation, i32_t depth) {
+// Negamax root with depth limit
+void negamaxRootDepth(Board *board, i32_t *move, i32_t *evaluation, i32_t depth) {
     // Aspiration window stuff
     const i32_t startDepth = 1;
     const i32_t aspirationWindow = 1;
@@ -459,7 +470,7 @@ void negamaxRoot(Board *board, i32_t *move, i32_t *evaluation, i32_t depth) {
     *evaluation = previousScore;
 }
 
-// Negamax root with aspiration window
+// Negamax root with time limit
 void negamaxRootTime(Board *board, i32_t *move, i32_t *evaluation, double timeInSeconds) {
     // Aspiration window stuff
     const i32_t aspirationWindow = 1;
@@ -505,9 +516,10 @@ void negamaxRootTime(Board *board, i32_t *move, i32_t *evaluation, double timeIn
         alpha = previousScore - aspirationWindow - localWindow;
         beta = previousScore + aspirationWindow + localWindow;
 
-    // Check if we are finished
+    // Continue until break condition
     } while (true);
 
+    // Print depth reached
     printf("Depth reached: %d\n", currentDepth - 1);
 
     // Last best move will be the best move
@@ -525,7 +537,7 @@ i32_t main(i32_t argc, char const* argv[]) {
     Board board;
 
     /**
-     * "Max" time for AI to think
+     * "Max" time for AI to think in seconds
      * This is not a hard limit, the AI will finish the current iteration
     */
     const double timeLimit = 2.5;
@@ -535,7 +547,7 @@ i32_t main(i32_t argc, char const* argv[]) {
      * Choose from the following functions or write your own init
      * just make sure that total stones are < 256
     */
-    newBoardCustomStones(&board, 3);
+    newBoardCustomStones(&board, 4);
     //randomizeCells(&board, 60);
 
      /**
