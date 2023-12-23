@@ -19,22 +19,18 @@
 // Choose between normal and avalanche mode
 //#define AVALANCHE
 
-typedef uint8_t u8_t;
-typedef int8_t i8_t;
-typedef int32_t i32_t;
-typedef int64_t i64_t;
 
 // Relevant indicies
-const i8_t LBOUND_P1 = 0;
-const i8_t HBOUND_P1 = 5;
+const int8_t LBOUND_P1 = 0;
+const int8_t HBOUND_P1 = 5;
 
-const i8_t LBOUND_P2 = 7;
-const i8_t HBOUND_P2 = 12;
+const int8_t LBOUND_P2 = 7;
+const int8_t HBOUND_P2 = 12;
 
-const i8_t SCORE_P1 = 6;
-const i8_t SCORE_P2 = 13;
+const int8_t SCORE_P1 = 6;
+const int8_t SCORE_P2 = 13;
 
-const i8_t ASIZE = 14;
+const int8_t ASIZE = 14;
 
 
 #ifdef _WIN32
@@ -67,8 +63,8 @@ const char* CR = "┼";  // Cross
 
 // Board struct
 typedef struct {
-    u8_t cells[ASIZE];
-    i8_t color;
+    uint8_t cells[ASIZE];
+    int8_t color;
 } Board;
 
 
@@ -78,15 +74,15 @@ void copyBoard(const Board *board, Board *target) {
 }
 
 // Construct board at pointer with specified cell values
-void newBoardCustomStones(Board *board, i32_t stones) {
+void newBoardCustomStones(Board *board, int stones) {
     // Bounds checking
     if (stones * 12 > UINT8_MAX) {
-        printf("[WARNING]: Reducing %d stones per cell to %d to avoid u8_t overflow\n", stones, UINT8_MAX / 12);
+        printf("[WARNING]: Reducing %d stones per cell to %d to avoid uint8_t overflow\n", stones, UINT8_MAX / 12);
         stones = UINT8_MAX / 12;
     }
 
     // Assign start values
-    for (i32_t i = 0; i < ASIZE; i++) {
+    for (int i = 0; i < ASIZE; i++) {
         board->cells[i] = stones;
     }
 
@@ -105,14 +101,14 @@ void newBoard(Board *board) {
 
 // Needs to be even number otherwise rounding down
 // Stones is total stones in game
-void randomizeCells(Board *board, i32_t stones) {
+void randomizeCells(Board *board, const int stones) {
     // Since we are double assigning per 
-    stones = stones / 2;
+    int remainingStones = stones / 2;
 
-    // Check for u8_t bounds
-    if (stones > UINT8_MAX / 2) {
-        printf("[WARNING]: Reducing %d total stones to %d to avoid u8_t overflow\n", stones * 2, UINT8_MAX / 2 * 2);
-        stones = UINT8_MAX / 2;
+    // Check for uint8_t bounds
+    if (remainingStones > UINT8_MAX / 2) {
+        printf("[WARNING]: Reducing %d total stones to %d to avoid uint8_t overflow\n", remainingStones * 2, UINT8_MAX / 2 * 2);
+        remainingStones = UINT8_MAX / 2;
     }
 
     // Reset board to 0
@@ -120,8 +116,8 @@ void randomizeCells(Board *board, i32_t stones) {
 
     // Assign mirrored random stones
     srand(time(NULL));
-    for (i32_t i = 0; i < stones; i++) {
-        i32_t index = rand() % 6;
+    for (int i = 0; i < remainingStones; i++) {
+        int index = rand() % 6;
         board->cells[index] += 1;
         board->cells[index + SCORE_P1 + 1] += 1;
     }
@@ -130,65 +126,65 @@ void randomizeCells(Board *board, i32_t stones) {
 void renderBoard(const Board *board) {
     // Print indices
     printf("IDX:  ");
-    for (i32_t i = 1; i < LBOUND_P2; i++) {
+    for (int i = 1; i < LBOUND_P2; i++) {
         printf("%d   ", i);
     }
     printf("\n");
 
     // Top header
     printf("    %s%s", TL, HL);
-    for (i32_t i = LBOUND_P1; i < HBOUND_P1; ++i) {
+    for (int i = LBOUND_P1; i < HBOUND_P1; ++i) {
         printf("%s%s%s%s", HL, HL, ET, HL);
     }
     printf("%s%s%s\n", HL, HL, TR);
 
     // Upper row
     printf("%s%s%s%s%s", TL, HL, HL, HL, ER);
-    for (i32_t i = HBOUND_P2; i > LBOUND_P2; --i) {
+    for (int i = HBOUND_P2; i > LBOUND_P2; --i) {
         printf("%3d%s", board->cells[i], VL);
     }
     printf("%3d%s%s%s%s%s\n", board->cells[LBOUND_P2], EL, HL, HL, HL, TR);
 
     // Middle separator
     printf("%s%3d%s%s", VL, board->cells[SCORE_P2], EL, HL);
-    for (i32_t i = LBOUND_P1; i < HBOUND_P1; ++i) {
+    for (int i = LBOUND_P1; i < HBOUND_P1; ++i) {
         printf("%s%s%s%s", HL, HL, CR, HL);
     }
     printf("%s%s%s%3d%s\n", HL, HL, ER, board->cells[SCORE_P1], VL);
 
     // Lower row
     printf("%s%s%s%s%s", BL, HL, HL, HL, ER);
-    for (i32_t i = LBOUND_P1; i < HBOUND_P1; ++i) {
+    for (int i = LBOUND_P1; i < HBOUND_P1; ++i) {
         printf("%3d%s", board->cells[i], VL);
     }
     printf("%3d%s%s%s%s%s\n", board->cells[HBOUND_P1], EL, HL, HL, HL, BR);
 
     // Bottom footer
     printf("    %s%s", BL, HL);
-    for (i32_t i = LBOUND_P1; i < HBOUND_P1; ++i) {
+    for (int i = LBOUND_P1; i < HBOUND_P1; ++i) {
         printf("%s%s%s%s", HL, HL, EB, HL);
     }
     printf("%s%s%s\n", HL, HL, BR);
 }
 
 // Returns relative evaluation
-i32_t getBoardEvaluation(const Board *board) {
+int getBoardEvaluation(const Board *board) {
     // Calculate score delta
     return board->cells[SCORE_P1] - board->cells[SCORE_P2];
 }
 
 // Check if player ones side is empty
 bool isBoardPlayerOneEmpty(const Board *board) {
-    // Casting the array to a single i64_t,
-    // mask out the last 2 indices and if that i64_t is 0 the side is empty
-    return !(*(i64_t*)board->cells & 0x0000FFFFFFFFFFFF);
+    // Casting the array to a single int64_t,
+    // mask out the last 2 indices and if that int64_t is 0 the side is empty
+    return !(*(int64_t*)board->cells & 0x0000FFFFFFFFFFFF);
 }
 
 // Check if player twos side is empty
 bool isBoardPlayerTwoEmpty(const Board *board) {
     // Same logic as ^ just offset the pointer to check the other side
     // Also slightly different mask to check from other side (array bounds)
-    return !(*(i64_t*)(board->cells + 5) & 0xFFFFFFFFFFFF0000);
+    return !(*(int64_t*)(board->cells + 5) & 0xFFFFFFFFFFFF0000);
 }
 
 // Returns wether the game finished
@@ -196,7 +192,7 @@ bool processBoardTerminal(Board *board) {
     // Check for finish
     if (isBoardPlayerOneEmpty(board)) {
         // Add up opposing players stones to non empty players score
-        for (i32_t i = LBOUND_P2; i < 13; i++) {
+        for (int i = LBOUND_P2; i < 13; i++) {
             board->cells[SCORE_P2] += board->cells[i];
             board->cells[i] = 0;
         }
@@ -204,7 +200,7 @@ bool processBoardTerminal(Board *board) {
     }
 
     if (isBoardPlayerTwoEmpty(board)) {
-        for (i32_t i = 0; i < 6; i++) {
+        for (int i = 0; i < 6; i++) {
             board->cells[SCORE_P1] += board->cells[i];
             board->cells[i] = 0;
         }
@@ -217,20 +213,20 @@ bool processBoardTerminal(Board *board) {
 // Performs move on the board, the provided player color is updated accordingly
 #ifdef AVALANCHE
 // Avalanche mode
-void makeMoveOnBoard(Board *board, const u8_t actionIndex) {
+void makeMoveOnBoard(Board *board, const uint8_t actionIndex) {
     const bool turn = board->color == 1;
 
     // Get blocked index for this player
-    const u8_t blockedIndex = turn ? (SCORE_P2 - 1) : (SCORE_P1 - 1);
-    u8_t index = actionIndex;
+    const uint8_t blockedIndex = turn ? (SCORE_P2 - 1) : (SCORE_P1 - 1);
+    uint8_t index = actionIndex;
 
     do {
         // Propagate stones
-        u8_t stones = board->cells[index];
+        uint8_t stones = board->cells[index];
         board->cells[index] = 0;
 
         // Propagate stones
-        for (u8_t i = 0; i < stones; i++) {
+        for (uint8_t i = 0; i < stones; i++) {
             // Skip blocked index
             if (index == blockedIndex) {
                 index += 2;
@@ -262,19 +258,19 @@ void makeMoveOnBoard(Board *board, const u8_t actionIndex) {
 }
 #else
 // Normal mode
-void makeMoveOnBoard(Board *board, const u8_t actionIndex) {
+void makeMoveOnBoard(Board *board, const uint8_t actionIndex) {
     // Propagate stones
-    const u8_t stones = board->cells[actionIndex];
+    const uint8_t stones = board->cells[actionIndex];
     board->cells[actionIndex] = 0;
 
     const bool turn = board->color == 1;
 
     // Get blocked index for this player
-    const u8_t blockedIndex = turn ? (SCORE_P2 - 1) : (SCORE_P1 - 1);
-    u8_t index = actionIndex;
+    const uint8_t blockedIndex = turn ? (SCORE_P2 - 1) : (SCORE_P1 - 1);
+    uint8_t index = actionIndex;
 
     // Propagate stones
-    for (u8_t i = 0; i < stones; i++) {
+    for (uint8_t i = 0; i < stones; i++) {
         // Skip blocked index
         if (index == blockedIndex) {
             index += 2;
@@ -301,9 +297,9 @@ void makeMoveOnBoard(Board *board, const u8_t actionIndex) {
     // Check if last stone was placed on empty field
     // If yes "Steal" stones
     if (board->cells[index] == 1) {
-        const i32_t targetIndex = HBOUND_P2 - index;
+        const uint8_t targetIndex = HBOUND_P2 - index;
         // Make sure there even are stones on the other side
-        const u8_t targetValue = board->cells[targetIndex];
+        const uint8_t targetValue = board->cells[targetIndex];
 
         // If there are stones on the other side steal them
         if (targetValue != 0) {
@@ -327,37 +323,37 @@ void makeMoveOnBoard(Board *board, const u8_t actionIndex) {
 #endif
 
 // Make move but also automatically handles terminal state
-void makeMoveManual(Board* board, i32_t index) {
+void makeMoveManual(Board* board, int index) {
     makeMoveOnBoard(board, index);
     processBoardTerminal(board);
 }
 
 // Min
-i32_t min(i32_t a, i32_t b) {
+int min(const int a, const int b) {
     return (a < b) ? a : b;
 }
 
 // Max
-i32_t max(i32_t a, i32_t b) {
+int max(const int a, const int b) {
     return (a > b) ? a : b;
 }
 
 // Negamax implementation
-i32_t negamax(Board *board, i32_t alpha, const i32_t beta, const i32_t depth) {
+int negamax(Board *board, int alpha, const int beta, const int depth) {
     // Terminally check
     if (processBoardTerminal(board) || depth == 0) {
         return board->color * getBoardEvaluation(board);
     }
 
-    i32_t reference = INT32_MIN;
-    i32_t score;
+    int reference = INT32_MIN;
+    int score;
 
-    const i8_t start = (board->color == 1) ?    HBOUND_P1 : HBOUND_P2;
-    const i8_t end = (board->color == 1) ?      LBOUND_P1 : LBOUND_P2;
+    const int8_t start = (board->color == 1)  ? HBOUND_P1 : HBOUND_P2;
+    const int8_t end = (board->color == 1)    ? LBOUND_P1 : LBOUND_P2;
 
     Board boardCopy;
 
-    for (i8_t i = start; i >= end; i--) {
+    for (int8_t i = start; i >= end; i--) {
         // Filter invalid moves
         if (board->cells[i] == 0) {
             continue;
@@ -385,22 +381,22 @@ i32_t negamax(Board *board, i32_t alpha, const i32_t beta, const i32_t depth) {
 }
 
 // Negamax implementation with best move return
-i32_t negamaxWithMove(Board *board, i32_t *bestMove, i32_t alpha, i32_t beta, const i32_t depth) {
+int negamaxWithMove(Board *board, int *bestMove, int alpha, const int beta, const int depth) {
     // Terminally check
     if (processBoardTerminal(board) || depth == 0) {
         *bestMove = -1;
         return board->color * getBoardEvaluation(board);
     }
 
-    i32_t reference = INT32_MIN;
-    i32_t score;
+    int reference = INT32_MIN;
+    int score;
 
-    const i8_t start = (board->color == 1) ?    HBOUND_P1 : HBOUND_P2;
-    const i8_t end = (board->color == 1) ?      LBOUND_P1 : LBOUND_P2;
+    const int8_t start = (board->color == 1)  ? HBOUND_P1 : HBOUND_P2;
+    const int8_t end = (board->color == 1)    ? LBOUND_P1 : LBOUND_P2;
 
     Board boardCopy;
 
-    for (i8_t i = start; i >= end; i--) {
+    for (int8_t i = start; i >= end; i--) {
         // Filter invalid moves
         if (board->cells[i] == 0) {
             continue;
@@ -431,23 +427,23 @@ i32_t negamaxWithMove(Board *board, i32_t *bestMove, i32_t alpha, i32_t beta, co
 }
 
 // Negamax root with depth limit
-void negamaxRootDepth(Board *board, i32_t *move, i32_t *evaluation, i32_t depth) {
+void negamaxRootDepth(Board *board, int *move, int *evaluation, int depth) {
     // Aspiration window stuff
-    const i32_t startDepth = 1;
-    const i32_t aspirationWindow = 1;
+    const int startDepth = 1;
+    const int aspirationWindow = 1;
 
-    i32_t alpha = INT32_MIN + 1;
-    i32_t beta = INT32_MAX;
-    i32_t previousScore = INT32_MIN;
+    int alpha = INT32_MIN + 1;
+    int beta = INT32_MAX;
+    int previousScore = INT32_MIN;
 
-    i32_t currentDepth = startDepth;
-    i32_t localWindow = 0;
-    i32_t bestMove;
+    int currentDepth = startDepth;
+    int localWindow = 0;
+    int bestMove;
 
     do {
         // Call negamax
         // We also store the best move here
-        i32_t score = negamaxWithMove(board, &bestMove, alpha, beta, currentDepth);
+        int score = negamaxWithMove(board, &bestMove, alpha, beta, currentDepth);
 
         // Check if score is within window, if not increase window
         if (score < alpha || score > beta) {
@@ -471,23 +467,23 @@ void negamaxRootDepth(Board *board, i32_t *move, i32_t *evaluation, i32_t depth)
 }
 
 // Negamax root with time limit
-void negamaxRootTime(Board *board, i32_t *move, i32_t *evaluation, double timeInSeconds) {
+void negamaxRootTime(Board *board, int *move, int *evaluation, double timeInSeconds) {
     // Aspiration window stuff
-    const i32_t aspirationWindow = 1;
-    i32_t alpha = INT32_MIN + 1;
-    i32_t beta = INT32_MAX;
-    i32_t previousScore = INT32_MIN;
+    const int aspirationWindow = 1;
+    int alpha = INT32_MIN + 1;
+    int beta = INT32_MAX;
+    int previousScore = INT32_MIN;
 
-    i32_t currentDepth = 1;
-    i32_t localWindow = 0;
-    i32_t bestMove;
+    int currentDepth = 1;
+    int localWindow = 0;
+    int bestMove;
 
     clock_t start = clock();
 
     do {
         // Call negamax
         // We also store the best move here
-        i32_t score = negamaxWithMove(board, &bestMove, alpha, beta, currentDepth);
+        int score = negamaxWithMove(board, &bestMove, alpha, beta, currentDepth);
 
         // Check if score is within window, if not increase window
         if (score < alpha || score > beta) {
@@ -532,7 +528,7 @@ void negamaxRootTime(Board *board, i32_t *move, i32_t *evaluation, double timeIn
  * Main function
  * Make modifications to search depth, board layout... here
 */
-i32_t main(i32_t argc, char const* argv[]) {
+int main(int argc, char const* argv[]) {
     // "Main" board and turn
     Board board;
 
@@ -553,9 +549,9 @@ i32_t main(i32_t argc, char const* argv[]) {
      /**
      * Inital rendering of board
     */
-    i32_t index;
-    i32_t eval = 0;
-    i32_t referenceEval = 0;
+    int index;
+    int eval = 0;
+    int referenceEval = 0;
     renderBoard(&board);
     printf("Turn: %s\n", board.color == 1 ? "P1" : "P2");
     board.color = 1;
