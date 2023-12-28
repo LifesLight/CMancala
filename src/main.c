@@ -17,7 +17,7 @@
  */
 
 // Choose between normal and avalanche mode
-//#define AVALANCHE
+// #define AVALANCHE
 
 
 // Relevant indicies
@@ -536,14 +536,14 @@ int main(int argc, char const* argv[]) {
      * "Max" time for AI to think in seconds
      * This is not a hard limit, the AI will finish the current iteration
     */
-    const double timeLimit = 2.5;
+    const double timeLimit = 5;
 
     /**
      * Initialize board here
      * Choose from the following functions or write your own init
      * just make sure that total stones are < 256
     */
-    newBoardCustomStones(&board, 4);
+    newBoardCustomStones(&board, 3);
     //randomizeCells(&board, 60);
 
      /**
