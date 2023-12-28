@@ -21,16 +21,16 @@
 
 
 // Relevant indicies
-const int8_t LBOUND_P1 = 0;
-const int8_t HBOUND_P1 = 5;
+#define LBOUND_P1 0
+#define HBOUND_P1 5
 
-const int8_t LBOUND_P2 = 7;
-const int8_t HBOUND_P2 = 12;
+#define LBOUND_P2 7
+#define HBOUND_P2 12
 
-const int8_t SCORE_P1 = 6;
-const int8_t SCORE_P2 = 13;
+#define SCORE_P1 6
+#define SCORE_P2 13
 
-const int8_t ASIZE = 14;
+#define ASIZE 14
 
 
 #ifdef _WIN32
