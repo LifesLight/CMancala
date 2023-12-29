@@ -429,16 +429,19 @@ int negamaxWithMove(Board *board, int *bestMove, int alpha, const int beta, cons
 // Negamax root with depth limit
 void negamaxRootDepth(Board *board, int *move, int *evaluation, int depth) {
     // Aspiration window stuff
-    const int startDepth = 1;
-    const int aspirationWindow = 1;
+    const int aspirationWindow = 3;
+    const int aspirationStep = 2;
+    const int depthStep = 1;
 
     int alpha = INT32_MIN + 1;
     int beta = INT32_MAX;
     int previousScore = INT32_MIN;
 
-    int currentDepth = startDepth;
+    int currentDepth = 1;
     int localWindow = 0;
     int bestMove;
+
+    int windowMisses = 0;
 
     do {
         // Call negamax
@@ -446,11 +449,13 @@ void negamaxRootDepth(Board *board, int *move, int *evaluation, int depth) {
         int score = negamaxWithMove(board, &bestMove, alpha, beta, currentDepth);
 
         // Check if score is within window, if not increase window
-        if (score < alpha || score > beta) {
-            localWindow += aspirationWindow;
+        // If we hit bounds we also increase window
+        if (score <= alpha || score >= beta) {
+            localWindow += aspirationStep;
+            windowMisses++;
         } else {
             previousScore = score;
-            currentDepth++;
+            currentDepth += depthStep;
             localWindow = 0;
         }
 
@@ -461,6 +466,11 @@ void negamaxRootDepth(Board *board, int *move, int *evaluation, int depth) {
     // Check if we are finished
     } while (currentDepth <= depth);
 
+    // Warn if more then 25% of the time was spent outside the window
+    if (windowMisses > currentDepth / 4) {
+        printf("[WARNING]: High window misses!\n");
+    }
+
     // Last best move will be the best move
     *move = bestMove;
     *evaluation = previousScore;
@@ -469,7 +479,11 @@ void negamaxRootDepth(Board *board, int *move, int *evaluation, int depth) {
 // Negamax root with time limit
 void negamaxRootTime(Board *board, int *move, int *evaluation, double timeInSeconds) {
     // Aspiration window stuff
-    const int aspirationWindow = 1;
+    const int aspirationWindow = 3;
+    const int aspirationStep = 2;
+    const int depthStep = 1;
+    const int depthLimit = 250;
+
     int alpha = INT32_MIN + 1;
     int beta = INT32_MAX;
     int previousScore = INT32_MIN;
@@ -480,21 +494,24 @@ void negamaxRootTime(Board *board, int *move, int *evaluation, double timeInSeco
 
     clock_t start = clock();
 
+    int windowMisses = 0;
+
     do {
         // Call negamax
         // We also store the best move here
         int score = negamaxWithMove(board, &bestMove, alpha, beta, currentDepth);
 
         // Check if score is within window, if not increase window
-        if (score < alpha || score > beta) {
-            localWindow += aspirationWindow;
+        if (score <= alpha || score >= beta) {
+            localWindow += aspirationStep;
+            windowMisses++;
         } else {
             previousScore = score;
-            currentDepth++;
+            currentDepth += depthStep;
             localWindow = 0;
 
             // Check if we are finished
-            if (currentDepth > 250) {
+            if (currentDepth > depthLimit) {
                 break;
             }
 
@@ -517,6 +534,11 @@ void negamaxRootTime(Board *board, int *move, int *evaluation, double timeInSeco
 
     // Print depth reached
     printf("Depth reached: %d\n", currentDepth - 1);
+
+    // Warn if more then 25% of the time was spent outside the window
+    if (windowMisses > currentDepth / 4) {
+        printf("[WARNING]: High window misses!\n");
+    }
 
     // Last best move will be the best move
     *move = bestMove;
@@ -543,7 +565,7 @@ int main(int argc, char const* argv[]) {
      * Choose from the following functions or write your own init
      * just make sure that total stones are < 256
     */
-    newBoardCustomStones(&board, 3);
+    newBoardCustomStones(&board, 4);
     //randomizeCells(&board, 60);
 
      /**
@@ -554,7 +576,6 @@ int main(int argc, char const* argv[]) {
     int referenceEval = 0;
     renderBoard(&board);
     printf("Turn: %s\n", board.color == 1 ? "P1" : "P2");
-    board.color = 1;
 
     /**
      * Game loop
