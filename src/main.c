@@ -426,9 +426,8 @@ int negamaxWithMove(Board *board, int *bestMove, int alpha, const int beta, cons
     return reference;
 }
 
-// Negamax root with depth limit
-void negamaxRootDepth(Board *board, int *move, int *evaluation, int depth) {
-    // Aspiration window stuff
+// Helper function containing shared logic
+void negamaxRootHelper(Board *board, int *move, int *evaluation, int depthLimit, double timeLimit, bool useTimeLimit) {
     const int aspirationWindow = 3;
     const int aspirationStep = 2;
     const int depthStep = 1;
@@ -440,16 +439,15 @@ void negamaxRootDepth(Board *board, int *move, int *evaluation, int depth) {
     int currentDepth = 1;
     int localWindow = 0;
     int bestMove;
-
     int windowMisses = 0;
 
-    do {
-        // Call negamax
-        // We also store the best move here
+    clock_t start = clock();
+
+    while (true) {
         int score = negamaxWithMove(board, &bestMove, alpha, beta, currentDepth);
 
-        // Check if score is within window, if not increase window
-        // If we hit bounds we also increase window
+        // Check if aspiration window was missed / matched
+        // If yes, increase window size and research
         if (score <= alpha || score >= beta) {
             localWindow += aspirationStep;
             windowMisses++;
@@ -457,94 +455,40 @@ void negamaxRootDepth(Board *board, int *move, int *evaluation, int depth) {
             previousScore = score;
             currentDepth += depthStep;
             localWindow = 0;
+
+            // Termination condition check, only if no window miss
+            if ((!useTimeLimit && currentDepth > depthLimit) || 
+                (useTimeLimit && (((double)(clock() - start) / CLOCKS_PER_SEC) >= timeLimit || currentDepth > depthLimit))) {
+                break;
+            }
         }
 
         // Update alpha and beta
         alpha = previousScore - aspirationWindow - localWindow;
         beta = previousScore + aspirationWindow + localWindow;
+    }
 
-    // Check if we are finished
-    } while (currentDepth <= depth);
+    if (useTimeLimit) {
+        printf("Depth reached: %d\n", currentDepth - 1);
+    }
 
-    // Warn if more then 25% of the time was spent outside the window
     if (windowMisses > currentDepth / 4) {
         printf("[WARNING]: High window misses!\n");
     }
 
-    // Last best move will be the best move
     *move = bestMove;
     *evaluation = previousScore;
+}
+
+// Negamax root with depth limit
+void negamaxRootDepth(Board *board, int *move, int *evaluation, int depth) {
+    negamaxRootHelper(board, move, evaluation, depth, 0, false);
 }
 
 // Negamax root with time limit
 void negamaxRootTime(Board *board, int *move, int *evaluation, double timeInSeconds) {
-    // Aspiration window stuff
-    const int aspirationWindow = 3;
-    const int aspirationStep = 2;
-    const int depthStep = 1;
-    const int depthLimit = 250;
-
-    int alpha = INT32_MIN + 1;
-    int beta = INT32_MAX;
-    int previousScore = INT32_MIN;
-
-    int currentDepth = 1;
-    int localWindow = 0;
-    int bestMove;
-
-    clock_t start = clock();
-
-    int windowMisses = 0;
-
-    do {
-        // Call negamax
-        // We also store the best move here
-        int score = negamaxWithMove(board, &bestMove, alpha, beta, currentDepth);
-
-        // Check if score is within window, if not increase window
-        if (score <= alpha || score >= beta) {
-            localWindow += aspirationStep;
-            windowMisses++;
-        } else {
-            previousScore = score;
-            currentDepth += depthStep;
-            localWindow = 0;
-
-            // Check if we are finished
-            if (currentDepth > depthLimit) {
-                break;
-            }
-
-            // Break the loop if the time limit is reached
-            // Only on valid window
-            clock_t currentTime = clock();
-            double elapsedTime = ((double) (currentTime - start)) / CLOCKS_PER_SEC;
-
-            if (elapsedTime >= timeInSeconds) {
-                break;
-            }
-        }
-
-        // Update alpha and beta
-        alpha = previousScore - aspirationWindow - localWindow;
-        beta = previousScore + aspirationWindow + localWindow;
-
-    // Continue until break condition
-    } while (true);
-
-    // Print depth reached
-    printf("Depth reached: %d\n", currentDepth - 1);
-
-    // Warn if more then 25% of the time was spent outside the window
-    if (windowMisses > currentDepth / 4) {
-        printf("[WARNING]: High window misses!\n");
-    }
-
-    // Last best move will be the best move
-    *move = bestMove;
-    *evaluation = previousScore;
+    negamaxRootHelper(board, move, evaluation, INT32_MAX, timeInSeconds, true);
 }
-
 
 /**
  * Main function
