@@ -73,8 +73,10 @@ void copyBoard(const Board *board, Board *target) {
     memcpy(target, board, sizeof(Board));
 }
 
-// Construct board at pointer with specified cell values
-void newBoardCustomStones(Board *board, int stones) {
+/**
+ * Construct board at pointer with stones per cell
+*/
+void configBoard(Board *board, int stones) {
     // Bounds checking
     if (stones * 12 > UINT8_MAX) {
         printf("[WARNING]: Reducing %d stones per cell to %d to avoid uint8_t overflow\n", stones, UINT8_MAX / 12);
@@ -94,14 +96,11 @@ void newBoardCustomStones(Board *board, int stones) {
     board->color = 1;
 }
 
-// Construct board at pointer with default values
-void newBoard(Board *board) {
-    newBoardCustomStones(board, 4);
-}
-
-// Needs to be even number otherwise rounding down
-// Stones is total stones in game
-void randomizeCells(Board *board, const int stones) {
+/**
+ * Construct board at pointer with random stones per cell
+ * Stones are mirrored on both sides
+*/
+void configBoardRand(Board *board, const int stones) {
     // Since we are double assigning per 
     int remainingStones = stones / 2;
 
@@ -345,13 +344,16 @@ int negamax(Board *board, int alpha, const int beta, const int depth) {
         return board->color * getBoardEvaluation(board);
     }
 
+    // Keeping track of best score
     int reference = INT32_MIN;
+
+    // Will be needed in every iteration
+    Board boardCopy;
     int score;
 
+    // Iterate over all possible moves
     const int8_t start = (board->color == 1)  ? HBOUND_P1 : HBOUND_P2;
     const int8_t end = (board->color == 1)    ? LBOUND_P1 : LBOUND_P2;
-
-    Board boardCopy;
 
     for (int8_t i = start; i >= end; i--) {
         // Filter invalid moves
@@ -362,16 +364,19 @@ int negamax(Board *board, int alpha, const int beta, const int depth) {
         copyBoard(board, &boardCopy);
         makeMoveOnBoard(&boardCopy, i);
 
-        // Recursively call function to get eval and compare, optimizing for small values
+        // Branch to check if this player is still playing
         if (board->color == boardCopy.color)
+            // If yes, call negamax with current parameters and no inversion
             score = negamax(&boardCopy, alpha, beta, depth - 1);
         else
+            // If no, call negamax with inverted parameters for the other player
             score = -negamax(&boardCopy, -beta, -alpha, depth - 1);
 
+        // Update parameters
         reference = max(reference, score);
-
         alpha = max(alpha, reference);
 
+        // If this branch certainly worse than another, prune it
         if (alpha >= beta) {
             break;
         }
@@ -380,9 +385,8 @@ int negamax(Board *board, int alpha, const int beta, const int depth) {
     return reference;
 }
 
-// Negamax implementation with best move return
+// Same as negamax but remembers best move
 int negamaxWithMove(Board *board, int *bestMove, int alpha, const int beta, const int depth) {
-    // Terminally check
     if (processBoardTerminal(board) || depth == 0) {
         *bestMove = -1;
         return board->color * getBoardEvaluation(board);
@@ -397,15 +401,12 @@ int negamaxWithMove(Board *board, int *bestMove, int alpha, const int beta, cons
     Board boardCopy;
 
     for (int8_t i = start; i >= end; i--) {
-        // Filter invalid moves
         if (board->cells[i] == 0) {
             continue;
         }
-        // Make copied board with move made
         copyBoard(board, &boardCopy);
         makeMoveOnBoard(&boardCopy, i);
 
-        // Recursively call function to get eval and compare, optimizing for small values
         if (board->color == boardCopy.color)
             score = negamax(&boardCopy, alpha, beta, depth - 1);
         else
@@ -427,8 +428,9 @@ int negamaxWithMove(Board *board, int *bestMove, int alpha, const int beta, cons
 }
 
 // Helper function containing shared logic
+// Mainly implements aspiration window and depth / time limit
 void negamaxRootHelper(Board *board, int *move, int *evaluation, int depthLimit, double timeLimit, bool useTimeLimit) {
-    const int aspirationWindow = 3;
+    const int aspirationWindow = 2;
     const int aspirationStep = 2;
     const int depthStep = 1;
 
@@ -487,7 +489,9 @@ void negamaxRootDepth(Board *board, int *move, int *evaluation, int depth) {
 
 // Negamax root with time limit
 void negamaxRootTime(Board *board, int *move, int *evaluation, double timeInSeconds) {
-    negamaxRootHelper(board, move, evaluation, INT32_MAX, timeInSeconds, true);
+    // Using 100 depth as limit, since it is unlikely to be reached
+    // Ever getting there strongly indicates the game is fully solved
+    negamaxRootHelper(board, move, evaluation, 100, timeInSeconds, true);
 }
 
 /**
@@ -495,7 +499,7 @@ void negamaxRootTime(Board *board, int *move, int *evaluation, double timeInSeco
  * Make modifications to search depth, board layout... here
 */
 int main(int argc, char const* argv[]) {
-    // "Main" board and turn
+    // "Main" board
     Board board;
 
     /**
@@ -509,15 +513,12 @@ int main(int argc, char const* argv[]) {
      * Choose from the following functions or write your own init
      * just make sure that total stones are < 256
     */
-    newBoardCustomStones(&board, 4);
-    //randomizeCells(&board, 60);
+    configBoard(&board, 4);
+    // configBoardRand(&board, 60);
 
-     /**
+    /**
      * Inital rendering of board
     */
-    int index;
-    int eval = 0;
-    int referenceEval = 0;
     renderBoard(&board);
     printf("Turn: %s\n", board.color == 1 ? "P1" : "P2");
 
@@ -525,6 +526,10 @@ int main(int argc, char const* argv[]) {
      * Game loop
      * Make modifications for human vs human, human vs ai, ai vs ai here
     */
+    int index;
+    int eval = 0;
+    int referenceEval = 0;
+
     while (!(isBoardPlayerOneEmpty(&board) || isBoardPlayerTwoEmpty(&board))) {
         // Check if human or ai turn
         if (board.color == 1) {
