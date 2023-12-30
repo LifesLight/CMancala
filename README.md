@@ -6,6 +6,15 @@ CMancala is a computer implementation of the classic board game Mancala. This ve
 ## Rules
 The game adheres to basic Mancala rules. In addition, an **Avalanche** mode is available, offering a different style of gameplay.
 
+## Command-Line Arguments
+CMancala supports several command-line arguments to configure gameplay:
+- `--stones <number>`: Sets the number of stones per cell with a standard distribution.
+- `--rstones <number>`: Sets the number of stones in total with a random distribution.
+- `--time <seconds>`: Sets an approximate thinking time for the AI.
+- `--depth <number>`: Sets the depth for the Negamax algorithm; if specified, overrides the time-based search.
+- `--ai-start`: The AI will make the first move.
+- `--human-start`: The human player will make the first move (default).
+
 ## Performance
 The AI's capability varies based on the game state:
 - In a 5-second search window, the AI can anticipate 20+ moves ahead, although this number greatly depends on the number of stones on the board.
@@ -20,6 +29,7 @@ CMancala employs a Negamax algorithm with Alpha-Beta pruning, tailored to accomm
 
 ## Restrictions
 - The game is designed to support a maximum of 224 stones on the board at any given time.
+- The game mode needs to be specified at compile time in `board.h`.
 
 ## Interface
 - CMancala features a terminal-based user interface. Users interested in a graphical interface may consider developing a simple web-based UI.
