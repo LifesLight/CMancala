@@ -2,8 +2,8 @@
  * Copyright (c) Alexander Kurtz 2023
 */
 
-#include <string.h>
-#include <time.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #include "board.h"
 #include "render.h"
@@ -21,7 +21,7 @@ int main(int argc, char const* argv[]) {
      * "Max" time for AI to think in seconds
      * This is not a hard limit, the AI will finish the current iteration
     */
-    const double timeLimit = 5;
+    const double timeLimit = 2.5;
 
     /**
      * Initialize board here

@@ -101,26 +101,45 @@ int negamaxWithMove(Board *board, int *bestMove, int alpha, const int beta, cons
 }
 
 void negamaxRootHelper(Board *board, int *move, int *evaluation, int depthLimit, double timeLimit, bool useTimeLimit) {
-    const int aspirationWindow = 2;
+    /**
+     * Aspiration window search hyperparameters
+    */
+    const int aspirationWindow = 3;
     const int aspirationStep = 2;
     const int depthStep = 1;
 
+    /**
+     * Default values for alpha and beta
+    */
     int alpha = INT32_MIN + 1;
     int beta = INT32_MAX;
     int previousScore = INT32_MIN;
 
+    /**
+     * Iterative deepening runnning parameters
+    */
     int currentDepth = 1;
     int localWindow = 0;
     int bestMove;
     int windowMisses = 0;
 
+    /**
+     * Start timer for time limit
+    */
     clock_t start = clock();
 
+    /**
+     * Iterative deepening loop
+     * Runs until depth limit is reached or time limit is reached
+    */
     while (true) {
+        // Run negamax with move
         int score = negamaxWithMove(board, &bestMove, alpha, beta, currentDepth);
 
-        // Check if aspiration window was missed / matched
-        // If yes, increase window size and research
+        /**
+         * Check if score is outside of aspiration window
+         * If yes, increase window size and research
+        */
         if (score <= alpha || score >= beta) {
             localWindow += aspirationStep;
             windowMisses++;
