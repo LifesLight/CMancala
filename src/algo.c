@@ -14,6 +14,8 @@ int max(const int a, const int b) {
 
 int negamax(Board *board, int alpha, const int beta, const int depth) {
     // Terminally check
+    // The order of the checks is important here
+    // Otherwise we could have a empty side, without adding up the opponents pieces to his score
     if (processBoardTerminal(board) || depth == 0) {
         return board->color * getBoardEvaluation(board);
     }

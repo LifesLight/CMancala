@@ -16,11 +16,19 @@ CMancala supports several command-line arguments to configure gameplay:
 - `--human-start`: The human player will make the first move (default).
 
 ## Performance
-The AI's capability varies based on the game state:
-- In a 5-second search window, the AI can anticipate 20+ moves ahead, although this number greatly depends on the number of stones on the board.
-- For games with 4 stones per cell, "perfect play" is achievable with approximately 60 seconds of search time.
-- The AI performs more efficiently in games with fewer stones per cell.
-- As the game progresses, the AI increasingly solves the position.
+The AI operates on a single thread, and its performance varies based on the game's state:<br>
+- It typically anticipates 20-30 moves within a 5-second thinking window, influenced by the number of stones on the board.<br>
+- With 4 stones per cell, the AI reaches a very high level of play in about 60 seconds.<br>
+- Games with fewer stones per cell enhance the AI's performance.<br>
+- As the game progresses, the AI's ability to predict moves improves.<br>
+
+When the AI starts the game, it becomes almost unbeatable, demonstrating its effectiveness with even a brief moment to think.
+
+These benchmarks are approximate and might slightly differ across various CPUs.<br>
+Observations were made on an M2 Pro, but similar performance is expected on modern processors due to the exponential nature of the problem.<br>
+
+
+
 
 ## Algorithm
 CMancala employs a Negamax algorithm with Alpha-Beta pruning, tailored to accommodate double moves. Key features include:
@@ -29,7 +37,7 @@ CMancala employs a Negamax algorithm with Alpha-Beta pruning, tailored to accomm
 
 ## Restrictions
 - The game is designed to support a maximum of 224 stones on the board at any given time.
-- The game mode needs to be specified at compile time in `board.h`.
+- The game mode needs to be specified before compilation in `board.h`.
 
 ## Interface
 - CMancala features a terminal-based user interface. Users interested in a graphical interface may consider developing a simple web-based UI.
