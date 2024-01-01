@@ -106,8 +106,7 @@ void negamaxRootHelper(Board *board, int *move, int *evaluation, int depthLimit,
     /**
      * Aspiration window search hyperparameters
     */
-    const int aspirationWindow = 3;
-    const int aspirationStep = 2;
+    const int aspirationWindowSize = 1;
     const int depthStep = 1;
 
     /**
@@ -121,8 +120,9 @@ void negamaxRootHelper(Board *board, int *move, int *evaluation, int depthLimit,
      * Iterative deepening runnning parameters
     */
     int currentDepth = 1;
-    int localWindow = 0;
     int bestMove;
+
+    // Used to keep track of window misses for warning
     int windowMisses = 0;
 
     /**
@@ -138,17 +138,15 @@ void negamaxRootHelper(Board *board, int *move, int *evaluation, int depthLimit,
         // Run negamax with move
         int score = negamaxWithMove(board, &bestMove, alpha, beta, currentDepth);
 
+        printf("Window: [%d, %d], Score: %d, Depth: %d\n", alpha, beta, score, currentDepth);
+
         /**
          * Check if score is outside of aspiration window
-         * If yes, increase window size and research
+         * If yes, offset window to include score
         */
-        if (score <= alpha || score >= beta) {
-            localWindow += aspirationStep;
-            windowMisses++;
-        } else {
+        if (score > alpha && score < beta) {
             previousScore = score;
             currentDepth += depthStep;
-            localWindow = 0;
 
             // Termination condition check, only if no window miss
             if ((!useTimeLimit && currentDepth > depthLimit) || 
@@ -157,9 +155,11 @@ void negamaxRootHelper(Board *board, int *move, int *evaluation, int depthLimit,
             }
         }
 
+        previousScore = score;
+
         // Update alpha and beta
-        alpha = previousScore - aspirationWindow - localWindow;
-        beta = previousScore + aspirationWindow + localWindow;
+        alpha = previousScore - aspirationWindowSize;
+        beta = previousScore + aspirationWindowSize;
     }
 
     if (useTimeLimit) {
