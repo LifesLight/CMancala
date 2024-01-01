@@ -106,7 +106,7 @@ void negamaxRootHelper(Board *board, int *move, int *evaluation, int depthLimit,
     /**
      * Aspiration window search hyperparameters
     */
-    const int aspirationWindowSize = 1;
+    const int windowSize = 1;
     const int depthStep = 1;
 
     /**
@@ -138,8 +138,6 @@ void negamaxRootHelper(Board *board, int *move, int *evaluation, int depthLimit,
         // Run negamax with move
         int score = negamaxWithMove(board, &bestMove, alpha, beta, currentDepth);
 
-        printf("Window: [%d, %d], Score: %d, Depth: %d\n", alpha, beta, score, currentDepth);
-
         /**
          * Check if score is outside of aspiration window
          * If yes, offset window to include score
@@ -153,21 +151,25 @@ void negamaxRootHelper(Board *board, int *move, int *evaluation, int depthLimit,
                 (useTimeLimit && (((double)(clock() - start) / CLOCKS_PER_SEC) >= timeLimit || currentDepth > depthLimit))) {
                 break;
             }
+        } else {
+            windowMisses++;
         }
 
+        // This will automatically offset the window in the correct direction
         previousScore = score;
 
         // Update alpha and beta
-        alpha = previousScore - aspirationWindowSize;
-        beta = previousScore + aspirationWindowSize;
+        alpha = previousScore - windowSize;
+        beta = previousScore + windowSize;
     }
 
     if (useTimeLimit) {
         printf("Depth reached: %d\n", currentDepth - 1);
     }
 
-    if (windowMisses > currentDepth / 4) {
-        printf("[WARNING]: High window misses!\n");
+    // Warn if at least one window per depth was missed
+    if (windowMisses > currentDepth) {
+        printf("[WARNING]: High window misses! (You may increase \"windowSize\" in algo.c)\n");
     }
 
     *move = bestMove;
