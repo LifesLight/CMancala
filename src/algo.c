@@ -128,29 +128,37 @@ void negamaxRootHelper(Board *board, int *move, int *evaluation, int depthLimit,
     /**
      * Start timer for time limit
     */
-    clock_t start = clock();
+    clock_t start;
+
+    if (useTimeLimit) {
+        start = clock();
+    }
 
     /**
      * Iterative deepening loop
      * Runs until depth limit is reached or time limit is reached
     */
     while (true) {
-        // Run negamax with move
+        // Run negamax with move tracking
         int score = negamaxWithMove(board, &bestMove, alpha, beta, currentDepth);
 
         /**
          * Check if score is outside of aspiration window
-         * If yes, offset window to include score
+         * If yes, research with offset window
         */
+
+        // If score is inside window, increase depth
         if (score > alpha && score < beta) {
             previousScore = score;
             currentDepth += depthStep;
 
             // Termination condition check, only if no window miss
-            if ((!useTimeLimit && currentDepth > depthLimit) || 
-                (useTimeLimit && (((double)(clock() - start) / CLOCKS_PER_SEC) >= timeLimit || currentDepth > depthLimit))) {
+            if ((currentDepth > depthLimit) ||
+                    (useTimeLimit && (((double)(clock() - start) / CLOCKS_PER_SEC) >= timeLimit))) {
                 break;
             }
+
+        // If score is outside window, research with offset window
         } else {
             windowMisses++;
         }
@@ -158,16 +166,18 @@ void negamaxRootHelper(Board *board, int *move, int *evaluation, int depthLimit,
         // This will automatically offset the window in the correct direction
         previousScore = score;
 
-        // Update alpha and beta
+        // Update alpha and beta for new search
         alpha = previousScore - windowSize;
         beta = previousScore + windowSize;
     }
 
+    // Inform about depth reached when using time limit
     if (useTimeLimit) {
         printf("Depth reached: %d\n", currentDepth - 1);
     }
 
-    // Warn if at least one window per depth was missed
+    // Warn about high window misses
+    // When this happens often, the window size should be increased
     if (windowMisses > currentDepth) {
         printf("[WARNING]: High window misses! (You may increase \"windowSize\" in algo.c)\n");
     }
