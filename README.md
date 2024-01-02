@@ -23,6 +23,7 @@ The terminal output provides a visual representation of the game state along wit
 - **Evaluation Score**: Displayed as `Evaluation: <number>`.<br> This score estimates the current advantage in terms of stones.<br> A positive score indicates an advantage for Player 1 (Human), and a negative score indicates an advantage for Player 2 (AI).<br> The magnitude of the score reflects the extent of the lead or deficit.<br> For example, `Evaluation: -8` suggests Player 1 is currently predicted to lose by 8 stones if both players continue with optimal play.<br>
 - **Depth Reached**: When the AI makes a move, you might see `Depth reached: <number>`.<br> This shows how many moves ahead the AI calculated during its turn.<br>
 - **AI Move**: After the AI completes its turn, `AI move: <cell number>` shows the cell index chosen by the AI for its move.<br>
+- **Game is solved!**: Indicates the AI has successfully solved the position.<br> This means the current evaluation is guaranteed to be the game's outcome with perfect play.
 - **Enter Move**: During the human player's turn, `Enter move:` prompts you to input your move.<br>
 
 

@@ -11,7 +11,6 @@
 
 #include "board.h"
 
-bool solved;
 
 /**
  * Returns the maximum of two integers.

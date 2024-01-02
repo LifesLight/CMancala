@@ -4,7 +4,7 @@
 
 #include "algo.h"
 
-bool solved = true;
+bool solved;
 
 int min(const int a, const int b) {
     return (a < b) ? a : b;
@@ -19,7 +19,6 @@ int negamax(Board *board, int alpha, const int beta, const int depth) {
     // The order of the checks is important here
     // Otherwise we could have a empty side, without adding up the opponents pieces to his score
     if (processBoardTerminal(board)) {
-        //printf("Terminal state reached!\n");
         return board->color * getBoardEvaluation(board);
     }
 
@@ -73,7 +72,13 @@ int negamax(Board *board, int alpha, const int beta, const int depth) {
 }
 
 int negamaxWithMove(Board *board, int *bestMove, int alpha, const int beta, const int depth) {
-    if (processBoardTerminal(board) || depth == 0) {
+    if (processBoardTerminal(board)) {
+        *bestMove = -1;
+        return board->color * getBoardEvaluation(board);
+    }
+
+    if (depth == 0) {
+        solved = false;
         *bestMove = -1;
         return board->color * getBoardEvaluation(board);
     }
@@ -210,6 +215,6 @@ void negamaxRootDepth(Board *board, int *move, int *evaluation, int depth) {
 }
 
 void negamaxRootTime(Board *board, int *move, int *evaluation, double timeInSeconds) {
-    // Using effectively infinite depth limit
+    // Using effectively infinite depth limit, as it is not needed
     negamaxRootHelper(board, move, evaluation, INT32_MAX, timeInSeconds, true);
 }
