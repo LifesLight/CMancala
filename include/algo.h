@@ -11,6 +11,8 @@
 
 #include "board.h"
 
+bool solved;
+
 /**
  * Returns the maximum of two integers.
 */
@@ -31,16 +33,6 @@ int negamax(Board *board, int alpha, const int beta, const int depth);
 */
 int negamaxWithMove(
     Board *board, int *bestMove, int alpha, const int beta, const int depth);
-
-// Helper function containing shared logic
-// Mainly implements aspiration window and depth / time limit
-void negamaxRootHelper(
-    Board *board,
-    int *move,
-    int *evaluation,
-    int depthLimit,
-    double timeLimit,
-    bool useTimeLimit);
 
 /**
  * Negamax root with depth limit

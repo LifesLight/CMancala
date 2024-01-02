@@ -4,6 +4,8 @@
 
 #include "algo.h"
 
+bool solved = true;
+
 int min(const int a, const int b) {
     return (a < b) ? a : b;
 }
@@ -16,7 +18,15 @@ int negamax(Board *board, int alpha, const int beta, const int depth) {
     // Terminally check
     // The order of the checks is important here
     // Otherwise we could have a empty side, without adding up the opponents pieces to his score
-    if (processBoardTerminal(board) || depth == 0) {
+    if (processBoardTerminal(board)) {
+        //printf("Terminal state reached!\n");
+        return board->color * getBoardEvaluation(board);
+    }
+
+    // Check if depth limit is reached
+    if (depth == 0) {
+        // If we ever get depth limited in a non-terminal state, the game is not solved
+        solved = false;
         return board->color * getBoardEvaluation(board);
     }
 
@@ -36,6 +46,7 @@ int negamax(Board *board, int alpha, const int beta, const int depth) {
         if (board->cells[i] == 0) {
             continue;
         }
+
         // Make copied board with move made
         copyBoard(board, &boardCopy);
         makeMoveOnBoard(&boardCopy, i);
@@ -102,7 +113,9 @@ int negamaxWithMove(Board *board, int *bestMove, int alpha, const int beta, cons
     return reference;
 }
 
-void negamaxRootHelper(Board *board, int *move, int *evaluation, int depthLimit, double timeLimit, bool useTimeLimit) {
+// Helper function containing shared logic
+// Mainly implements aspiration window and depth / time limit
+static void negamaxRootHelper(Board *board, int *move, int *evaluation, int depthLimit, double timeLimit, bool useTimeLimit) {
     /**
      * Aspiration window search hyperparameters
     */
@@ -114,7 +127,7 @@ void negamaxRootHelper(Board *board, int *move, int *evaluation, int depthLimit,
     */
     int alpha = INT32_MIN + 1;
     int beta = INT32_MAX;
-    int previousScore = INT32_MIN;
+    int score;
 
     /**
      * Iterative deepening runnning parameters
@@ -140,7 +153,11 @@ void negamaxRootHelper(Board *board, int *move, int *evaluation, int depthLimit,
     */
     while (true) {
         // Run negamax with move tracking
-        int score = negamaxWithMove(board, &bestMove, alpha, beta, currentDepth);
+
+        // Track if game is solved
+        // If game is still solved after search, we can stop
+        solved = true;
+        score = negamaxWithMove(board, &bestMove, alpha, beta, currentDepth);
 
         /**
          * Check if score is outside of aspiration window
@@ -149,8 +166,13 @@ void negamaxRootHelper(Board *board, int *move, int *evaluation, int depthLimit,
 
         // If score is inside window, increase depth
         if (score > alpha && score < beta) {
-            previousScore = score;
             currentDepth += depthStep;
+
+            // Check if game is solved
+            if (solved) {
+                printf("Game is solved!\n");
+                break;
+            }
 
             // Termination condition check, only if no window miss
             if ((currentDepth > depthLimit) ||
@@ -163,12 +185,9 @@ void negamaxRootHelper(Board *board, int *move, int *evaluation, int depthLimit,
             windowMisses++;
         }
 
-        // This will automatically offset the window in the correct direction
-        previousScore = score;
-
         // Update alpha and beta for new search
-        alpha = previousScore - windowSize;
-        beta = previousScore + windowSize;
+        alpha = score - windowSize;
+        beta = score + windowSize;
     }
 
     // Inform about depth reached when using time limit
@@ -183,7 +202,7 @@ void negamaxRootHelper(Board *board, int *move, int *evaluation, int depthLimit,
     }
 
     *move = bestMove;
-    *evaluation = previousScore;
+    *evaluation = score;
 }
 
 void negamaxRootDepth(Board *board, int *move, int *evaluation, int depth) {
@@ -191,7 +210,6 @@ void negamaxRootDepth(Board *board, int *move, int *evaluation, int depth) {
 }
 
 void negamaxRootTime(Board *board, int *move, int *evaluation, double timeInSeconds) {
-    // Using 100 depth as limit, since it is unlikely to be reached
-    // Ever getting there strongly indicates the game is fully solved
-    negamaxRootHelper(board, move, evaluation, 100, timeInSeconds, true);
+    // Using effectively infinite depth limit
+    negamaxRootHelper(board, move, evaluation, INT32_MAX, timeInSeconds, true);
 }
