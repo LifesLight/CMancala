@@ -175,7 +175,6 @@ static void negamaxRootHelper(Board *board, int *move, int *evaluation, int dept
 
             // Check if game is solved
             if (solved) {
-                printf("Game is solved!\n");
                 break;
             }
 
@@ -197,7 +196,14 @@ static void negamaxRootHelper(Board *board, int *move, int *evaluation, int dept
 
     // Inform about depth reached when using time limit
     if (useTimeLimit) {
-        printf("Depth reached: %d\n", currentDepth - 1);
+        printf("Depth reached: %d ", currentDepth - 1);
+    }
+
+    // Inform about game solved status
+    if (solved) {
+        printf("(Solved)\n");
+    } else {
+        printf("(Not solved)\n");
     }
 
     // Warn about high window misses
