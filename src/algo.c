@@ -14,12 +14,28 @@ float max(const float a, const float b) {
     return (a > b) ? a : b;
 }
 
-float getBoardEvaluation(Board *board) {
-    float score = 0;
+float getBoardEvaluation(const Board *board) {
+    float scoreDiff = getBoardDelta(board);
+    float boardControl = 0;
+    float potentialCaptures = 0;
 
-    score += getBoardDelta(board);
+    // Calculate board control and potential captures
+    for (int i = 0; i < 6; i++) {
+        boardControl += board->cells[i];
+        boardControl -= board->cells[i + 7];
 
-    return score;
+        // Evaluate potential captures, if a pit directly across has stones
+        if (board->cells[i] == 0 && board->cells[12 - i] > 0) {
+            potentialCaptures += board->cells[12 - i];
+        }
+    }
+
+    // Weighting factors
+    const float scoreWeight = 1.0;
+    const float controlWeight = 0.5;
+    const float captureWeight = 0.2;
+
+    return (scoreDiff * scoreWeight) + (boardControl * controlWeight) + (potentialCaptures * captureWeight);
 }
 
 float negamax(Board *board, float alpha, const float beta, const int depth) {
@@ -171,6 +187,7 @@ static void negamaxRootHelper(Board *board, int *move, float *evaluation, int de
         // If game is still solved after search, we can stop
         solved = true;
         score = negamaxWithMove(board, &bestMove, alpha, beta, currentDepth);
+        printf("Score: %.2f Window: [%.2f, %.2f] Depth: %d\n", score, beta, alpha, currentDepth);
 
         /**
          * Check if score is outside of aspiration window
@@ -195,6 +212,7 @@ static void negamaxRootHelper(Board *board, int *move, float *evaluation, int de
         // If score is outside window, research with offset window
         } else {
             windowMisses++;
+            printf("[WARNING]: Window miss!\n");
         }
 
         // Update alpha and beta for new search
