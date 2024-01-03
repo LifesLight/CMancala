@@ -53,8 +53,8 @@ int main(int argc, char const* argv[]) {
 
     // Game loop
     int index;
-    int eval = 0;
-    int referenceEval = 0;
+    float eval = 0;
+    float referenceEval = 0;
 
     while (!(isBoardPlayerOneEmpty(&board) || isBoardPlayerTwoEmpty(&board))) {
         // Check if human or AI turn
@@ -85,7 +85,7 @@ int main(int argc, char const* argv[]) {
 
         makeMoveManual(&board, index);
         renderBoard(&board);
-        printf("Turn: %s; Evaluation: %d;\n", board.color == 1 ? "P1" : "P2", referenceEval);
+        printf("Turn: %s; Evaluation: %f;\n", board.color == 1 ? "P1" : "P2", referenceEval);
     }
 
     return 0;

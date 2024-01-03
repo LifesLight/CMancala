@@ -56,7 +56,7 @@ void configBoardRand(Board *board, const int stones) {
     }
 }
 
-int getBoardEvaluation(const Board *board) {
+int getBoardDelta(const Board *board) {
     // Calculate score delta
     return board->cells[SCORE_P1] - board->cells[SCORE_P2];
 }

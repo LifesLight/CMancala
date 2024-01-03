@@ -6,15 +6,23 @@
 
 bool solved;
 
-int min(const int a, const int b) {
+float min(const float a, const float b) {
     return (a < b) ? a : b;
 }
 
-int max(const int a, const int b) {
+float max(const float a, const float b) {
     return (a > b) ? a : b;
 }
 
-int negamax(Board *board, int alpha, const int beta, const int depth) {
+float getBoardEvaluation(Board *board) {
+    float score = 0;
+
+    score += getBoardDelta(board);
+
+    return score;
+}
+
+float negamax(Board *board, float alpha, const float beta, const int depth) {
     // Terminally check
     // The order of the checks is important here
     // Otherwise we could have a empty side, without adding up the opponents pieces to his score
@@ -30,11 +38,11 @@ int negamax(Board *board, int alpha, const int beta, const int depth) {
     }
 
     // Keeping track of best score
-    int reference = INT32_MIN;
+    float reference = N_INFINITY;
 
     // Will be needed in every iteration
     Board boardCopy;
-    int score;
+    float score;
 
     // Iterate over all possible moves
     const int8_t start = (board->color == 1)  ? HBOUND_P1 : HBOUND_P2;
@@ -71,7 +79,7 @@ int negamax(Board *board, int alpha, const int beta, const int depth) {
     return reference;
 }
 
-int negamaxWithMove(Board *board, int *bestMove, int alpha, const int beta, const int depth) {
+float negamaxWithMove(Board *board, int *bestMove, float alpha, const float beta, const int depth) {
     if (processBoardTerminal(board)) {
         *bestMove = -1;
         return board->color * getBoardEvaluation(board);
@@ -83,8 +91,8 @@ int negamaxWithMove(Board *board, int *bestMove, int alpha, const int beta, cons
         return board->color * getBoardEvaluation(board);
     }
 
-    int reference = INT32_MIN;
-    int score;
+    float reference = N_INFINITY;
+    float score;
 
     const int8_t start = (board->color == 1)  ? HBOUND_P1 : HBOUND_P2;
     const int8_t end = (board->color == 1)    ? LBOUND_P1 : LBOUND_P2;
@@ -120,19 +128,19 @@ int negamaxWithMove(Board *board, int *bestMove, int alpha, const int beta, cons
 
 // Helper function containing shared logic
 // Mainly implements aspiration window and depth / time limit
-static void negamaxRootHelper(Board *board, int *move, int *evaluation, int depthLimit, double timeLimit, bool useTimeLimit) {
+static void negamaxRootHelper(Board *board, int *move, float *evaluation, int depthLimit, double timeLimit, bool useTimeLimit) {
     /**
      * Aspiration window search hyperparameters
     */
-    const int windowSize = 1;
+    const float windowSize = 1;
     const int depthStep = 1;
 
     /**
      * Default values for alpha and beta
     */
-    int alpha = INT32_MIN + 1;
-    int beta = INT32_MAX;
-    int score;
+    float alpha = N_INFINITY;
+    float beta = P_INFINITY;
+    float score;
 
     /**
      * Iterative deepening runnning parameters
@@ -207,11 +215,11 @@ static void negamaxRootHelper(Board *board, int *move, int *evaluation, int dept
     *evaluation = score;
 }
 
-void negamaxRootDepth(Board *board, int *move, int *evaluation, int depth) {
+void negamaxRootDepth(Board *board, int *move, float *evaluation, int depth) {
     negamaxRootHelper(board, move, evaluation, depth, 0, false);
 }
 
-void negamaxRootTime(Board *board, int *move, int *evaluation, double timeInSeconds) {
+void negamaxRootTime(Board *board, int *move, float *evaluation, double timeInSeconds) {
     // Using effectively infinite depth limit, as it is not needed
     negamaxRootHelper(board, move, evaluation, INT32_MAX, timeInSeconds, true);
 }

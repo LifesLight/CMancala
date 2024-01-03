@@ -56,7 +56,7 @@ void configBoardRand(Board *board, const int stones);
 /**
  * Returns relative stone count of score cells
 */
-int getBoardEvaluation(const Board *board);
+int getBoardDelta(const Board *board);
 
 /**
  * Check if the board is empty for player one

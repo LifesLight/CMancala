@@ -11,35 +11,38 @@
 
 #include "board.h"
 
+#define N_INFINITY -10000
+#define P_INFINITY  10000
+
 
 /**
  * Returns the maximum of two integers.
 */
-int max(const int a, const int b);
+float max(const float a, const float b);
 
 /**
  * Returns the minimum of two integers.
 */
-int min(const int a, const int b);
+float min(const float a, const float b);
 
 /**
  * Negamax algorithm with alpha-beta pruning.
 */
-int negamax(Board *board, int alpha, const int beta, const int depth);
+float negamax(Board *board, float alpha, const float beta, const int depth);
 
 /**
  * Negamax algorithm with alpha-beta pruning and best move output.
 */
-int negamaxWithMove(
-    Board *board, int *bestMove, int alpha, const int beta, const int depth);
+float negamaxWithMove(
+    Board *board, int *bestMove, float alpha, const float beta, const int depth);
 
 /**
  * Negamax root with depth limit
 */
-void negamaxRootDepth(Board *board, int *move, int *evaluation, int depth);
+void negamaxRootDepth(Board *board, int *move, float *evaluation, int depth);
 
 /**
  * Negamax root with time limit
 */
 void negamaxRootTime(
-    Board *board, int *move, int *evaluation, double timeInSeconds);
+    Board *board, int *move, float *evaluation, double timeInSeconds);
