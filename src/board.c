@@ -103,10 +103,11 @@ void makeMoveOnBoard(Board *board, const uint8_t actionIndex) {
     // Get blocked index for this player
     const uint8_t blockedIndex = turn ? (SCORE_P2 - 1) : (SCORE_P1 - 1);
     uint8_t index = actionIndex;
+    uint8_t stones;
 
     do {
         // Propagate stones
-        uint8_t stones = board->cells[index];
+        stones = board->cells[index];
         board->cells[index] = 0;
 
         // Propagate stones

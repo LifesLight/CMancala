@@ -35,7 +35,7 @@ The AI operates on a single thread.<br> Its performance varies based on the game
 - As the game progresses, the AI's ability to predict moves improves.<br>
 
 In most configurations, when the AI starts the game it becomes almost unbeatable due to the nature of Mancala.<br>
-(in the classic 4 stone per cell configuration the starting player has a evaluation advantage of 9 at depth 38)<br>
+(in the classic 4 stone per cell configuration the starting player has a evaluation advantage of 8 at depth 40)<br>
 These benchmarks are approximate and might slightly differ across various CPUs.<br>
 Observations were made on an M2 Pro, but similar performance is expected on modern processors due to the exponential nature of the problem.<br>
 
@@ -69,5 +69,3 @@ To build and run CMancala:
 ### License
 
 CMancala is released under the MIT License. See LICENSE file for more details.
-
-© 2023 Alexander Kurtz. All rights reserved.
