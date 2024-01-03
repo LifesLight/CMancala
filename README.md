@@ -21,14 +21,14 @@ The terminal output provides a visual representation of the game state along wit
 - **Board Layout**: The game board is displayed in a grid format.<br> Each cell contains a number representing the stones in that particular cell.<br> The layout is mirrored for each player.<br>
 - **Turn Indicator**: `Turn: P1` or `Turn: P2` indicates which player's turn it is.<br> P1 stands for Player 1 (Human) and P2 for Player 2 (AI).<br>
 - **Evaluation Score**: Displayed as `Evaluation: <number>`.<br> This score estimates the current advantage in terms of stones.<br> A positive score indicates an advantage for Player 1 (Human), and a negative score indicates an advantage for Player 2 (AI).<br> The magnitude of the score reflects the extent of the lead or deficit.<br> For example, `Evaluation: -8` suggests Player 1 is currently predicted to lose by 8 stones if both players continue with optimal play.<br>
-- **Depth Reached**: When the AI makes a move, you might see `Depth reached: <number>`.<br> This shows how many moves ahead the AI calculated during its turn.<br>
+- **Depth Reached**: When the AI makes a move, you will see `Depth reached: <number>`.<br> This shows how many moves ahead the AI calculated during its turn.<br>
 - **AI Move**: After the AI completes its turn, `AI move: <cell number>` shows the cell index chosen by the AI for its move.<br>
 - **Enter Move**: During the human player's turn, `Enter move:` prompts you to input your move.<br>
 - **([Not] Solved)**: If Solved, the evaluation is the guaranteed outcome with perfect play.
 
 
 ## Performance
-The AI operates on a single thread, and its performance varies based on the game's state:<br>
+The AI operates on a single thread.<br> Its performance varies based on the game's state:<br>
 - It typically anticipates 20-30 moves within a 5-second thinking window, influenced by the number of stones on the board.<br>
 - With 4 stones per cell, the AI reaches a very high level of play in about 60 seconds.<br>
 - Games with fewer stones per cell enhance the AI's performance.<br>

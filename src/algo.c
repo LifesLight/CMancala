@@ -194,17 +194,8 @@ static void negamaxRootHelper(Board *board, int *move, int *evaluation, int dept
         beta = score + windowSize;
     }
 
-    // Inform about depth reached when using time limit
-    if (useTimeLimit) {
-        printf("Depth reached: %d ", currentDepth - 1);
-    }
-
-    // Inform about game solved status
-    if (solved) {
-        printf("(Solved)\n");
-    } else {
-        printf("(Not solved)\n");
-    }
+    // Inform about search results
+    printf("Depth reached: %d (%s)\n", currentDepth - 1, solved ? "Solved" : "Not solved");
 
     // Warn about high window misses
     // When this happens often, the window size should be increased
