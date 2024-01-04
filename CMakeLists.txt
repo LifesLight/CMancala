@@ -12,6 +12,6 @@ set(SOURCE_FILES
 
 include_directories(include)
 
-add_executable(Mancala ${SOURCE_FILES})
+add_executable(CMancala ${SOURCE_FILES})
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3 -flto -march=native -fno-stack-protector -Wall -Wextra -pedantic")

@@ -9,9 +9,21 @@
 #include "render.h"
 #include "algo.h"
 
+void printHelp() {
+    printf("Usage: CMancala [OPTIONS]\n");
+    printf("Options:\n");
+    printf("  --stones <n>     Set number of stones per pit (default: 4)\n");
+    printf("  --rstones <n>    Set number of total stones, randomly distributed\n");
+    printf("  --time <n>       Set soft time limit for AI in seconds (default: 5.0)\n");
+    printf("  --depth <n>      Set depth limit for AI\n");
+    printf("  --ai-start       Let AI start\n");
+    printf("  --human-start    Let human start (default)\n");
+    printf("  --help           Print this help message\n");
+}
+
 /**
  * Main function
- * Make modifications to search depth, board layout... here
+ * Make custom modifications to game mode (ai vs ai ...) here
 */
 int main(int argc, char const* argv[]) {
     // Initialize "Main" board with default values
@@ -41,6 +53,9 @@ int main(int argc, char const* argv[]) {
             startColor = -1;
         } else if (strcmp(argv[i], "--human-start") == 0) {
             startColor = 1;
+        } else if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "help") == 0) {
+            printHelp();
+            return 0;
         }
     }
 

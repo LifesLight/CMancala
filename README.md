@@ -14,6 +14,7 @@ CMancala supports several command-line arguments to configure gameplay:
 - `--depth <number>`: Sets the depth for the Negamax algorithm; if specified, overrides the time-based search.
 - `--ai-start`: The AI will make the first move.
 - `--human-start`: The human player will make the first move (default).
+- ``--help``: Print usage info.
 
 ## Understanding Terminal Outputs
 
