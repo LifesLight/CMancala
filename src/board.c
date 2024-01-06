@@ -190,12 +190,13 @@ void makeMoveOnBoard(Board *board, const uint8_t actionIndex) {
         if (targetValue != 0) {
             // If player 2 made move
             if (!turn && index > SCORE_P1) {
+                // + 1 because we also take the stone from our cell
                 board->cells[SCORE_P2] += targetValue + 1;
                 board->cells[targetIndex] = 0;
                 board->cells[index] = 0;
             // Player 1 made move
             } else if (turn && index < SCORE_P1) {
-                board->cells[SCORE_P1] += board->cells[targetIndex] + 1;
+                board->cells[SCORE_P1] += targetValue + 1;
                 board->cells[targetIndex] = 0;
                 board->cells[index] = 0;
             }
