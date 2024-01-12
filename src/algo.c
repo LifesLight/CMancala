@@ -138,7 +138,7 @@ static void negamaxRootHelper(Board *board, int *move, int *evaluation, int dept
      * Iterative deepening runnning parameters
     */
     int currentDepth = 1;
-    int bestMove;
+    int bestMove = -1;
 
     // Used to keep track of window misses for warning
     int windowMisses = 0;

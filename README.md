@@ -67,6 +67,10 @@ To build and run CMancala:
     ```bash
     ./Mancala
     ```
+
+## Discoveries
+On a uniform 3 stone per pit game the starting player wins by 2 points with perfect play.<br>Best start move is IDX: 5. (Depth reached was 108 which solved the position).
+
 ### License
 
 CMancala is released under the MIT License. See LICENSE file for more details.
