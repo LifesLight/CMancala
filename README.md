@@ -1,5 +1,9 @@
 # CMancala
 
+## Classic
+This branch is the pure AI implementation without any lookup tables or similar.<br>
+This makes it possibly more suited for solving positions, since we never assume a move being the best just because the lookup table (which could be flawed) says so.
+
 ## Overview
 CMancala is a computer implementation of the classic board game Mancala. This version supports both standard Mancala rules and an **Avalanche** mode, providing an engaging challenge with a sophisticated AI opponent.
 
