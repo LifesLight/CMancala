@@ -10,6 +10,7 @@ The game adheres to basic Mancala rules. In addition, an **Avalanche** mode is a
 CMancala supports several command-line arguments to configure gameplay:
 - `--stones <number>`: Sets the number of stones per cell with a standard distribution.
 - `--rstones <number>`: Sets the number of stones in total with a random distribution.
+- `--seed <number>`: Sets the seed for random stones, if unset uses device time.
 - `--time <seconds>`: Sets an approximate thinking time for the AI.
 - `--depth <number>`: Sets the depth for the Negamax algorithm; if specified, overrides the time-based search.
 - `--ai-start`: The AI will make the first move.

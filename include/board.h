@@ -9,7 +9,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <time.h>
 
 /*
  * Board is constructed like this:
@@ -51,7 +50,7 @@ void configBoard(Board *board, int stones);
  * Configures the board with the given average stones per cell
  * and randomizes the board
 */
-void configBoardRand(Board *board, const int stones);
+void configBoardRand(Board *board, const int stones, const int seed);
 
 /**
  * Returns relative stone count of score cells

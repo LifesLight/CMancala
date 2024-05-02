@@ -29,7 +29,7 @@ void configBoard(Board *board, int stones) {
     board->color = 1;
 }
 
-void configBoardRand(Board *board, const int stones) {
+void configBoardRand(Board *board, const int stones, const int seed) {
     // Check for even number of stones
     if (stones % 2 != 0) {
         printf("[WARNING]: Reducing %d stones to %d to avoid uneven distribution\n", stones, stones - 1);
@@ -48,7 +48,7 @@ void configBoardRand(Board *board, const int stones) {
     memset(board->cells, 0, sizeof(board->cells));
 
     // Assign mirrored random stones
-    srand(time(NULL));
+    srand(seed);
     for (int i = 0; i < remainingStones; i++) {
         int index = rand() % 6;
         board->cells[index] += 1;

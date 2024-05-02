@@ -4,6 +4,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 #include "board.h"
 #include "render.h"
@@ -14,6 +15,7 @@ void printHelp() {
     printf("Options:\n");
     printf("  --stones <n>     Set number of stones per pit (default: 4)\n");
     printf("  --rstones <n>    Set number of total stones, randomly distributed\n");
+    printf("  --seed <n>       Set seed for random distribution (if not specified random)\n");
     printf("  --time <n>       Set soft time limit for AI in seconds (default: 5.0)\n");
     printf("  --depth <n>      Set depth limit for AI\n");
     printf("  --ai-start       Let AI start\n");
@@ -26,10 +28,6 @@ void printHelp() {
  * Make custom modifications to game mode (ai vs ai ...) here
 */
 int main(int argc, char const* argv[]) {
-    // Initialize "Main" board with default values
-    Board board;
-    configBoard(&board, 4);
-
     // Default AI time limit in seconds
     double timeLimit = 5.0;
 
@@ -39,12 +37,23 @@ int main(int argc, char const* argv[]) {
     // Starting color
     int startColor = 1;
 
+    // Seed for random distribution
+    int seed = time(NULL);
+
+    // Rand stones amount
+    int randStones = -1;
+
+    // Stones amount
+    int stones = -1;
+
     // Parse command-line arguments
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--stones") == 0 && i + 1 < argc) {
-            configBoard(&board, atoi(argv[++i]));
+            stones = atoi(argv[++i]);
+        } else if (strcmp(argv[i], "--seed") == 0 && i + 1 < argc) {
+            seed = atoi(argv[++i]);
         } else if (strcmp(argv[i], "--rstones") == 0 && i + 1 < argc) {
-            configBoardRand(&board, atoi(argv[++i]));
+            randStones = atoi(argv[++i]);
         } else if (strcmp(argv[i], "--time") == 0 && i + 1 < argc) {
             timeLimit = atof(argv[++i]);
         } else if (strcmp(argv[i], "--depth") == 0 && i + 1 < argc) {
@@ -57,6 +66,16 @@ int main(int argc, char const* argv[]) {
             printHelp();
             return 0;
         }
+    }
+
+    // Configure board
+    Board board;
+    if (randStones > 0) {
+        configBoardRand(&board, randStones, seed);
+    } else if (stones > 0) {
+        configBoard(&board, stones);
+    } else {
+        configBoard(&board, 4);
     }
 
     // Set starting color
