@@ -2,7 +2,6 @@
  * Copyright (c) Alexander Kurtz 2023
  */
 
-
 #include "render.h"
 
 void renderBoard(const Board *board) {
@@ -47,4 +46,32 @@ void renderBoard(const Board *board) {
         printf("%s%s%s%s", HL, HL, EB, HL);
     }
     printf("%s%s%s\n", HL, HL, BR);
+}
+
+void renderWelcome() {
+    printf("+-----------------------------------------+\n");
+    printf("| %sWelcome to CMancala!                 |\n", OUTPUT_PREFIX);
+    printf("| %sType 'help' for a list of commands   |\n", OUTPUT_PREFIX);
+    printf("|                                         |\n");
+    printf("| (c) Alexander Kurtz 2024                |\n");
+    printf("+-----------------------------------------+\n");
+    printf("\n");
+}
+
+void renderConfigHelp() {
+    printf("%s%sCommands:\n", CONFIG_PREFIX, OUTPUT_PREFIX);
+    printf("%s%s  start                            : Start the game\n", CONFIG_PREFIX, OUTPUT_PREFIX);
+    printf("%s%s  stones [number > 0]              : Set number of stones per pit (default: 4)\n", CONFIG_PREFIX, OUTPUT_PREFIX);
+    printf("%s%s  distribution [uniform | random]  : Configure distribution of stones \n", CONFIG_PREFIX, OUTPUT_PREFIX);
+    printf("%s%s  seed [number]                    : Set seed for random distribution (if not specified random)\n", CONFIG_PREFIX, OUTPUT_PREFIX);
+    printf("%s%s  time [number >= 0]               : Set time limit for AI in seconds, if 0 unlimited\n", CONFIG_PREFIX, OUTPUT_PREFIX);
+    printf("%s%s  depth [number >= 0]              : Set depth limit for AI, if 0 not depth limited\n", CONFIG_PREFIX, OUTPUT_PREFIX);
+    printf("%s%s  starting [human | ai]            : Configure starting player\n", CONFIG_PREFIX, OUTPUT_PREFIX);
+    printf("%s%s  display                          : Display current configuration\n", CONFIG_PREFIX, OUTPUT_PREFIX);
+    printf("%s%s  help                             : Print this help message\n", CONFIG_PREFIX, OUTPUT_PREFIX);
+    printf("%s%s  quit                             : Quit the application\n", CONFIG_PREFIX, OUTPUT_PREFIX);
+}
+
+void renderOutput(const char* message, const char* prefix) {
+    printf("%s%s%s\n", prefix, OUTPUT_PREFIX, message);
 }

@@ -2,32 +2,14 @@
  * Copyright (c) Alexander Kurtz 2023
 */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <time.h>
-
-#include "board.h"
-#include "render.h"
-#include "algo.h"
-
-void printHelp() {
-    printf("Usage: CMancala [OPTIONS]\n");
-    printf("Options:\n");
-    printf("  --stones <n>     Set number of stones per pit (default: 4)\n");
-    printf("  --rstones <n>    Set number of total stones, randomly distributed\n");
-    printf("  --seed <n>       Set seed for random distribution (if not specified random)\n");
-    printf("  --time <n>       Set soft time limit for AI in seconds (default: 5.0)\n");
-    printf("  --depth <n>      Set depth limit for AI\n");
-    printf("  --ai-start       Let AI start\n");
-    printf("  --human-start    Let human start (default)\n");
-    printf("  --help           Print this help message\n");
-}
+#include "interface.h"
 
 /**
- * Main function
- * Make custom modifications to game mode (ai vs ai ...) here
+ * Program entry point
 */
 int main(int argc, char const* argv[]) {
+    startInterface();
+    /**
     // Default AI time limit in seconds
     double timeLimit = 5.0;
 
@@ -123,4 +105,5 @@ int main(int argc, char const* argv[]) {
     }
 
     return 0;
+    */
 }

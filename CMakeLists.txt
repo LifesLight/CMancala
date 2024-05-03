@@ -8,6 +8,7 @@ set(SOURCE_FILES
     src/board.c
     src/render.c
     src/algo.c
+    src/interface.c
 )
 
 include_directories(include)

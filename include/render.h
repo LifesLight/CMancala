@@ -38,7 +38,15 @@
 #define CR "┼"  // Cross
 #endif
 
+#define OUTPUT_PREFIX    ">> "
+#define INPUT_PREFIX     "<< "
+#define CONFIG_PREFIX    "(C) "
+#define GAME_PREFIX      "(G) "
+
 /**
  * Renders the board to the console.
 */
 void renderBoard(const Board *board);
+void renderWelcome();
+void renderConfigHelp();
+void renderOutput(const char* message, const char* prefix);
