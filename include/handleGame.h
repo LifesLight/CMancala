@@ -4,17 +4,17 @@
  * Copyright (c) Alexander Kurtz 2024
  */
 
+
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
 #include <stdlib.h>
-#include <stdio.h>
 
 #include "containers.h"
+#include "config.h"
 #include "board.h"
 #include "render.h"
 #include "algo.h"
-#include "handleConfig.h"
-#include "handleGame.h"
+#include "utility.h"
 
-void startInterface();
+void startGameHandling(Config* config);

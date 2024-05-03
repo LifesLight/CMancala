@@ -21,3 +21,8 @@
 #define SCORE_P2 13
 
 #define ASIZE 14
+
+#define OUTPUT_PREFIX    ">> "
+#define INPUT_PREFIX     "<< "
+#define CONFIG_PREFIX    "(C) "
+#define GAME_PREFIX      "(G) "
