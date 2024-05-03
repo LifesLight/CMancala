@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "board.h"
+#include "containers.h"
 
 #ifdef _WIN32
 // Windows cant always render unicode

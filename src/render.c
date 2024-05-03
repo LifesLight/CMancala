@@ -68,6 +68,7 @@ void renderConfigHelp() {
     printf("%s%s  depth [number >= 0]              : Set depth limit for AI, if 0 unlimited\n", CONFIG_PREFIX, OUTPUT_PREFIX);
     printf("%s%s  starting [human | ai]            : Configure starting player\n", CONFIG_PREFIX, OUTPUT_PREFIX);
     printf("%s%s  display                          : Display current configuration\n", CONFIG_PREFIX, OUTPUT_PREFIX);
+    printf("%s%s  autoplay [true | false]          : If enabled the game loop will automatically continue\n", CONFIG_PREFIX, OUTPUT_PREFIX);
     printf("%s%s  help                             : Print this help message\n", CONFIG_PREFIX, OUTPUT_PREFIX);
     printf("%s%s  quit                             : Quit the application\n", CONFIG_PREFIX, OUTPUT_PREFIX);
 }

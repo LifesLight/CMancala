@@ -9,8 +9,8 @@
 #include <string.h>
 #include <time.h>
 
+#include "containers.h"
 #include "board.h"
-
 
 /**
  * Returns the maximum of two integers.

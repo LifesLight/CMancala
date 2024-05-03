@@ -4,7 +4,7 @@
 
 #include "interface.h"
 
-void printConfig(struct Config* config) {
+void printConfig(Config* config) {
     char* message;
     renderOutput("Current configuration:", CONFIG_PREFIX);
     asprintf(&message, "  Stones: %d", config->stones);
@@ -20,52 +20,137 @@ void printConfig(struct Config* config) {
     renderOutput(message, CONFIG_PREFIX);
     asprintf(&message, "  Starting: %s", config->startColor == 1 ? "human" : "ai");
     renderOutput(message, CONFIG_PREFIX);
+    asprintf(&message, "  Autoplay: %s", config->autoplay ? "true" : "false");
+    renderOutput(message, CONFIG_PREFIX);
 }
 
-void getInput(const char* input, const char* prefix) {
+void getInput(char* input, const char* prefix) {
     printf("%s%s", prefix ,INPUT_PREFIX);
     fgets(input, 256, stdin);
+
+    // Remove newline
+    input[strcspn(input, "\n")] = 0;
+
+    // Remove trailing spaces
+    while (input[strlen(input) - 1] == ' ') {
+        input[strlen(input) - 1] = 0;
+    }
+
+    // Remove leading spaces
+    while (input[0] == ' ') {
+        input++;
+    }
 }
 
-void startGameHandling(struct Config* config) {
+void initializeBoardFromConfig(Board* board, Config* config) {
+    // Initialize board
+    if (config->distribution == UNIFORM) {
+        configBoard(board, config->stones);
+    } else {
+        configBoardRand(board, config->stones, config->seed);
+    }
+    board->color = config->startColor;
+}
+
+void handleGameInput(bool* requestQuit, bool* requestContinue,Board* board, Config* config) {
+    // Set next player
+    // Edit cell
+    // Hash gamestate
+    // Load hashed gamestate
+    // Evaluate gamestate
+    // Quit game
+    // Print help
+    // Continue game
+    renderOutput("Handeling", GAME_PREFIX);
+    char* input = malloc(256);
+    getInput(input, GAME_PREFIX);
+
+
+    // Check for request to continue
+    if (strcmp(input, "continue") == 0) {
+        *requestContinue = true;
+        free(input);
+        return;
+    }
+}
+
+void stepGame(bool* requestedMenu, Board* board, Config* config) {
+    renderOutput("Stepping", GAME_PREFIX);
+
+    char* input = malloc(256);
+    getInput(input, GAME_PREFIX);
+
+    // Check for request for menu
+    if (strcmp(input, "menu") == 0 || strcmp(input, "q") == 0 || strcmp(input, "quit") == 0) {
+        *requestedMenu = true;
+        free(input);
+        return;
+    }
+
     return;
 }
 
-void handleConfigInput(bool* requestedQuit, struct Config* config) {
+void startGameHandling(Config* config) {
+    // Initialize board
+    Board board;
+    initializeBoardFromConfig(&board, config);
+
+    // Start game loop
+    bool requestedQuit = false;
+    bool requestedContinue = config->autoplay ? true : false;
+
+    while(!requestedQuit) {
+        while(requestedContinue) {
+            bool requestedMenu = false;
+            stepGame(&requestedMenu, &board, config);
+
+            if (!config->autoplay || requestedMenu) {
+                requestedContinue = false;
+                break;
+            }
+        }
+
+        handleGameInput(&requestedQuit, &requestedContinue, &board, config);
+    }
+}
+
+void handleConfigInput(bool* requestedQuit, Config* config) {
     // Wait for user input
     char* input = malloc(256);
     getInput(input, CONFIG_PREFIX);
 
     // Parse input
-    // If just newline, continue
-    if (strcmp(input, "\n") == 0) {
+    // If just newline (empty) continue
+    if (strlen(input) == 0) {
+        free(input);
         return;
     }
-
-    // Remove newline
-    input[strcspn(input, "\n")] = 0;
 
     // Check for quit
     if (strcmp(input, "quit") == 0 || strcmp(input, "q") == 0) {
         *requestedQuit = true;
+        free(input);
         return;
     }
 
     // Check for help
     if (strcmp(input, "help") == 0) {
         renderConfigHelp();
+        free(input);
         return;
     }
 
     // Check for start
     if (strcmp(input, "start") == 0) {
         startGameHandling(config);
+        free(input);
         return;
     }
 
     // Check for display
     if (strcmp(input, "display") == 0) {
         printConfig(config);
+        free(input);
         return;
     }
 
@@ -76,6 +161,7 @@ void handleConfigInput(bool* requestedQuit, struct Config* config) {
 
         if (stones <= 0) {
             renderOutput("Invalid number of stones", CONFIG_PREFIX);
+            free(input);
             return;
         }
 
@@ -85,6 +171,7 @@ void handleConfigInput(bool* requestedQuit, struct Config* config) {
         char* message;
         asprintf(&message, "Updated stones to %d", stones);
         renderOutput(message, CONFIG_PREFIX);
+        free(input);
         return;
     }
 
@@ -99,6 +186,7 @@ void handleConfigInput(bool* requestedQuit, struct Config* config) {
         char* message;
         asprintf(&message, "Updated seed to %d", seed);
         renderOutput(message, CONFIG_PREFIX);
+        free(input);
         return;
     }
 
@@ -109,6 +197,7 @@ void handleConfigInput(bool* requestedQuit, struct Config* config) {
 
         if (time < 0) {
             renderOutput("Invalid time limit", CONFIG_PREFIX);
+            free(input);
             return;
         }
 
@@ -118,6 +207,7 @@ void handleConfigInput(bool* requestedQuit, struct Config* config) {
         char* message;
         asprintf(&message, "Updated time limit to %.2f", time);
         renderOutput(message, CONFIG_PREFIX);
+        free(input);
         return;
     }
 
@@ -128,6 +218,7 @@ void handleConfigInput(bool* requestedQuit, struct Config* config) {
 
         if (depth < 0) {
             renderOutput("Invalid depth limit", CONFIG_PREFIX);
+            free(input);
             return;
         }
 
@@ -137,7 +228,45 @@ void handleConfigInput(bool* requestedQuit, struct Config* config) {
         char* message;
         asprintf(&message, "Updated depth limit to %d", depth);
         renderOutput(message, CONFIG_PREFIX);
+        free(input);
         return;
+    }
+
+    // Check for autoplay
+    if (strncmp(input, "autoplay ", 9) == 0) {
+        // Save original autoplay
+        bool originalAutoplay = config->autoplay;
+
+        // Check if valid autoplay
+        if (strcmp(input + 9, "true") == 0) {
+            config->autoplay = true;
+            if (originalAutoplay) {
+                renderOutput("Autoplay already enabled", CONFIG_PREFIX);
+                free(input);
+                return;
+            }
+
+            renderOutput("Enabled autoplay", CONFIG_PREFIX);
+            free(input);
+            return;
+        } else if (strcmp(input + 9, "false") == 0) {
+            config->autoplay = false;
+            if (!originalAutoplay) {
+                renderOutput("Autoplay already disabled", CONFIG_PREFIX);
+                free(input);
+                return;
+            }
+
+            renderOutput("Disabled autoplay", CONFIG_PREFIX);
+            free(input);
+            return;
+        } else {
+            char* message;
+            asprintf(&message, "Invalid autoplay \"%s\"", input + 9);
+            renderOutput(message, CONFIG_PREFIX);
+            free(input);
+            return;
+        }
     }
 
     // Check for starting
@@ -150,24 +279,29 @@ void handleConfigInput(bool* requestedQuit, struct Config* config) {
             config->startColor = 1;
             if (originalStartColor == 1) {
                 renderOutput("Starting player already set to human", CONFIG_PREFIX);
+                free(input);
                 return;
             }
 
             renderOutput("Updated starting player to human", CONFIG_PREFIX);
+            free(input);
             return;
         } else if (strcmp(input + 9, "ai") == 0) {
             config->startColor = 0;
             if (originalStartColor == 0) {
                 renderOutput("Starting player already set to ai", CONFIG_PREFIX);
+                free(input);
                 return;
             }
 
             renderOutput("Updated starting player to ai", CONFIG_PREFIX);
+            free(input);
             return;
         } else {
             char* message;
             asprintf(&message, "Invalid starting player \"%s\"", input + 9);
             renderOutput(message, CONFIG_PREFIX);
+            free(input);
             return;
         }
     }
@@ -182,24 +316,29 @@ void handleConfigInput(bool* requestedQuit, struct Config* config) {
             config->distribution = UNIFORM;
             if (originalDistribution == UNIFORM) {
                 renderOutput("Distribution already set to uniform", CONFIG_PREFIX);
+                free(input);
                 return;
             }
 
             renderOutput("Updated distribution to uniform", CONFIG_PREFIX);
+            free(input);
             return;
         } else if (strcmp(input + 13, "random") == 0) {
             config->distribution = RANDOM;
             if (originalDistribution == RANDOM) {
                 renderOutput("Distribution already set to random", CONFIG_PREFIX);
+                free(input);
                 return;
             }
 
             renderOutput("Updated distribution to random", CONFIG_PREFIX);
+            free(input);
             return;
         } else {
             char* message;
             asprintf(&message, "Invalid distribution \"%s\"", input + 13);
             renderOutput(message, CONFIG_PREFIX);
+            free(input);
             return;
         }
     }
@@ -208,6 +347,7 @@ void handleConfigInput(bool* requestedQuit, struct Config* config) {
     char* message;
     asprintf(&message, "Unknown command \"%s\"", input);
     renderOutput(message, CONFIG_PREFIX);
+    free(input);
 }
 
 void startInterface() {
@@ -215,13 +355,14 @@ void startInterface() {
     renderWelcome();
 
     // Global config struct
-    struct Config config = {
+    Config config = {
         .stones = 4,
         .distribution = UNIFORM,
         .seed = time(NULL),
         .timeLimit = 5.0,
         .depth = 0,
-        .startColor = 1
+        .startColor = 1,
+        .autoplay = true
     };
 
     // Global loop

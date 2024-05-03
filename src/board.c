@@ -30,13 +30,7 @@ void configBoard(Board *board, int stones) {
 }
 
 void configBoardRand(Board *board, const int stones, const int seed) {
-    // Check for even number of stones
-    if (stones % 2 != 0) {
-        printf("[WARNING]: Reducing %d stones to %d to avoid uneven distribution\n", stones, stones - 1);
-    }
-
-    // Since we are double assigning per 
-    int remainingStones = stones / 2;
+    int remainingStones = stones * 12;
 
     // Check for uint8_t bounds
     if (remainingStones > UINT8_MAX / 2) {
