@@ -61,11 +61,11 @@ void renderWelcome() {
 void renderConfigHelp() {
     printf("%s%sCommands:\n", CONFIG_PREFIX, OUTPUT_PREFIX);
     printf("%s%s  start                            : Start the game\n", CONFIG_PREFIX, OUTPUT_PREFIX);
-    printf("%s%s  stones [number > 0]              : Set number of stones per pit (default: 4)\n", CONFIG_PREFIX, OUTPUT_PREFIX);
+    printf("%s%s  stones [number > 0]              : Set number of stones per pit\n", CONFIG_PREFIX, OUTPUT_PREFIX);
     printf("%s%s  distribution [uniform | random]  : Configure distribution of stones \n", CONFIG_PREFIX, OUTPUT_PREFIX);
-    printf("%s%s  seed [number]                    : Set seed for random distribution (if not specified random)\n", CONFIG_PREFIX, OUTPUT_PREFIX);
+    printf("%s%s  seed [number]                    : Set seed for random distribution\n", CONFIG_PREFIX, OUTPUT_PREFIX);
     printf("%s%s  time [number >= 0]               : Set time limit for AI in seconds, if 0 unlimited\n", CONFIG_PREFIX, OUTPUT_PREFIX);
-    printf("%s%s  depth [number >= 0]              : Set depth limit for AI, if 0 not depth limited\n", CONFIG_PREFIX, OUTPUT_PREFIX);
+    printf("%s%s  depth [number >= 0]              : Set depth limit for AI, if 0 unlimited\n", CONFIG_PREFIX, OUTPUT_PREFIX);
     printf("%s%s  starting [human | ai]            : Configure starting player\n", CONFIG_PREFIX, OUTPUT_PREFIX);
     printf("%s%s  display                          : Display current configuration\n", CONFIG_PREFIX, OUTPUT_PREFIX);
     printf("%s%s  help                             : Print this help message\n", CONFIG_PREFIX, OUTPUT_PREFIX);
