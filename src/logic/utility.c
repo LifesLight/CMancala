@@ -31,3 +31,7 @@ void initializeBoardFromConfig(Board* board, Config* config) {
     }
     board->color = config->startColor;
 }
+
+void quitGame() {
+    exit(0);
+}

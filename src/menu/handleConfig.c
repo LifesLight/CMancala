@@ -48,7 +48,7 @@ void printConfig(Config* config) {
 }
 
 
-void handleConfigInput(bool* requestedQuit, bool* requestedStart, Config* config) {
+void handleConfigInput(bool* requestedStart, Config* config) {
     // Wait for user input
     char* input = malloc(256);
     getInput(input, CONFIG_PREFIX);
@@ -62,8 +62,8 @@ void handleConfigInput(bool* requestedQuit, bool* requestedStart, Config* config
 
     // Check for quit
     if (strcmp(input, "quit") == 0 || strcmp(input, "q") == 0) {
-        *requestedQuit = true;
         free(input);
+        quitGame();
         return;
     }
 

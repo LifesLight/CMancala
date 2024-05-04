@@ -21,10 +21,9 @@ void startInterface() {
     };
 
     // Global loop
-    bool requestedQuit = false;
-    while (!requestedQuit) {
+    while (true) {
         bool requestedStart = false;
-        handleConfigInput(&requestedQuit, &requestedStart, &config);
+        handleConfigInput(&requestedStart, &config);
 
         if (requestedStart) {
             startGameHandling(&config);

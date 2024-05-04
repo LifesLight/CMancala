@@ -13,3 +13,4 @@
 
 void getInput(char* input, const char* prefix);
 void initializeBoardFromConfig(Board* board, Config* config);
+void quitGame();

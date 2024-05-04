@@ -16,4 +16,4 @@
 #include "render.h"
 #include "utility.h"
 
-void handleConfigInput(bool* requestedQuit, bool* requestedStart, Config* config);
+void handleConfigInput(bool* requestedStart, Config* config);

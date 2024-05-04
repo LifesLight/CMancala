@@ -5,6 +5,7 @@
  */
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #include "config.h"
 
@@ -19,7 +20,7 @@ typedef struct {
     int seed;
     double timeLimit;
     int depth;
-    int startColor;
+    bool startColor;
     bool autoplay;
 } Config;
 
