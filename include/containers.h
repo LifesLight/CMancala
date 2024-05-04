@@ -26,7 +26,7 @@ typedef struct {
     int seed;
     double timeLimit;
     int depth;
-    bool startColor;
+    uint8_t startColor;
     bool autoplay;
     Agent player1;
     Agent player2;

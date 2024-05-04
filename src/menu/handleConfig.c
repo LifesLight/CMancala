@@ -13,7 +13,7 @@ void renderConfigHelp() {
     renderOutput("  seed [number]                    : Set seed for random distribution, if 0 device time", CONFIG_PREFIX);
     renderOutput("  time [number >= 0]               : Set time limit for AI in seconds, if 0 unlimited", CONFIG_PREFIX);
     renderOutput("  depth [number >= 0]              : Set depth limit for AI, if 0 unlimited", CONFIG_PREFIX);
-    renderOutput("  starting [1|2]                   : Configure starting color", CONFIG_PREFIX);
+    renderOutput("  starting [1|2]                   : Configure starting player", CONFIG_PREFIX);
     renderOutput("  player [1|2] [human|random|ai]   : Configure player", CONFIG_PREFIX);
     renderOutput("  display                          : Display current configuration", CONFIG_PREFIX);
     renderOutput("  autoplay [true|false]            : If enabled the game loop will automatically continue", CONFIG_PREFIX);
@@ -272,7 +272,7 @@ void handleConfigInput(bool* requestedStart, Config* config) {
         config->startColor = starting == 1 ? 1 : -1;
 
         char* message = malloc(256);
-        asprintf(&message, "Updated starting color to %d", starting);
+        asprintf(&message, "Updated starting player to %d", starting);
         renderOutput(message, CONFIG_PREFIX);
         free(input);
         free(message);
