@@ -377,7 +377,7 @@ void handleConfigInput(bool* requestedStart, Config* config) {
 
     // Unknown command
     char* message = malloc(256);
-    asprintf(&message, "Unknown command \"%s\"", input);
+    asprintf(&message, "Unknown command \"%s\". Type \"help\" to get all current commands", input);
     renderOutput(message, CONFIG_PREFIX);
     free(message);
     free(input);

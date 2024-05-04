@@ -121,7 +121,7 @@ void getMoveHuman(bool* requestMenu, Context* context) {
         }
 
         char* message = malloc(256);
-        asprintf(&message, "Unknown command: %s", input);
+        asprintf(&message, "Unknown command: %s. Type \"help\" to get all current commands", input);
         renderOutput(message, PLAY_PREFIX);
         free(input);
         free(message);
