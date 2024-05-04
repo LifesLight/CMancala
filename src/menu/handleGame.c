@@ -11,17 +11,19 @@ void renderCheatHelp() {
     renderOutput("  switch                           : Switch the next player", CHEAT_PREFIX);
     renderOutput("  edit [player] [idx] [value]      : Edit cell value", CHEAT_PREFIX);
     renderOutput("  render                           : Render the current board", CHEAT_PREFIX);
-    renderOutput("  autoplay [true|false]            : If enabled the game loop will automatically continue", CONFIG_PREFIX);
     renderOutput("  last                             : Fetch the last moves metadata", CHEAT_PREFIX);
-    renderOutput("  config                           : Return the config menu", CHEAT_PREFIX);
+    renderOutput("  autoplay [true|false]            : If enabled the game loop will automatically continue", CONFIG_PREFIX);
+    renderOutput("  config                           : Return the config menu. Will discard the current game", CHEAT_PREFIX);
     renderOutput("  help                             : Print this help", CHEAT_PREFIX);
     renderOutput("  quit                             : Quit the application", CHEAT_PREFIX);
 }
 
 void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* context) {
+    // TODO:
     // Hash gamestate
-    // Load hashed gamestate
-    // Evaluate gamestate
+    // Load hashed gamestate -> maybe in config?
+    // Reevaluate Evaluate gamestate
+
     char* input = malloc(256);
     getInput(input, CHEAT_PREFIX);
 

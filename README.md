@@ -6,28 +6,13 @@ CMancala is a computer implementation of the classic board game Mancala. This ve
 ## Rules
 The game adheres to basic Mancala rules. In addition, an **Avalanche** mode is available, offering a different style of gameplay.
 
-## Command-Line Arguments
-CMancala supports several command-line arguments to configure gameplay:
-- `--stones <number>`: Sets the number of stones per cell with a standard distribution.
-- `--rstones <number>`: Sets the number of stones in total with a random distribution.
-- `--seed <number>`: Sets the seed for random stones, if unset uses device time.
-- `--time <seconds>`: Sets an approximate thinking time for the AI.
-- `--depth <number>`: Sets the depth for the Negamax algorithm; if specified, overrides the time-based search.
-- `--ai-start`: The AI will make the first move.
-- `--human-start`: The human player will make the first move (default).
-- ``--help``: Print usage info.
+## Interface
+CMancala starts in **config** mode, where you can set up the game hyperparameters.<br>
+When starting the game you will enter one of two modes, between which you can switch at all times:
+- **Menu:** Perform operations on the current game.
+- **Playing:** Play the current game.
 
-## Understanding Terminal Outputs
-
-The terminal output provides a visual representation of the game state along with key information about the current turn and the game's progress:<br>
-- **Board Layout**: The game board is displayed in a grid format.<br> Each cell contains a number representing the stones in that particular cell.<br> The layout is mirrored for each player.<br>
-- **Turn Indicator**: `Turn: P1` or `Turn: P2` indicates which player's turn it is.<br> P1 stands for Player 1 (Human) and P2 for Player 2 (AI).<br>
-- **Evaluation Score**: Displayed as `Evaluation: <number>`.<br> This score estimates the current advantage in terms of stones.<br> A positive score indicates an advantage for Player 1 (Human), and a negative score indicates an advantage for Player 2 (AI).<br> The magnitude of the score reflects the extent of the lead or deficit.<br> For example, `Evaluation: -8` suggests Player 1 is currently predicted to lose by 8 stones if both players continue with optimal play.<br>
-- **Depth Reached**: When the AI makes a move, you will see `Depth reached: <number>`.<br> This shows how many moves ahead the AI calculated during its turn.<br>
-- **AI Move**: After the AI completes its turn, `AI move: <cell number>` shows the cell index chosen by the AI for its move.<br>
-- **Enter Move**: During the human player's turn, `Enter move:` prompts you to input your move.<br>
-- **([Not] Solved)**: If Solved, the evaluation is the guaranteed outcome with perfect play.
-
+More information is provided via "help" which provides all legal commands in every mode.
 
 ## Performance
 The AI operates on a single thread.<br> Its performance varies based on the game's state:<br>

@@ -7,7 +7,7 @@
 
 void renderPlayHelp() {
     renderOutput("Commands:", PLAY_PREFIX);
-    renderOutput("  move <idx>                       : Move to the index cell", PLAY_PREFIX);
+    renderOutput("  move [idx]                       : Move to the index cell", PLAY_PREFIX);
     renderOutput("  menu                             : Return to the game menu", PLAY_PREFIX);
     renderOutput("  help                             : Print this help", PLAY_PREFIX);
     renderOutput("  quit                             : Quit the application", PLAY_PREFIX);
