@@ -9,19 +9,27 @@
 
 #include "config.h"
 
-enum Distribution {
-    UNIFORM,
-    RANDOM
-};
+typedef enum {
+    UNIFORM_DIST,
+    RANDOM_DIST
+} Distribution;
+
+typedef enum {
+    HUMAN_AGENT,
+    RANDOM_AGENT,
+    AI_AGENT
+} Agent;
 
 typedef struct {
     int stones;
-    enum Distribution distribution;
+    Distribution distribution;
     int seed;
     double timeLimit;
     int depth;
     bool startColor;
     bool autoplay;
+    Agent player1;
+    Agent player2;
 } Config;
 
 typedef struct {

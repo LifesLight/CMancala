@@ -24,7 +24,7 @@ void getInput(char* input, const char* prefix) {
 
 void initializeBoardFromConfig(Board* board, Config* config) {
     // Initialize board
-    if (config->distribution == UNIFORM) {
+    if (config->distribution == UNIFORM_DIST) {
         configBoard(board, config->stones);
     } else {
         configBoardRand(board, config->stones, config->seed);

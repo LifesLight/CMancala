@@ -16,6 +16,5 @@
 #include "render.h"
 #include "algo.h"
 #include "utility.h"
-#include "handlePlaying.h"
 
-void startGameHandling(Config* config);
+void stepGame(bool* requestedMenu, Context* context);

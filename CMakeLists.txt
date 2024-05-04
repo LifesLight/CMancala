@@ -11,6 +11,7 @@ set(SOURCE_FILES
     src/logic/algo.c
     src/menu/handleConfig.c
     src/menu/handleGame.c
+    src/menu/handlePlaying.c
     src/menu/interface.c
 )
 

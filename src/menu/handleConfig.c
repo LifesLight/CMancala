@@ -13,7 +13,9 @@ void renderConfigHelp() {
     renderOutput("  seed [number]                    : Set seed for random distribution", CONFIG_PREFIX);
     renderOutput("  time [number >= 0]               : Set time limit for AI in seconds, if 0 unlimited", CONFIG_PREFIX);
     renderOutput("  depth [number >= 0]              : Set depth limit for AI, if 0 unlimited", CONFIG_PREFIX);
-    renderOutput("  starting [human | ai]            : Configure starting player", CONFIG_PREFIX);
+    renderOutput("  starting [1 | 2]                 : Configure starting color", CONFIG_PREFIX);
+    renderOutput("  p1 [human | random | ai]         : Configure player 1", CONFIG_PREFIX);
+    renderOutput("  p2 [human | random | ai]         : Configure player 2", CONFIG_PREFIX);
     renderOutput("  display                          : Display current configuration", CONFIG_PREFIX);
     renderOutput("  autoplay [true | false]          : If enabled the game loop will automatically continue", CONFIG_PREFIX);
     renderOutput("  help                             : Print this help message", CONFIG_PREFIX);
@@ -25,9 +27,13 @@ void printConfig(Config* config) {
     renderOutput("Current configuration:", CONFIG_PREFIX);
     asprintf(&message, "  Stones: %d", config->stones);
     renderOutput(message, CONFIG_PREFIX);
-    asprintf(&message, "  Distribution: %s", config->distribution == UNIFORM ? "uniform" : "random");
-    if (config->distribution == RANDOM) {
-        asprintf(&message, "%s (seed: %d)", message, config->seed);
+    switch (config->distribution) {
+        case UNIFORM_DIST:
+            asprintf(&message, "  Distribution: uniform");
+            break;
+        case RANDOM_DIST:
+            asprintf(&message, "  Distribution: random (seed: %d)", config->seed);
+            break;
     }
     renderOutput(message, CONFIG_PREFIX);
     asprintf(&message, "  Time: %.2f", config->timeLimit);
@@ -40,7 +46,31 @@ void printConfig(Config* config) {
         asprintf(&message, "%s (unlimited)", message);
     }
     renderOutput(message, CONFIG_PREFIX);
-    asprintf(&message, "  Starting: %s", config->startColor == 1 ? "human" : "ai");
+    asprintf(&message, "  Starting: %d", config->startColor == 1 ? 1 : 2);
+    renderOutput(message, CONFIG_PREFIX);
+    switch (config->player1) {
+        case HUMAN_AGENT:
+            asprintf(&message, "  Player 1: human");
+            break;
+        case RANDOM_AGENT:
+            asprintf(&message, "  Player 1: random");
+            break;
+        case AI_AGENT:
+            asprintf(&message, "  Player 1: ai");
+            break;
+    }
+    renderOutput(message, CONFIG_PREFIX);
+    switch (config->player2) {
+        case HUMAN_AGENT:
+            asprintf(&message, "  Player 2: human");
+            break;
+        case RANDOM_AGENT:
+            asprintf(&message, "  Player 2: random");
+            break;
+        case AI_AGENT:
+            asprintf(&message, "  Player 2: ai");
+            break;
+    }
     renderOutput(message, CONFIG_PREFIX);
     asprintf(&message, "  Autoplay: %s", config->autoplay ? "true" : "false");
     renderOutput(message, CONFIG_PREFIX);
@@ -219,38 +249,78 @@ void handleConfigInput(bool* requestedStart, Config* config) {
 
     // Check for starting
     if (strncmp(input, "starting ", 9) == 0) {
-        // Save original starting player
-        int originalStartColor = config->startColor;
+        // Check if valid starting color
+        int starting = atoi(input + 9);
 
-        // Check if valid starting player
-        if (strcmp(input + 9, "human") == 0) {
-            config->startColor = 1;
-            if (originalStartColor == 1) {
-                renderOutput("Starting player already set to human", CONFIG_PREFIX);
-                free(input);
-                return;
-            }
-
-            renderOutput("Updated starting player to human", CONFIG_PREFIX);
+        if (starting != 1 && starting != 2) {
+            renderOutput("Invalid starting color", CONFIG_PREFIX);
             free(input);
             return;
-        } else if (strcmp(input + 9, "ai") == 0) {
-            config->startColor = 0;
-            if (originalStartColor == 0) {
-                renderOutput("Starting player already set to ai", CONFIG_PREFIX);
-                free(input);
-                return;
-            }
+        }
 
-            renderOutput("Updated starting player to ai", CONFIG_PREFIX);
+        // Update config
+        config->startColor = starting == 1 ? 1 : -1;
+
+        char* message = malloc(256);
+        asprintf(&message, "Updated starting color to %d", starting);
+        renderOutput(message, CONFIG_PREFIX);
+        free(input);
+        free(message);
+        return;
+    }
+
+    // Check for p1
+    if (strncmp(input, "p1 ", 3) == 0) {
+        // Check if valid player
+        if (strcmp(input + 3, "human") == 0) {
+            config->player1 = HUMAN_AGENT;
+            renderOutput("Updated player 1 to human", CONFIG_PREFIX);
+            free(input);
+            return;
+        } else if (strcmp(input + 3, "random") == 0) {
+            config->player1 = RANDOM_AGENT;
+            renderOutput("Updated player 1 to random", CONFIG_PREFIX);
+            free(input);
+            return;
+        } else if (strcmp(input + 3, "ai") == 0) {
+            config->player1 = AI_AGENT;
+            renderOutput("Updated player 1 to ai", CONFIG_PREFIX);
             free(input);
             return;
         } else {
             char* message = malloc(256);
-            asprintf(&message, "Invalid starting player \"%s\"", input + 9);
+            asprintf(&message, "Invalid player \"%s\"", input + 3);
             renderOutput(message, CONFIG_PREFIX);
-            free(message);
             free(input);
+            free(message);
+            return;
+        }
+    }
+
+    // Check for p2
+    if (strncmp(input, "p2 ", 3) == 0) {
+        // Check if valid player
+        if (strcmp(input + 3, "human") == 0) {
+            config->player2 = HUMAN_AGENT;
+            renderOutput("Updated player 2 to human", CONFIG_PREFIX);
+            free(input);
+            return;
+        } else if (strcmp(input + 3, "random") == 0) {
+            config->player2 = RANDOM_AGENT;
+            renderOutput("Updated player 2 to random", CONFIG_PREFIX);
+            free(input);
+            return;
+        } else if (strcmp(input + 3, "ai") == 0) {
+            config->player2 = AI_AGENT;
+            renderOutput("Updated player 2 to ai", CONFIG_PREFIX);
+            free(input);
+            return;
+        } else {
+            char* message = malloc(256);
+            asprintf(&message, "Invalid player \"%s\"", input + 3);
+            renderOutput(message, CONFIG_PREFIX);
+            free(input);
+            free(message);
             return;
         }
     }
@@ -258,12 +328,12 @@ void handleConfigInput(bool* requestedStart, Config* config) {
     // Check for distribution
     if (strncmp(input, "distribution ", 13) == 0) {
         // Save original distribution
-        enum Distribution originalDistribution = config->distribution;
+        Distribution originalDistribution = config->distribution;
 
         // Check if valid distribution
         if (strcmp(input + 13, "uniform") == 0) {
-            config->distribution = UNIFORM;
-            if (originalDistribution == UNIFORM) {
+            config->distribution = UNIFORM_DIST;
+            if (originalDistribution == UNIFORM_DIST) {
                 renderOutput("Distribution already set to uniform", CONFIG_PREFIX);
                 free(input);
                 return;
@@ -273,8 +343,8 @@ void handleConfigInput(bool* requestedStart, Config* config) {
             free(input);
             return;
         } else if (strcmp(input + 13, "random") == 0) {
-            config->distribution = RANDOM;
-            if (originalDistribution == RANDOM) {
+            config->distribution = RANDOM_DIST;
+            if (originalDistribution == RANDOM_DIST) {
                 renderOutput("Distribution already set to random", CONFIG_PREFIX);
                 free(input);
                 return;

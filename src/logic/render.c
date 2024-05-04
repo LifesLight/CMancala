@@ -25,7 +25,12 @@ void renderBoard(const Board *board, const char* prefix) {
     for (int i = HBOUND_P2; i > LBOUND_P2; --i) {
         printf("%3d%s", board->cells[i], VL);
     }
-    printf("%3d%s%s%s%s%s\n", board->cells[LBOUND_P2], EL, HL, HL, HL, TR);
+    printf("%3d%s%s%s%s%s", board->cells[LBOUND_P2], EL, HL, HL, HL, TR);
+
+    if (board->color == -1) {
+        printf("  %s", PLAYER_INDICATOR);
+    }
+    printf("\n");
 
     // Middle separator
     printf("%s%s%s%3d%s%s", prefix, OUTPUT_PREFIX, VL, board->cells[SCORE_P2], EL, HL);
@@ -39,7 +44,12 @@ void renderBoard(const Board *board, const char* prefix) {
     for (int i = LBOUND_P1; i < HBOUND_P1; ++i) {
         printf("%3d%s", board->cells[i], VL);
     }
-    printf("%3d%s%s%s%s%s\n", board->cells[HBOUND_P1], EL, HL, HL, HL, BR);
+    printf("%3d%s%s%s%s%s", board->cells[HBOUND_P1], EL, HL, HL, HL, BR);
+
+    if (board->color == 1) {
+        printf("  %s", PLAYER_INDICATOR);
+    }
+    printf("\n");
 
     // Bottom footer
     printf("%s%s    %s%s", prefix, OUTPUT_PREFIX, BL, HL);
