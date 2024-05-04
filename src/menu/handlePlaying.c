@@ -21,9 +21,9 @@ void getMoveRandom(Context* context) {
     Board* board = context->board;
     int offset = board->color == 1 ? 0 : 7;
 
-    int idx = rand() % 5 + offset;
+    int idx = rand() % 6 + offset;
     while (board->cells[idx] == 0) {
-        idx = rand() % 5 + offset;
+        idx = rand() % 6 + offset;
     }
 
     context->lastMove = idx;
