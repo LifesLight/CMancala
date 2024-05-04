@@ -99,10 +99,10 @@ void getMoveHuman(bool* requestMenu, Context* context) {
         // Check for move
         if (strncmp(input, "move", 4) == 0) {
             int idx = atoi(input + 5);
-            if (idx < 1 || idx >= 6) {
+            if (idx < 1 || idx > 6) {
                 renderOutput("Invalid index", CHEAT_PREFIX);
                 free(input);
-                return;
+                continue;
             }
 
             idx = idx - 1;
@@ -111,13 +111,13 @@ void getMoveHuman(bool* requestMenu, Context* context) {
             if (board->cells[idx] == 0) {
                 renderOutput("Cell is empty", CHEAT_PREFIX);
                 free(input);
-                return;
+                continue;
             }
 
             context->lastMove = idx;
 
             free(input);
-            break;
+            return;
         }
 
         char* message = malloc(256);
