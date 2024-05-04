@@ -45,4 +45,5 @@ typedef struct {
     int lastMove;
     int lastDepth;
     bool lastSolved;
+    bool gameOver;
 } Context;
