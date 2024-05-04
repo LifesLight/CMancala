@@ -27,4 +27,3 @@
 #define CONFIG_PREFIX    "(C) "
 #define CHEAT_PREFIX     "(G) "
 #define PLAY_PREFIX      "(P) "
-#define PLAYER_INDICATOR "<-"

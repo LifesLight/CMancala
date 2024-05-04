@@ -7,12 +7,15 @@
 void renderCheatHelp() {
     renderOutput("Commands:", CHEAT_PREFIX);
     renderOutput("  step                             : Step to the next turn", CHEAT_PREFIX);
+    renderOutput("  render                           : Render the current board", CHEAT_PREFIX);
+    renderOutput("  autoplay [true|false]            : If enabled the game loop will automatically continue", CONFIG_PREFIX);
+    renderOutput("  last                             : Fetch the last moves metadata", CHEAT_PREFIX);
     renderOutput("  config                           : Return the config menu", CHEAT_PREFIX);
     renderOutput("  help                             : Print this help", CHEAT_PREFIX);
     renderOutput("  quit                             : Quit the application", CHEAT_PREFIX);
 }
 
-void handleGameInput(bool* requestedConfig, bool* requestContinue,Board* board, Config* config) {
+void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* context) {
     // Set next player
     // Edit cell
     // Hash gamestate
@@ -36,6 +39,82 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue,Board* board, 
     if (strcmp(input, "") == 0) {
         free(input);
         return;
+    }
+
+    // Check for render
+    if (strcmp(input, "render") == 0) {
+        renderBoard(context->board, CHEAT_PREFIX, context->config);
+        free(input);
+        return;
+    }
+
+    // Check for last
+    if (strcmp(input, "last") == 0) {
+        char* message = malloc(256);
+        asprintf(&message, "Metadata:");
+        renderOutput(message, CHEAT_PREFIX);
+
+        if (context->lastMove != -1) {
+            asprintf(&message, "  Move: %d", context->lastMove > 5 ? 13 - context->lastMove : context->lastMove + 1);
+            renderOutput(message, CHEAT_PREFIX);
+        }
+
+        if (context->lastEvaluation != INT32_MAX) {
+            asprintf(&message, "  Depth: %d", context->lastDepth);
+            renderOutput(message, CHEAT_PREFIX);
+
+            asprintf(&message, "  Evaluation: %d", context->lastEvaluation);
+            renderOutput(message, CHEAT_PREFIX);
+
+            if (context->lastSolved) {
+                asprintf(&message, "  Solved: true");
+            } else {
+                asprintf(&message, "  Solved: false");
+            }
+            renderOutput(message, CHEAT_PREFIX);
+        }
+
+        free(message);
+        free(input);
+        return;
+    }
+
+    // Check for autoplay
+    if (strncmp(input, "autoplay ", 9) == 0) {
+        // Save original autoplay
+        bool originalAutoplay = context->config->autoplay;
+
+        // Check if valid autoplay
+        if (strcmp(input + 9, "true") == 0 || strcmp(input + 9, "1") == 0) {
+            context->config->autoplay = true;
+            if (originalAutoplay) {
+                renderOutput("Autoplay already enabled", CHEAT_PREFIX);
+                free(input);
+                return;
+            }
+
+            renderOutput("Enabled autoplay", CHEAT_PREFIX);
+            free(input);
+            return;
+        } else if (strcmp(input + 9, "false") == 0 || strcmp(input + 9, "0") == 0) {
+            context->config->autoplay = false;
+            if (!originalAutoplay) {
+                renderOutput("Autoplay already disabled", CHEAT_PREFIX);
+                free(input);
+                return;
+            }
+
+            renderOutput("Disabled autoplay", CHEAT_PREFIX);
+            free(input);
+            return;
+        } else {
+            char* message = malloc(256);
+            asprintf(&message, "Invalid autoplay \"%s\"", input + 9);
+            renderOutput(message, CHEAT_PREFIX);
+            free(message);
+            free(input);
+            return;
+        }
     }
 
     // Check for request to quit
@@ -76,16 +155,19 @@ void startGameHandling(Config* config) {
     Context context = {
         .board = &board,
         .config = config,
-        .lastEvaluation = 0,
-        .lastMove = -1
+        .lastEvaluation = INT32_MAX,
+        .lastMove = -1,
+        .lastDepth = 0,
+        .lastSolved = false
     };
 
     // Start game loop
     bool requestedConfig = false;
     bool requestedContinue = config->autoplay ? true : false;
+    bool gameOver = false;
 
     while(!requestedConfig) {
-        while(requestedContinue) {
+        while(requestedContinue && !gameOver) {
             bool requestedMenu = false;
             stepGame(&requestedMenu, &context);
 
@@ -93,8 +175,31 @@ void startGameHandling(Config* config) {
                 requestedContinue = false;
                 break;
             }
+
+            if (isBoardPlayerOneEmpty(&board) || isBoardPlayerTwoEmpty(&board)) {
+                gameOver = true;
+
+                renderBoard(&board, PLAY_PREFIX, config);
+
+                int score1 = board.cells[SCORE_P1];
+                int score2 = board.cells[SCORE_P2];
+
+                char* message = malloc(256);
+                if (score1 > score2) {
+                    asprintf(&message, "Player 1 wins");
+                } else if (score1 < score2) {
+                    asprintf(&message, "Player 2 wins");
+                } else {
+                    asprintf(&message, "Draw");
+                }
+
+                asprintf(&message, "%s, score: %d - %d", message, score1, score2);
+                renderOutput(message, PLAY_PREFIX);
+
+                break;
+            }
         }
 
-        handleGameInput(&requestedConfig, &requestedContinue, &board, config);
+        handleGameInput(&requestedConfig, &requestedContinue, &context);
     }
 }

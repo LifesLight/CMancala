@@ -42,4 +42,6 @@ typedef struct {
     Config* config;
     int lastEvaluation;
     int lastMove;
+    int lastDepth;
+    bool lastSolved;
 } Context;

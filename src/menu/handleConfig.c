@@ -9,15 +9,14 @@ void renderConfigHelp() {
     renderOutput("Commands:", CONFIG_PREFIX);
     renderOutput("  start                            : Start the game", CONFIG_PREFIX);
     renderOutput("  stones [number > 0]              : Set number of stones per pit", CONFIG_PREFIX);
-    renderOutput("  distribution [uniform | random]  : Configure distribution of stones", CONFIG_PREFIX);
-    renderOutput("  seed [number]                    : Set seed for random distribution", CONFIG_PREFIX);
+    renderOutput("  distribution [uniform|random]    : Configure distribution of stones", CONFIG_PREFIX);
+    renderOutput("  seed [number]                    : Set seed for random distribution, if 0 device time", CONFIG_PREFIX);
     renderOutput("  time [number >= 0]               : Set time limit for AI in seconds, if 0 unlimited", CONFIG_PREFIX);
     renderOutput("  depth [number >= 0]              : Set depth limit for AI, if 0 unlimited", CONFIG_PREFIX);
-    renderOutput("  starting [1 | 2]                 : Configure starting color", CONFIG_PREFIX);
-    renderOutput("  p1 [human | random | ai]         : Configure player 1", CONFIG_PREFIX);
-    renderOutput("  p2 [human | random | ai]         : Configure player 2", CONFIG_PREFIX);
+    renderOutput("  starting [1|2]                   : Configure starting color", CONFIG_PREFIX);
+    renderOutput("  player [1|2] [human|random|ai]   : Configure player", CONFIG_PREFIX);
     renderOutput("  display                          : Display current configuration", CONFIG_PREFIX);
-    renderOutput("  autoplay [true | false]          : If enabled the game loop will automatically continue", CONFIG_PREFIX);
+    renderOutput("  autoplay [true|false]            : If enabled the game loop will automatically continue", CONFIG_PREFIX);
     renderOutput("  help                             : Print this help message", CONFIG_PREFIX);
     renderOutput("  quit                             : Quit the application", CONFIG_PREFIX);
 }
@@ -32,9 +31,11 @@ void printConfig(Config* config) {
             asprintf(&message, "  Distribution: uniform");
             break;
         case RANDOM_DIST:
-            asprintf(&message, "  Distribution: random (seed: %d)", config->seed);
+            asprintf(&message, "  Distribution: random");
             break;
     }
+    renderOutput(message, CONFIG_PREFIX);
+    asprintf(&message, "  Seed: %d", config->seed);
     renderOutput(message, CONFIG_PREFIX);
     asprintf(&message, "  Time: %.2f", config->timeLimit);
     if (config->timeLimit == 0) {
@@ -149,6 +150,44 @@ void handleConfigInput(bool* requestedStart, Config* config) {
         return;
     }
 
+    // Check for autoplay
+    if (strncmp(input, "autoplay ", 9) == 0) {
+        // Save original autoplay
+        bool originalAutoplay = config->autoplay;
+
+        // Check if valid autoplay
+        if (strcmp(input + 9, "true") == 0 || strcmp(input + 9, "1") == 0) {
+            config->autoplay = true;
+            if (originalAutoplay) {
+                renderOutput("Autoplay already enabled", CONFIG_PREFIX);
+                free(input);
+                return;
+            }
+
+            renderOutput("Enabled autoplay", CONFIG_PREFIX);
+            free(input);
+            return;
+        } else if (strcmp(input + 9, "false") == 0 || strcmp(input + 9, "0") == 0) {
+            config->autoplay = false;
+            if (!originalAutoplay) {
+                renderOutput("Autoplay already disabled", CONFIG_PREFIX);
+                free(input);
+                return;
+            }
+
+            renderOutput("Disabled autoplay", CONFIG_PREFIX);
+            free(input);
+            return;
+        } else {
+            char* message = malloc(256);
+            asprintf(&message, "Invalid autoplay \"%s\"", input + 9);
+            renderOutput(message, CONFIG_PREFIX);
+            free(message);
+            free(input);
+            return;
+        }
+    }
+
     // Check for seed
     if (strncmp(input, "seed ", 5) == 0) {
         // Check if valid number
@@ -156,6 +195,15 @@ void handleConfigInput(bool* requestedStart, Config* config) {
 
         // Update config
         config->seed = seed;
+
+        if (seed == 0) {
+            renderOutput("Changed to device time based seed", CONFIG_PREFIX);
+        }
+
+        if (seed == 0) {
+            seed = time(NULL);
+            config->seed = seed;
+        }
 
         char* message = malloc(256);
         asprintf(&message, "Updated seed to %d", seed);
@@ -209,44 +257,6 @@ void handleConfigInput(bool* requestedStart, Config* config) {
         return;
     }
 
-    // Check for autoplay
-    if (strncmp(input, "autoplay ", 9) == 0) {
-        // Save original autoplay
-        bool originalAutoplay = config->autoplay;
-
-        // Check if valid autoplay
-        if (strcmp(input + 9, "true") == 0) {
-            config->autoplay = true;
-            if (originalAutoplay) {
-                renderOutput("Autoplay already enabled", CONFIG_PREFIX);
-                free(input);
-                return;
-            }
-
-            renderOutput("Enabled autoplay", CONFIG_PREFIX);
-            free(input);
-            return;
-        } else if (strcmp(input + 9, "false") == 0) {
-            config->autoplay = false;
-            if (!originalAutoplay) {
-                renderOutput("Autoplay already disabled", CONFIG_PREFIX);
-                free(input);
-                return;
-            }
-
-            renderOutput("Disabled autoplay", CONFIG_PREFIX);
-            free(input);
-            return;
-        } else {
-            char* message = malloc(256);
-            asprintf(&message, "Invalid autoplay \"%s\"", input + 9);
-            renderOutput(message, CONFIG_PREFIX);
-            free(message);
-            free(input);
-            return;
-        }
-    }
-
     // Check for starting
     if (strncmp(input, "starting ", 9) == 0) {
         // Check if valid starting color
@@ -269,55 +279,57 @@ void handleConfigInput(bool* requestedStart, Config* config) {
         return;
     }
 
-    // Check for p1
-    if (strncmp(input, "p1 ", 3) == 0) {
+    // Check for player
+    if (strncmp(input, "player ", 7) == 0) {
         // Check if valid player
-        if (strcmp(input + 3, "human") == 0) {
-            config->player1 = HUMAN_AGENT;
-            renderOutput("Updated player 1 to human", CONFIG_PREFIX);
+        int player = atoi(input + 7);
+
+        if (player != 1 && player != 2) {
+            renderOutput("Invalid player", CONFIG_PREFIX);
             free(input);
             return;
-        } else if (strcmp(input + 3, "random") == 0) {
-            config->player1 = RANDOM_AGENT;
-            renderOutput("Updated player 1 to random", CONFIG_PREFIX);
-            free(input);
-            return;
-        } else if (strcmp(input + 3, "ai") == 0) {
-            config->player1 = AI_AGENT;
-            renderOutput("Updated player 1 to ai", CONFIG_PREFIX);
-            free(input);
-            return;
-        } else {
+        }
+
+        // Check for agent
+        if (strncmp(input + 9, "human", 5) == 0) {
+            if (player == 1) {
+                config->player1 = HUMAN_AGENT;
+            } else {
+                config->player2 = HUMAN_AGENT;
+            }
             char* message = malloc(256);
-            asprintf(&message, "Invalid player \"%s\"", input + 3);
+            asprintf(&message, "Updated player %d to human", player);
             renderOutput(message, CONFIG_PREFIX);
             free(input);
             free(message);
             return;
-        }
-    }
-
-    // Check for p2
-    if (strncmp(input, "p2 ", 3) == 0) {
-        // Check if valid player
-        if (strcmp(input + 3, "human") == 0) {
-            config->player2 = HUMAN_AGENT;
-            renderOutput("Updated player 2 to human", CONFIG_PREFIX);
+        } else if (strncmp(input + 9, "random", 6) == 0) {
+            if (player == 1) {
+                config->player1 = RANDOM_AGENT;
+            } else {
+                config->player2 = RANDOM_AGENT;
+            }
+            char* message = malloc(256);
+            asprintf(&message, "Updated player %d to random", player);
+            renderOutput(message, CONFIG_PREFIX);
             free(input);
+            free(message);
             return;
-        } else if (strcmp(input + 3, "random") == 0) {
-            config->player2 = RANDOM_AGENT;
-            renderOutput("Updated player 2 to random", CONFIG_PREFIX);
+        } else if (strncmp(input + 9, "ai", 2) == 0) {
+            if (player == 1) {
+                config->player1 = AI_AGENT;
+            } else {
+                config->player2 = AI_AGENT;
+            }
+            char* message = malloc(256);
+            asprintf(&message, "Updated player %d to ai", player);
+            renderOutput(message, CONFIG_PREFIX);
             free(input);
-            return;
-        } else if (strcmp(input + 3, "ai") == 0) {
-            config->player2 = AI_AGENT;
-            renderOutput("Updated player 2 to ai", CONFIG_PREFIX);
-            free(input);
+            free(message);
             return;
         } else {
             char* message = malloc(256);
-            asprintf(&message, "Invalid player \"%s\"", input + 3);
+            asprintf(&message, "Invalid agent \"%s\"", input + 9);
             renderOutput(message, CONFIG_PREFIX);
             free(input);
             free(message);

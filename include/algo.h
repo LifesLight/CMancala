@@ -38,5 +38,4 @@ int negamaxWithMove(
 /**
  * Negamax with iterative deepening and aspiration window search.
 */
-void negamaxAspirationRoot(
-    Board *board, int *move, int *evaluation, int depthLimit, double timeLimit);
+void negamaxAspirationRoot(Context* context);

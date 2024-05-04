@@ -18,8 +18,8 @@ void startInterface() {
         .depth = 0,
         .startColor = 1,
         .autoplay = true,
-        .player1 = AI_AGENT,
-        .player2 = HUMAN_AGENT
+        .player1 = HUMAN_AGENT,
+        .player2 = AI_AGENT
     };
 
     // Global loop
@@ -28,6 +28,7 @@ void startInterface() {
         handleConfigInput(&requestedStart, &config);
 
         if (requestedStart) {
+            srand(config.seed);
             startGameHandling(&config);
         }
     }

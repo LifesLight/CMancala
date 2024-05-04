@@ -29,7 +29,7 @@ void configBoard(Board *board, int stones) {
     board->color = 1;
 }
 
-void configBoardRand(Board *board, const int stones, const int seed) {
+void configBoardRand(Board *board, const int stones) {
     int remainingStones = stones * 12;
 
     // Check for uint8_t bounds
@@ -42,7 +42,6 @@ void configBoardRand(Board *board, const int stones, const int seed) {
     memset(board->cells, 0, sizeof(board->cells));
 
     // Assign mirrored random stones
-    srand(seed);
     for (int i = 0; i < remainingStones; i++) {
         int index = rand() % 6;
         board->cells[index] += 1;

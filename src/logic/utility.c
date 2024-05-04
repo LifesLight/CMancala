@@ -27,7 +27,7 @@ void initializeBoardFromConfig(Board* board, Config* config) {
     if (config->distribution == UNIFORM_DIST) {
         configBoard(board, config->stones);
     } else {
-        configBoardRand(board, config->stones, config->seed);
+        configBoardRand(board, config->stones);
     }
     board->color = config->startColor;
 }

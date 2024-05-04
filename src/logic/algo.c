@@ -121,7 +121,7 @@ int negamaxWithMove(Board *board, int *bestMove, int alpha, const int beta, cons
 /**
  * Negamax with iterative deepening and aspiration window search
 */
-void negamaxAspirationRoot(Board *board, int *move, int *evaluation, int depthLimit, double timeLimit) {
+void negamaxAspirationRoot(Context* context) {
     /**
      * Aspiration window search hyperparameters
     */
@@ -158,7 +158,7 @@ void negamaxAspirationRoot(Board *board, int *move, int *evaluation, int depthLi
     while (true) {
         // Track if game is solved
         solved = true;
-        score = negamaxWithMove(board, &bestMove, alpha, beta, currentDepth);
+        score = negamaxWithMove(context->board, &bestMove, alpha, beta, currentDepth);
 
         /**
          * Check if score is outside of aspiration window
@@ -175,12 +175,12 @@ void negamaxAspirationRoot(Board *board, int *move, int *evaluation, int depthLi
             }
 
             // Check for depth limit
-            if (currentDepth > depthLimit && depthLimit > 0) {
+            if (currentDepth > context->config->depth && context->config->depth > 0) {
                 break;
             }
 
             // Check for time limit
-            if (((double)(clock() - start) / CLOCKS_PER_SEC) >= timeLimit && timeLimit > 0) {
+            if (((double)(clock() - start) / CLOCKS_PER_SEC) >= context->config->timeLimit && context->config->timeLimit > 0) {
                 break;
             }
         } else {
@@ -193,12 +193,6 @@ void negamaxAspirationRoot(Board *board, int *move, int *evaluation, int depthLi
         }
     }
 
-    // Inform about search results
-    char* message = malloc(256);
-    asprintf(&message, "Depth reached: %d (%s)", currentDepth - 1, solved ? "Solved" : "Not solved");
-    renderOutput(message, PLAY_PREFIX);
-    free(message);
-
     // Warn about high window misses
     // When this happens often, the window size should be increased
     if (windowMisses > currentDepth) {
@@ -208,6 +202,9 @@ void negamaxAspirationRoot(Board *board, int *move, int *evaluation, int depthLi
         free(message);
     }
 
-    *move = bestMove;
-    *evaluation = score;
+    // Return best move and score
+    context->lastMove = bestMove;
+    context->lastEvaluation = score;
+    context->lastDepth = currentDepth - 1;
+    context->lastSolved = solved;
 }

@@ -30,7 +30,7 @@ void configBoard(Board *board, int stones);
  * Configures the board with the given average stones per cell
  * and randomizes the board
 */
-void configBoardRand(Board *board, const int stones, const int seed);
+void configBoardRand(Board *board, const int stones);
 
 /**
  * Returns relative stone count of score cells

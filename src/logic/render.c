@@ -5,7 +5,34 @@
 #include "render.h"
 
 
-void renderBoard(const Board *board, const char* prefix) {
+void renderBoard(const Board *board, const char* prefix, const Config* config) {
+    char* playerDescriptor;
+    if (board->color == 1) {
+        switch (config->player1) {
+            case HUMAN_AGENT:
+                playerDescriptor = "Player";
+                break;
+            case AI_AGENT:
+                playerDescriptor = "AI";
+                break;
+            case RANDOM_AGENT:
+                playerDescriptor = "Random";
+                break;
+        }
+    } else {
+        switch (config->player2) {
+            case HUMAN_AGENT:
+                playerDescriptor = "Player";
+                break;
+            case AI_AGENT:
+                playerDescriptor = "AI";
+                break;
+            case RANDOM_AGENT:
+                playerDescriptor = "Random";
+                break;
+        }
+    }
+
     // Print indices
     printf("%s%sIDX:  ", prefix, OUTPUT_PREFIX);
     for (int i = 1; i < LBOUND_P2; i++) {
@@ -28,7 +55,7 @@ void renderBoard(const Board *board, const char* prefix) {
     printf("%3d%s%s%s%s%s", board->cells[LBOUND_P2], EL, HL, HL, HL, TR);
 
     if (board->color == -1) {
-        printf("  %s", PLAYER_INDICATOR);
+        printf("  %s%s", PLAYER_INDICATOR, playerDescriptor);
     }
     printf("\n");
 
@@ -47,7 +74,7 @@ void renderBoard(const Board *board, const char* prefix) {
     printf("%3d%s%s%s%s%s", board->cells[HBOUND_P1], EL, HL, HL, HL, BR);
 
     if (board->color == 1) {
-        printf("  %s", PLAYER_INDICATOR);
+        printf("  %s%s", PLAYER_INDICATOR, playerDescriptor);
     }
     printf("\n");
 

@@ -23,6 +23,7 @@
 #define ET "+"
 #define EB "+"
 #define CR "+"
+#define PLAYER_INDICATOR "|-> "
 #else
 // Unicode characters for rendering
 #define VL "│"  // Vertical Line
@@ -36,11 +37,12 @@
 #define ET "┬"  // Edge Top
 #define EB "┴"  // Edge Bottom
 #define CR "┼"  // Cross
+#define PLAYER_INDICATOR "┠─▶ "
 #endif
 
 /**
  * Renders the board to the console.
 */
-void renderBoard(const Board *board, const char* prefix);
+void renderBoard(const Board *board, const char* prefix, const Config* config);
 void renderWelcome();
 void renderOutput(const char* message, const char* prefix);

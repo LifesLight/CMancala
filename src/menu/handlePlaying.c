@@ -13,83 +13,174 @@ void renderPlayHelp() {
     renderOutput("  quit                             : Quit the application", PLAY_PREFIX);
 }
 
-void computeAiMove(Context* context) {
+void getMoveAi(Context* context) {
+    negamaxAspirationRoot(context);
+}
+
+void getMoveRandom(Context* context) {
     Board* board = context->board;
-    Config* config = context->config;
-    negamaxAspirationRoot(board, &context->lastMove, &context->lastEvaluation, config->depth, config->timeLimit);
+    int offset = board->color == 1 ? 0 : 7;
+
+    int idx = rand() % 5 + offset;
+    while (board->cells[idx] == 0) {
+        idx = rand() % 5 + offset;
+    }
+
+    context->lastMove = idx;
+    return;
+}
+
+void tellContextNoComputation(Context* context) {
+    context->lastEvaluation = INT32_MAX;
+    context->lastSolved = false;
+}
+
+void getMoveHuman(bool* requestMenu, Context* context) {
+    while (true) {
+        char* input = malloc(256);
+        getInput(input, PLAY_PREFIX);
+
+        // Check for quit
+        if (strcmp(input, "quit") == 0 || strcmp(input, "q") == 0) {
+            free(input);
+            quitGame();
+            return;
+        }
+
+        // Check for request for menu
+        if (strcmp(input, "menu") == 0) {
+            *requestMenu = true;
+            free(input);
+            return;
+        }
+
+        // If empty just continue
+        if (strcmp(input, "") == 0) {
+            free(input);
+            continue;
+        }
+
+        // Check for help
+        if (strcmp(input, "help") == 0) {
+            renderPlayHelp();
+            free(input);
+            continue;
+        }
+
+        // Try parsing just number to move
+        if (atoi(input) != 0) {
+            int idx = atoi(input);
+
+            if (idx < 1 || idx >= 7) {
+                renderOutput("Invalid index", CHEAT_PREFIX);
+                free(input);
+                continue;;
+            }
+
+            idx = idx - 1;
+
+            if (context->board->color == -1) {
+                idx = 5 - idx + 7;
+            }
+
+            Board* board = context->board;
+            if (board->cells[idx] == 0) {
+                renderOutput("Cell is empty", CHEAT_PREFIX);
+                free(input);
+                continue;;
+            }
+
+            context->lastMove = idx;
+
+            free(input);
+            break;
+        }
+
+        // Check for move
+        if (strncmp(input, "move", 4) == 0) {
+            int idx = atoi(input + 5);
+            if (idx < 1 || idx >= 6) {
+                renderOutput("Invalid index", CHEAT_PREFIX);
+                free(input);
+                return;
+            }
+
+            idx = idx - 1;
+
+            Board* board = context->board;
+            if (board->cells[idx] == 0) {
+                renderOutput("Cell is empty", CHEAT_PREFIX);
+                free(input);
+                return;
+            }
+
+            context->lastMove = idx;
+
+            free(input);
+            break;
+        }
+
+        char* message = malloc(256);
+        asprintf(&message, "Unknown command: %s", input);
+        renderOutput(message, PLAY_PREFIX);
+        free(input);
+        free(message);
+    }
+
+    return;
 }
 
 void stepGame(bool* requestedMenu, Context* context) {
-    renderBoard(context->board, PLAY_PREFIX);
-
-    
+    renderBoard(context->board, PLAY_PREFIX, context->config);
 
     // Check turn
-    if (context->board->color != 1) {
-        computeAiMove(context);
-    } else {
-        while (true) {
-            char* input = malloc(256);
-            getInput(input, PLAY_PREFIX);
-
-            // Check for quit
-            if (strcmp(input, "quit") == 0 || strcmp(input, "q") == 0) {
-                free(input);
-                quitGame();
-                return;
-            }
-
-            // Check for request for menu
-            if (strcmp(input, "menu") == 0) {
-                *requestedMenu = true;
-                free(input);
-                return;
-            }
-
-            // If empty just continue
-            if (strcmp(input, "") == 0) {
-                free(input);
-                continue;
-            }
-
-            // Check for help
-            if (strcmp(input, "help") == 0) {
-                renderPlayHelp();
-                free(input);
-                continue;
-            }
-
-            // Check for move
-            if (strncmp(input, "move", 4) == 0) {
-                int idx = atoi(input + 5);
-                if (idx < 1 || idx >= 6) {
-                    renderOutput("Invalid index", CHEAT_PREFIX);
-                    free(input);
-                    return;
-                }
-
-                idx = idx - 1;
-
-                Board* board = context->board;
-                if (board->cells[idx] == 0) {
-                    renderOutput("Cell is empty", CHEAT_PREFIX);
-                    free(input);
-                    return;
-                }
-
-                context->lastMove = idx;
-                context->lastEvaluation = INT32_MAX;
-                free(input);
+    if (context->board->color == 1) {
+        switch (context->config->player1) {
+            case AI_AGENT:
+                getMoveAi(context);
+                *requestedMenu = false;
                 break;
-            }
-
-            char* message = malloc(256);
-            asprintf(&message, "Unknown command: %s", input);
-            renderOutput(message, PLAY_PREFIX);
-            free(input);
-            free(message);
+            case RANDOM_AGENT:
+                getMoveRandom(context);
+                *requestedMenu = false;
+                tellContextNoComputation(context);
+                break;
+            case HUMAN_AGENT:
+                getMoveHuman(requestedMenu, context);
+                if (!*requestedMenu) {
+                    tellContextNoComputation(context);
+                }
+                break;
+        }
+    } else {
+        switch (context->config->player2) {
+            case AI_AGENT:
+                getMoveAi(context);
+                *requestedMenu = false;
+                break;
+            case RANDOM_AGENT:
+                getMoveRandom(context);
+                tellContextNoComputation(context);
+                *requestedMenu = false;
+                break;
+            case HUMAN_AGENT:
+                getMoveHuman(requestedMenu, context);
+                if (!*requestedMenu) {
+                    tellContextNoComputation(context);
+                }
+                break;
         }
     }
+
+    if (*requestedMenu) {
+        return;
+    }
+
+    int move = context->lastMove;
+
+    char* message = malloc(256);
+    asprintf(&message, "Move: %d", move > 5 ? 13 - move : move + 1);
+    renderOutput(message, PLAY_PREFIX);
 
     makeMoveManual(context->board, context->lastMove);
     return;
