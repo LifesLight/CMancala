@@ -7,6 +7,8 @@
 void renderCheatHelp() {
     renderOutput("Commands:", CHEAT_PREFIX);
     renderOutput("  step                             : Step to the next turn", CHEAT_PREFIX);
+    renderOutput("  switch                           : Switch the next player", CHEAT_PREFIX);
+    renderOutput("  edit [player] [idx] [value]      : Edit cell value", CHEAT_PREFIX);
     renderOutput("  render                           : Render the current board", CHEAT_PREFIX);
     renderOutput("  autoplay [true|false]            : If enabled the game loop will automatically continue", CONFIG_PREFIX);
     renderOutput("  last                             : Fetch the last moves metadata", CHEAT_PREFIX);
@@ -16,14 +18,9 @@ void renderCheatHelp() {
 }
 
 void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* context) {
-    // Set next player
-    // Edit cell
     // Hash gamestate
     // Load hashed gamestate
     // Evaluate gamestate
-    // Quit game
-    // Print help
-    // Continue game
     char* input = malloc(256);
     getInput(input, CHEAT_PREFIX);
 
@@ -31,6 +28,57 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
     // Check for request to step
     if (strcmp(input, "step") == 0) {
         *requestContinue = true;
+        free(input);
+        return;
+    }
+
+    // Check for request to switch
+    if (strcmp(input, "switch") == 0) {
+        context->board->color = context->board->color * -1;
+        renderOutput("Switched player", CHEAT_PREFIX);
+        free(input);
+        return;
+    }
+
+    // Check for request to edit
+    if (strncmp(input, "edit ", 5) == 0) {
+        // Check for valid input
+        if (strlen(input) < 7) {
+            renderOutput("Invalid edit command", CHEAT_PREFIX);
+            free(input);
+            return;
+        }
+
+        // Parse player
+        int player = 0;
+        if (input[5] == '1') {
+            player = 1;
+        } else if (input[5] == '2') {
+            player = -1;
+        } else {
+            renderOutput("Invalid player", CHEAT_PREFIX);
+            free(input);
+            return;
+        }
+
+        // Parse idx
+        int idx = atoi(input + 7);
+        if (idx < 1 || idx > 6) {
+            renderOutput("Invalid idx", CHEAT_PREFIX);
+            free(input);
+            return;
+        }
+
+        // Parse value
+        int value = atoi(input + 9);
+        if (value < 0) {
+            renderOutput("Invalid value", CHEAT_PREFIX);
+            free(input);
+            return;
+        }
+
+        // Update cell
+        updateCell(context->board, player, idx, value);
         free(input);
         return;
     }
