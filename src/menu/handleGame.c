@@ -7,6 +7,7 @@
 void renderCheatHelp() {
     renderOutput("Commands:", CHEAT_PREFIX);
     renderOutput("  step                             : Step to the next turn", CHEAT_PREFIX);
+    renderOutput("  undo                             : Undo the last move", CHEAT_PREFIX);
     renderOutput("  switch                           : Switch the next player", CHEAT_PREFIX);
     renderOutput("  edit [player] [idx] [value]      : Edit cell value", CHEAT_PREFIX);
     renderOutput("  render                           : Render the current board", CHEAT_PREFIX);
@@ -28,6 +29,24 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
     // Check for request to step
     if (strcmp(input, "step") == 0) {
         *requestContinue = true;
+        free(input);
+        return;
+    }
+
+    // Check for request to undo
+    if (strcmp(input, "undo") == 0) {
+        if (context->lastMove == -1) {
+            renderOutput("No move to undo", CHEAT_PREFIX);
+            free(input);
+            return;
+        }
+
+        copyBoard(context->lastBoard, context->board);
+        context->lastMove = -1;
+        context->lastEvaluation = INT32_MAX;
+        context->lastDepth = 0;
+        context->lastSolved = false;
+        renderOutput("Undid last move", CHEAT_PREFIX);
         free(input);
         return;
     }
@@ -202,6 +221,7 @@ void startGameHandling(Config* config) {
     // Make game context
     Context context = {
         .board = &board,
+        .lastBoard = malloc(sizeof(Board)),
         .config = config,
         .lastEvaluation = INT32_MAX,
         .lastMove = -1,
@@ -217,6 +237,7 @@ void startGameHandling(Config* config) {
     while(!requestedConfig) {
         while(requestedContinue && !gameOver) {
             bool requestedMenu = false;
+
             stepGame(&requestedMenu, &context);
 
             if (!config->autoplay || requestedMenu) {

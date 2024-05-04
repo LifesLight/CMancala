@@ -39,6 +39,7 @@ typedef struct {
 
 typedef struct {
     Board* board;
+    Board* lastBoard;
     Config* config;
     int lastEvaluation;
     int lastMove;
