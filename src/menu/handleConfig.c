@@ -5,8 +5,23 @@
  */
 
 
+void renderConfigHelp() {
+    renderOutput("Commands:", CONFIG_PREFIX);
+    renderOutput("  start                            : Start the game", CONFIG_PREFIX);
+    renderOutput("  stones [number > 0]              : Set number of stones per pit", CONFIG_PREFIX);
+    renderOutput("  distribution [uniform | random]  : Configure distribution of stones", CONFIG_PREFIX);
+    renderOutput("  seed [number]                    : Set seed for random distribution", CONFIG_PREFIX);
+    renderOutput("  time [number >= 0]               : Set time limit for AI in seconds, if 0 unlimited", CONFIG_PREFIX);
+    renderOutput("  depth [number >= 0]              : Set depth limit for AI, if 0 unlimited", CONFIG_PREFIX);
+    renderOutput("  starting [human | ai]            : Configure starting player", CONFIG_PREFIX);
+    renderOutput("  display                          : Display current configuration", CONFIG_PREFIX);
+    renderOutput("  autoplay [true | false]          : If enabled the game loop will automatically continue", CONFIG_PREFIX);
+    renderOutput("  help                             : Print this help message", CONFIG_PREFIX);
+    renderOutput("  quit                             : Quit the application", CONFIG_PREFIX);
+}
+
 void printConfig(Config* config) {
-    char* message;
+    char* message = malloc(256);
     renderOutput("Current configuration:", CONFIG_PREFIX);
     asprintf(&message, "  Stones: %d", config->stones);
     renderOutput(message, CONFIG_PREFIX);
@@ -29,6 +44,7 @@ void printConfig(Config* config) {
     renderOutput(message, CONFIG_PREFIX);
     asprintf(&message, "  Autoplay: %s", config->autoplay ? "true" : "false");
     renderOutput(message, CONFIG_PREFIX);
+    free(message);
 }
 
 
@@ -85,19 +101,21 @@ void handleConfigInput(bool* requestedQuit, bool* requestedStart, Config* config
 
         // Validate bounds
         if (stones * 12 > UINT8_MAX) {
-            char* message;
+            char* message = malloc(256);
             asprintf(&message, "Reducing %d stones per cell to %d to avoid uint8_t overflow", stones, UINT8_MAX / 12);
             renderOutput(message, CONFIG_PREFIX);
+            free(message);
             stones = UINT8_MAX / 12;
         }
 
         // Update config
         config->stones = stones;
 
-        char* message;
+        char* message = malloc(256);
         asprintf(&message, "Updated stones to %d", stones);
         renderOutput(message, CONFIG_PREFIX);
         free(input);
+        free(message);
         return;
     }
 
@@ -109,10 +127,11 @@ void handleConfigInput(bool* requestedQuit, bool* requestedStart, Config* config
         // Update config
         config->seed = seed;
 
-        char* message;
+        char* message = malloc(256);
         asprintf(&message, "Updated seed to %d", seed);
         renderOutput(message, CONFIG_PREFIX);
         free(input);
+        free(message);
         return;
     }
 
@@ -130,10 +149,11 @@ void handleConfigInput(bool* requestedQuit, bool* requestedStart, Config* config
         // Update config
         config->timeLimit = time;
 
-        char* message;
+        char* message = malloc(256);
         asprintf(&message, "Updated time limit to %.2f", time);
         renderOutput(message, CONFIG_PREFIX);
         free(input);
+        free(message);
         return;
     }
 
@@ -151,10 +171,11 @@ void handleConfigInput(bool* requestedQuit, bool* requestedStart, Config* config
         // Update config
         config->depth = depth;
 
-        char* message;
+        char* message = malloc(256);
         asprintf(&message, "Updated depth limit to %d", depth);
         renderOutput(message, CONFIG_PREFIX);
         free(input);
+        free(message);
         return;
     }
 
@@ -187,9 +208,10 @@ void handleConfigInput(bool* requestedQuit, bool* requestedStart, Config* config
             free(input);
             return;
         } else {
-            char* message;
+            char* message = malloc(256);
             asprintf(&message, "Invalid autoplay \"%s\"", input + 9);
             renderOutput(message, CONFIG_PREFIX);
+            free(message);
             free(input);
             return;
         }
@@ -224,9 +246,10 @@ void handleConfigInput(bool* requestedQuit, bool* requestedStart, Config* config
             free(input);
             return;
         } else {
-            char* message;
+            char* message = malloc(256);
             asprintf(&message, "Invalid starting player \"%s\"", input + 9);
             renderOutput(message, CONFIG_PREFIX);
+            free(message);
             free(input);
             return;
         }
@@ -261,17 +284,19 @@ void handleConfigInput(bool* requestedQuit, bool* requestedStart, Config* config
             free(input);
             return;
         } else {
-            char* message;
+            char* message = malloc(256);
             asprintf(&message, "Invalid distribution \"%s\"", input + 13);
             renderOutput(message, CONFIG_PREFIX);
             free(input);
+            free(message);
             return;
         }
     }
 
     // Unknown command
-    char* message;
+    char* message = malloc(256);
     asprintf(&message, "Unknown command \"%s\"", input);
     renderOutput(message, CONFIG_PREFIX);
+    free(message);
     free(input);
 }

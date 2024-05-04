@@ -11,6 +11,8 @@
 
 #include "containers.h"
 #include "board.h"
+#include "render.h"
+#include "config.h"
 
 /**
  * Returns the maximum of two integers.
@@ -34,12 +36,7 @@ int negamaxWithMove(
     Board *board, int *bestMove, int alpha, const int beta, const int depth);
 
 /**
- * Negamax root with depth limit
+ * Negamax with iterative deepening and aspiration window search.
 */
-void negamaxRootDepth(Board *board, int *move, int *evaluation, int depth);
-
-/**
- * Negamax root with time limit
-*/
-void negamaxRootTime(
-    Board *board, int *move, int *evaluation, double timeInSeconds);
+void negamaxAspirationRoot(
+    Board *board, int *move, int *evaluation, int depthLimit, double timeLimit);

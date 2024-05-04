@@ -25,4 +25,5 @@
 #define OUTPUT_PREFIX    ">> "
 #define INPUT_PREFIX     "<< "
 #define CONFIG_PREFIX    "(C) "
-#define GAME_PREFIX      "(G) "
+#define CHEAT_PREFIX     "(G) "
+#define PLAY_PREFIX      "(P) "

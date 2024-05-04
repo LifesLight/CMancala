@@ -27,3 +27,10 @@ typedef struct {
     uint8_t cells[ASIZE];
     int8_t color;
 } Board;
+
+typedef struct {
+    Board* board;
+    Config* config;
+    int lastEvaluation;
+    int lastMove;
+} Context;

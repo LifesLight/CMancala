@@ -118,9 +118,10 @@ int negamaxWithMove(Board *board, int *bestMove, int alpha, const int beta, cons
     return reference;
 }
 
-// Helper function containing shared logic
-// Mainly implements aspiration window and depth / time limit
-static void negamaxRootHelper(Board *board, int *move, int *evaluation, int depthLimit, double timeLimit, bool useTimeLimit) {
+/**
+ * Negamax with iterative deepening and aspiration window search
+*/
+void negamaxAspirationRoot(Board *board, int *move, int *evaluation, int depthLimit, double timeLimit) {
     /**
      * Aspiration window search hyperparameters
     */
@@ -135,7 +136,7 @@ static void negamaxRootHelper(Board *board, int *move, int *evaluation, int dept
     int score;
 
     /**
-     * Iterative deepening runnning parameters
+     * Iterative deepening running parameters
     */
     int currentDepth = 1;
     int bestMove = -1;
@@ -146,21 +147,16 @@ static void negamaxRootHelper(Board *board, int *move, int *evaluation, int dept
     /**
      * Start timer for time limit
     */
-    clock_t start;
+    clock_t start = clock();
 
-    if (useTimeLimit) {
-        start = clock();
-    }
+    renderOutput("Thinking...", PLAY_PREFIX);
 
     /**
      * Iterative deepening loop
      * Runs until depth limit is reached or time limit is reached
     */
     while (true) {
-        // Run negamax with move tracking
-
         // Track if game is solved
-        // If game is still solved after search, we can stop
         solved = true;
         score = negamaxWithMove(board, &bestMove, alpha, beta, currentDepth);
 
@@ -178,40 +174,40 @@ static void negamaxRootHelper(Board *board, int *move, int *evaluation, int dept
                 break;
             }
 
-            // Termination condition check, only if no window miss
-            if ((currentDepth > depthLimit) ||
-                    (useTimeLimit && (((double)(clock() - start) / CLOCKS_PER_SEC) >= timeLimit))) {
+            // Check for depth limit
+            if (currentDepth > depthLimit && depthLimit > 0) {
                 break;
             }
 
-        // If score is outside window, research with offset window
+            // Check for time limit
+            if (((double)(clock() - start) / CLOCKS_PER_SEC) >= timeLimit && timeLimit > 0) {
+                break;
+            }
         } else {
+            // If score is outside window, research with offset window
             windowMisses++;
-        }
 
-        // Update alpha and beta for new search
-        alpha = score - windowSize;
-        beta = score + windowSize;
+            // Update alpha and beta for new search
+            alpha = score - windowSize;
+            beta = score + windowSize;
+        }
     }
 
     // Inform about search results
-    printf("Depth reached: %d (%s)\n", currentDepth - 1, solved ? "Solved" : "Not solved");
+    char* message = malloc(256);
+    asprintf(&message, "Depth reached: %d (%s)", currentDepth - 1, solved ? "Solved" : "Not solved");
+    renderOutput(message, PLAY_PREFIX);
+    free(message);
 
     // Warn about high window misses
     // When this happens often, the window size should be increased
     if (windowMisses > currentDepth) {
-        printf("[WARNING]: High window misses! (You may increase \"windowSize\" in algo.c)\n");
+        char* message = malloc(256);
+        asprintf(&message, "[WARNING]: High window misses! (You may increase \"windowSize\" in algo.c)");
+        renderOutput(message, PLAY_PREFIX);
+        free(message);
     }
 
     *move = bestMove;
     *evaluation = score;
-}
-
-void negamaxRootDepth(Board *board, int *move, int *evaluation, int depth) {
-    negamaxRootHelper(board, move, evaluation, depth, 0, false);
-}
-
-void negamaxRootTime(Board *board, int *move, int *evaluation, double timeInSeconds) {
-    // Using effectively infinite depth limit, as it is not needed
-    negamaxRootHelper(board, move, evaluation, INT32_MAX, timeInSeconds, true);
 }

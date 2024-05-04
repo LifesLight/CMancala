@@ -41,7 +41,6 @@
 /**
  * Renders the board to the console.
 */
-void renderBoard(const Board *board);
+void renderBoard(const Board *board, const char* prefix);
 void renderWelcome();
-void renderConfigHelp();
 void renderOutput(const char* message, const char* prefix);

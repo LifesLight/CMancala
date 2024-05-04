@@ -5,13 +5,13 @@ set(CMAKE_C_STANDARD 23)
 
 set(SOURCE_FILES
     src/main.c
-    src/utility.c
-    src/board.c
-    src/render.c
-    src/algo.c
-    src/handleConfig.c
-    src/handleGame.c
-    src/interface.c
+    src/logic/utility.c
+    src/logic/board.c
+    src/logic/render.c
+    src/logic/algo.c
+    src/menu/handleConfig.c
+    src/menu/handleGame.c
+    src/menu/interface.c
 )
 
 include_directories(include)
