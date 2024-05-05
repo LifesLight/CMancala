@@ -12,6 +12,7 @@ void renderCheatHelp() {
     renderOutput("  edit [player] [idx] [value]      : Edit cell value", CHEAT_PREFIX);
     renderOutput("  render                           : Render the current board", CHEAT_PREFIX);
     renderOutput("  last                             : Fetch the last moves metadata", CHEAT_PREFIX);
+    renderOutput("  trace                            : Compute move trace of the last move (requires cached evaluation)", CHEAT_PREFIX);
     renderOutput("  autoplay [true|false]            : If enabled the game loop will automatically continue", CONFIG_PREFIX);
     renderOutput("  config                           : Return the config menu. Will discard the current game", CHEAT_PREFIX);
     renderOutput("  help                             : Print this help", CHEAT_PREFIX);
@@ -58,6 +59,48 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
     if (strcmp(input, "switch") == 0) {
         context->board->color = context->board->color * -1;
         renderOutput("Switched player", CHEAT_PREFIX);
+        free(input);
+        return;
+    }
+
+    // Check for request to trace
+    if (strcmp(input, "trace") == 0) {
+        if (context->lastMove == -1) {
+            renderOutput("No move to trace", CHEAT_PREFIX);
+            free(input);
+            return;
+        }
+
+        if (context->lastEvaluation == INT32_MAX) {
+            renderOutput("No evaluation to trace", CHEAT_PREFIX);
+            free(input);
+            return;
+        }
+
+        NegamaxTrace trace = negamaxWithTrace(context->lastBoard, context->lastEvaluation - 1, context->lastEvaluation + 1, context->lastDepth);
+        for (int i = context->lastDepth - 1; i >= 0; i--) {
+            char* message = malloc(256);
+
+            int move = trace.moves[i];
+
+            if (move == -1) {
+                break;
+            }
+
+            if (move > 5) {
+                move = 13 - move;
+                asprintf(&message, "[%2d|%s] >>", context->lastDepth - i, "Player 2");
+            } else {
+                move = move + 1;
+                asprintf(&message, "[%2d|%s] >>", context->lastDepth - i, "Player 1");
+            }
+
+            asprintf(&message, "%s %d", message, move);
+            renderOutput(message, CHEAT_PREFIX);
+            free(message);
+        }
+
+        free(trace.moves);
         free(input);
         return;
     }

@@ -228,7 +228,12 @@ void handleConfigInput(bool* requestedStart, Config* config) {
         config->timeLimit = time;
 
         char* message = malloc(256);
-        asprintf(&message, "Updated time limit to %.2f", time);
+        asprintf(&message, "Updated time limit to");
+        if (time == 0) {
+            asprintf(&message, "%s unlimited", message);
+        } else {
+            asprintf(&message, "%s %.2f", message, time);
+        }
         renderOutput(message, CONFIG_PREFIX);
         free(input);
         free(message);
@@ -250,7 +255,12 @@ void handleConfigInput(bool* requestedStart, Config* config) {
         config->depth = depth;
 
         char* message = malloc(256);
-        asprintf(&message, "Updated depth limit to %d", depth);
+        asprintf(&message, "Updated depth limit to");
+        if (depth == 0) {
+            asprintf(&message, "%s unlimited", message);
+        } else {
+            asprintf(&message, "%s %d", message, depth);
+        }
         renderOutput(message, CONFIG_PREFIX);
         free(input);
         free(message);

@@ -38,6 +38,11 @@ typedef struct {
 } Board;
 
 typedef struct {
+    int score;
+    int8_t* moves;
+} NegamaxTrace;
+
+typedef struct {
     Board* board;
     Board* lastBoard;
     Config* config;

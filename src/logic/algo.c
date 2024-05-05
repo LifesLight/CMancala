@@ -71,6 +71,71 @@ int negamax(Board *board, int alpha, const int beta, const int depth) {
     return reference;
 }
 
+NegamaxTrace negamaxWithTrace(Board *board, int alpha, const int beta, const int depth) {
+    NegamaxTrace result;
+    result.score = INT32_MIN;
+    result.moves = malloc(sizeof(int8_t) * (depth + 1));
+    memset(result.moves, -1, sizeof(int8_t) * (depth + 1));
+
+    if (processBoardTerminal(board)) {
+        result.score = board->color * getBoardEvaluation(board);
+        return result;
+    }
+
+    // Check if depth limit is reached
+    if (depth == 0) {
+        result.score = board->color * getBoardEvaluation(board);
+        return result;
+    }
+
+    // Will be needed in every iteration
+    Board boardCopy;
+    NegamaxTrace tempResult;
+
+    // Iterate over all possible moves
+    const int8_t start = (board->color == 1)  ? HBOUND_P1 : HBOUND_P2;
+    const int8_t end = (board->color == 1)    ? LBOUND_P1 : LBOUND_P2;
+
+    for (int8_t i = start; i >= end; i--) {
+        // Filter invalid moves
+        if (board->cells[i] == 0) {
+            continue;
+        }
+
+        // Make copied board with move made
+        copyBoard(board, &boardCopy);
+        makeMoveOnBoard(&boardCopy, i);
+
+        // Branch to check if this player is still playing
+        if (board->color == boardCopy.color) {
+            // If yes, call negamax with current parameters and no inversion
+            tempResult =  negamaxWithTrace(&boardCopy, alpha, beta, depth - 1);
+        } else {
+            // If no, call negamax with inverted parameters for the other player
+            tempResult = negamaxWithTrace(&boardCopy, -beta, -alpha, depth - 1);
+            tempResult.score = -tempResult.score;
+        }
+
+        if (tempResult.score > result.score) {
+            result.score = tempResult.score;
+            memcpy(result.moves, tempResult.moves, sizeof(int8_t) * depth);
+            result.moves[depth - 1] = i;
+        }
+
+        free(tempResult.moves);
+
+        // Update parameters
+        alpha = max(alpha, result.score);
+
+        // If this branch certainly worse than another, prune it
+        if (alpha >= beta) {
+            break;
+        }
+    }
+
+    return result;
+}
+
 int negamaxWithMove(Board *board, int *bestMove, int alpha, const int beta, const int depth) {
     if (processBoardTerminal(board)) {
         *bestMove = -1;

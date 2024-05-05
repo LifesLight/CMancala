@@ -36,6 +36,14 @@ int negamaxWithMove(
     Board *board, int *bestMove, int alpha, const int beta, const int depth);
 
 /**
+ * Negamax algorithm with alpha-beta pruning and trace output.
+ * trace array needs to be size of depth.
+ * this ONLY works when depth and score are already perfectly computed.
+*/
+NegamaxTrace negamaxWithTrace(
+    Board *board, int alpha, const int beta, const int depth);
+
+/**
  * Negamax with iterative deepening and aspiration window search.
 */
 void negamaxAspirationRoot(Context* context);
