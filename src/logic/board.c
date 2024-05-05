@@ -21,12 +21,6 @@ void copyBoard(const Board *board, Board *target) {
 }
 
 void configBoard(Board *board, int stones) {
-    // Bounds checking
-    if (stones * 12 > UINT8_MAX) {
-        printf("[WARNING]: Reducing %d stones per cell to %d to avoid uint8_t overflow\n", stones, UINT8_MAX / 12);
-        stones = UINT8_MAX / 12;
-    }
-
     // Assign start values
     for (int i = 0; i < ASIZE; i++) {
         board->cells[i] = stones;
@@ -41,13 +35,7 @@ void configBoard(Board *board, int stones) {
 }
 
 void configBoardRand(Board *board, const int stones) {
-    int remainingStones = stones * 12;
-
-    // Check for uint8_t bounds
-    if (remainingStones > UINT8_MAX / 2) {
-        printf("[WARNING]: Reducing %d total stones to %d to avoid uint8_t overflow\n", remainingStones * 2, UINT8_MAX / 2 * 2);
-        remainingStones = UINT8_MAX / 2;
-    }
+    int remainingStones = stones * 6;
 
     // Reset board to 0
     memset(board->cells, 0, sizeof(board->cells));

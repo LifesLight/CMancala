@@ -47,7 +47,7 @@ void printConfig(Config* config) {
             break;
     }
     renderOutput(message, CONFIG_PREFIX);
-    asprintf(&message, "  Time: %.2f", config->timeLimit);
+    asprintf(&message, "  Time: %g", config->timeLimit);
     if (config->timeLimit == 0) {
         asprintf(&message, "%s (unlimited)", message);
     }
@@ -273,7 +273,7 @@ void handleConfigInput(bool* requestedStart, Config* config) {
         if (time == 0) {
             asprintf(&message, "%s unlimited", message);
         } else {
-            asprintf(&message, "%s %.2f", message, time);
+            asprintf(&message, "%s %g", message, time);
         }
         renderOutput(message, CONFIG_PREFIX);
         free(input);
