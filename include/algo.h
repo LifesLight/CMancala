@@ -40,7 +40,7 @@ int negamaxWithMove(
 /**
  * Negamax algorithm with alpha-beta pruning and trace output.
  * trace array needs to be size of depth.
- * this ONLY works when depth and score are already perfectly computed.
+ * this ONLY works when depth and alpha beta are from a valid computation.
 */
 NegamaxTrace negamaxWithTrace(
     Board *board, int alpha, const int beta, const int depth);

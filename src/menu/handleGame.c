@@ -80,7 +80,7 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
         NegamaxTrace trace = negamaxWithTrace(context->lastBoard, context->lastEvaluation - 1, context->lastEvaluation + 1, context->lastDepth);
 
         int stepsToWin = 0;
-        for (int i = 0; i < context->lastDepth; i++) {
+        for (int i = context->lastDepth - 1; i >= 0; i--) {
             if (trace.moves[i] == -1) {
                 break;
             }
@@ -89,7 +89,7 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
         }
 
         int width = snprintf(NULL, 0, "%d", stepsToWin);
-        for (int i = stepsToWin - 1; i >= 0; i--) {
+        for (int i = context->lastDepth - 1; i >= 0; i--) {
             char* message = malloc(256);
 
             int move = trace.moves[i];
@@ -100,10 +100,10 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
 
             if (move > 5) {
                 move = 13 - move;
-                asprintf(&message, "[%*d|%s] >>", width, stepsToWin - i, "Player 2");
+                asprintf(&message, "[%*d|%s] >>", width, context->lastDepth - i, "Player 2");
             } else {
                 move = move + 1;
-                asprintf(&message, "[%*d|%s] >>", width, stepsToWin - i, "Player 1");
+                asprintf(&message, "[%*d|%s] >>", width, context->lastDepth - i, "Player 1");
             }
 
             asprintf(&message, "%s %d", message, move);
