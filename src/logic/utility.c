@@ -4,21 +4,54 @@
 
 #include "utility.h"
 
-void getInput(char* input, const char* prefix) {
-    printf("%s%s", prefix ,INPUT_PREFIX);
-    fgets(input, 256, stdin);
 
-    // Remove newline
-    input[strcspn(input, "\n")] = 0;
+void quitGame() {
+    exit(0);
+}
 
-    // Remove trailing spaces
-    while (input[strlen(input) - 1] == ' ') {
-        input[strlen(input) - 1] = 0;
-    }
+void trimSpaces(char *str) {
+    char *end = str + strlen(str);
+    while (end > str && isspace((unsigned char)*(end - 1))) end--;
+    *end = 0;
 
-    // Remove leading spaces
-    while (input[0] == ' ') {
-        input++;
+    char *start = str;
+    while (*start && isspace((unsigned char)*start)) start++;
+    if (start != str) memmove(str, start, strlen(start) + 1);
+}
+
+void getInput(char *input, const char *prefix) {
+    bool isInteractive = isatty(STDIN_FILENO);
+
+    while (true) {
+        printf("%s%s", prefix, INPUT_PREFIX);
+        fflush(stdout);
+
+        if (fgets(input, 256, stdin) == NULL) {
+            if (feof(stdin)) {
+                if (isInteractive) {
+                    clearerr(stdin);
+                } else {
+                    printf("End of input\n");
+                    quitGame();
+                }
+            } else {
+                renderOutput("Error reading input", prefix);
+                exit(EXIT_FAILURE);
+            }
+        } else {
+            trimSpaces(input);
+            if (strlen(input) == 0) continue;
+
+            if (strcmp(input, "quit") == 0 || strcmp(input, "q") == 0) {
+                quitGame();
+            }
+
+            if (!isInteractive) {
+                printf("%s\n", input);
+            }
+
+            break;
+        }
     }
 }
 
@@ -30,10 +63,6 @@ void initializeBoardFromConfig(Board* board, Config* config) {
         configBoardRand(board, config->stones);
     }
     board->color = config->startColor;
-}
-
-void quitGame() {
-    exit(0);
 }
 
 void updateCell(Board* board, int player, int idx, int value) {

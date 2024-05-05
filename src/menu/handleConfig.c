@@ -91,13 +91,6 @@ void handleConfigInput(bool* requestedStart, Config* config) {
         return;
     }
 
-    // Check for quit
-    if (strcmp(input, "quit") == 0 || strcmp(input, "q") == 0) {
-        free(input);
-        quitGame();
-        return;
-    }
-
     // Check for help
     if (strcmp(input, "help") == 0) {
         renderConfigHelp();

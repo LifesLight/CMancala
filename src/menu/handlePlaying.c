@@ -40,13 +40,6 @@ void getMoveHuman(bool* requestMenu, Context* context) {
         char* input = malloc(256);
         getInput(input, PLAY_PREFIX);
 
-        // Check for quit
-        if (strcmp(input, "quit") == 0 || strcmp(input, "q") == 0) {
-            free(input);
-            quitGame();
-            return;
-        }
-
         // Check for request for menu
         if (strcmp(input, "menu") == 0) {
             *requestMenu = true;
