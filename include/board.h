@@ -13,8 +13,14 @@
 #include "config.h"
 #include "containers.h"
 
-// #define AVALANCHE
+typedef void (*MakeMoveFunction)(Board*, const uint8_t);
 
+MakeMoveFunction makeMoveFunction;
+
+/**
+ * Sets the move function to use
+*/
+void setMoveFunction(MoveFunction moveFunction);
 
 /**
  * Copies the board from the source to the target
@@ -56,10 +62,12 @@ bool processBoardTerminal(Board *board);
 /**
  * Makes a move on the board
 */
-void makeMoveOnBoard(Board *board, const uint8_t actionIndex);
+void makeMoveOnBoardClassic(Board *board, const uint8_t actionIndex);
+void makeMoveOnBoardAvalanche(Board *board, const uint8_t actionIndex);
 
 /**
  * Makes a move on the board
  * Also automatically handles terminal check
 */
 void makeMoveManual(Board* board, int index);
+

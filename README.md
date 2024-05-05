@@ -33,7 +33,6 @@ CMancala employs a Negamax algorithm with Alpha-Beta pruning, tailored to accomm
 
 ## Restrictions
 - The game is designed to support a maximum of 224 stones on the board at any given time.
-- The game mode needs to be specified before compilation in `board.h`.
 
 ## Interface
 - CMancala features a terminal-based user interface. Users interested in a graphical interface may consider developing a simple web-based UI.

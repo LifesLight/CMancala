@@ -48,7 +48,7 @@ int negamax(Board *board, int alpha, const int beta, const int depth) {
 
         // Make copied board with move made
         copyBoard(board, &boardCopy);
-        makeMoveOnBoard(&boardCopy, i);
+        makeMoveFunction(&boardCopy, i);
 
         // Branch to check if this player is still playing
         if (board->color == boardCopy.color)
@@ -104,7 +104,7 @@ NegamaxTrace negamaxWithTrace(Board *board, int alpha, const int beta, const int
 
         // Make copied board with move made
         copyBoard(board, &boardCopy);
-        makeMoveOnBoard(&boardCopy, i);
+        makeMoveFunction(&boardCopy, i);
 
         // Branch to check if this player is still playing
         if (board->color == boardCopy.color) {
@@ -161,7 +161,7 @@ int negamaxWithMove(Board *board, int *bestMove, int alpha, const int beta, cons
             continue;
         }
         copyBoard(board, &boardCopy);
-        makeMoveOnBoard(&boardCopy, i);
+        makeMoveFunction(&boardCopy, i);
 
         if (board->color == boardCopy.color)
             score = negamax(&boardCopy, alpha, beta, depth - 1);

@@ -11,6 +11,7 @@ void renderConfigHelp() {
     renderOutput("  stones [number > 0]              : Set number of stones per pit", CONFIG_PREFIX);
     renderOutput("  distribution [uniform|random]    : Configure distribution of stones", CONFIG_PREFIX);
     renderOutput("  seed [number]                    : Set seed for random distribution, if 0 device time", CONFIG_PREFIX);
+    renderOutput("  mode [classic|avalanche]         : Set game mode", CONFIG_PREFIX);
     renderOutput("  time [number >= 0]               : Set time limit for AI in seconds, if 0 unlimited", CONFIG_PREFIX);
     renderOutput("  depth [number >= 0]              : Set depth limit for AI, if 0 unlimited", CONFIG_PREFIX);
     renderOutput("  starting [1|2]                   : Configure starting player", CONFIG_PREFIX);
@@ -36,6 +37,15 @@ void printConfig(Config* config) {
     }
     renderOutput(message, CONFIG_PREFIX);
     asprintf(&message, "  Seed: %d", config->seed);
+    renderOutput(message, CONFIG_PREFIX);
+    switch (config->moveFunction) {
+        case CLASSIC_MOVE:
+            asprintf(&message, "  Mode: classic");
+            break;
+        case AVALANCHE_MOVE:
+            asprintf(&message, "  Mode: avalanche");
+            break;
+    }
     renderOutput(message, CONFIG_PREFIX);
     asprintf(&message, "  Time: %.2f", config->timeLimit);
     if (config->timeLimit == 0) {
@@ -110,6 +120,44 @@ void handleConfigInput(bool* requestedStart, Config* config) {
         printConfig(config);
         free(input);
         return;
+    }
+
+    // Check for mode
+    if (strncmp(input, "mode ", 5) == 0) {
+        // Save original mode
+        MoveFunction originalMode = config->moveFunction;
+
+        // Check if valid mode
+        if (strcmp(input + 5, "classic") == 0) {
+            config->moveFunction = CLASSIC_MOVE;
+            if (originalMode == CLASSIC_MOVE) {
+                renderOutput("Mode already set to classic", CONFIG_PREFIX);
+                free(input);
+                return;
+            }
+
+            renderOutput("Updated mode to classic", CONFIG_PREFIX);
+            free(input);
+            return;
+        } else if (strcmp(input + 5, "avalanche") == 0) {
+            config->moveFunction = AVALANCHE_MOVE;
+            if (originalMode == AVALANCHE_MOVE) {
+                renderOutput("Mode already set to avalanche", CONFIG_PREFIX);
+                free(input);
+                return;
+            }
+
+            renderOutput("Updated mode to avalanche", CONFIG_PREFIX);
+            free(input);
+            return;
+        } else {
+            char* message = malloc(256);
+            asprintf(&message, "Invalid mode \"%s\"", input + 5);
+            renderOutput(message, CONFIG_PREFIX);
+            free(message);
+            free(input);
+            return;
+        }
     }
 
     // Check for stones

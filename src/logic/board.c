@@ -5,6 +5,17 @@
 
 #include "board.h"
 
+void setMoveFunction(MoveFunction moveFunction) {
+    switch (moveFunction) {
+        case CLASSIC_MOVE:
+            makeMoveFunction = makeMoveOnBoardClassic;
+            break;
+        case AVALANCHE_MOVE:
+            makeMoveFunction = makeMoveOnBoardAvalanche;
+            break;
+    }
+}
+
 void copyBoard(const Board *board, Board *target) {
     memcpy(target, board, sizeof(Board));
 }
@@ -88,9 +99,8 @@ bool processBoardTerminal(Board *board) {
     return false;
 }
 
-#ifdef AVALANCHE
 // Avalanche mode
-void makeMoveOnBoard(Board *board, const uint8_t actionIndex) {
+void makeMoveOnBoardAvalanche(Board *board, const uint8_t actionIndex) {
     const bool turn = board->color == 1;
 
     // Get blocked index for this player
@@ -134,9 +144,9 @@ void makeMoveOnBoard(Board *board, const uint8_t actionIndex) {
     // Return no extra move
     board->color = -board->color;
 }
-#else
+
 // Normal mode
-void makeMoveOnBoard(Board *board, const uint8_t actionIndex) {
+void makeMoveOnBoardClassic(Board *board, const uint8_t actionIndex) {
     // Propagate stones
     const uint8_t stones = board->cells[actionIndex];
     board->cells[actionIndex] = 0;
@@ -199,9 +209,8 @@ void makeMoveOnBoard(Board *board, const uint8_t actionIndex) {
     // Return no extra move
     board->color = -board->color;
 }
-#endif
 
 void makeMoveManual(Board* board, int index) {
-    makeMoveOnBoard(board, index);
+    makeMoveFunction(board, index);
     processBoardTerminal(board);
 }

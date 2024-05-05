@@ -20,6 +20,11 @@ typedef enum {
     AI_AGENT
 } Agent;
 
+typedef enum {
+    CLASSIC_MOVE,
+    AVALANCHE_MOVE
+} MoveFunction;
+
 typedef struct {
     int stones;
     Distribution distribution;
@@ -30,6 +35,7 @@ typedef struct {
     bool autoplay;
     Agent player1;
     Agent player2;
+    MoveFunction moveFunction;
 } Config;
 
 typedef struct {

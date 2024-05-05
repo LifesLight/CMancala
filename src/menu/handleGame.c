@@ -268,6 +268,8 @@ void startGameHandling(Config* config) {
     Board board;
     initializeBoardFromConfig(&board, config);
 
+    setMoveFunction(config->moveFunction);
+
     // Make game context
     Context context = {
         .board = &board,

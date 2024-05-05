@@ -19,7 +19,8 @@ void startInterface() {
         .startColor = 1,
         .autoplay = true,
         .player1 = HUMAN_AGENT,
-        .player2 = AI_AGENT
+        .player2 = AI_AGENT,
+        .moveFunction = CLASSIC_MOVE
     };
 
     // Global loop
