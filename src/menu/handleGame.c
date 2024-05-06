@@ -7,8 +7,10 @@
 void renderCheatHelp() {
     renderOutput("Commands:", CHEAT_PREFIX);
     renderOutput("  step                             : Step to the next turn", CHEAT_PREFIX);
+    #ifdef HASHING
     renderOutput("  hash                             : Hash the current board", CHEAT_PREFIX);
     renderOutput("  load [hash]                      : Load the board from hash", CHEAT_PREFIX);
+    #endif
     renderOutput("  undo                             : Undo the last move", CHEAT_PREFIX);
     renderOutput("  switch                           : Switch the next player", CHEAT_PREFIX);
     renderOutput("  edit [player] [idx] [value]      : Edit cell value", CHEAT_PREFIX);
@@ -54,27 +56,17 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
         return;
     }
 
+    #ifdef HASHING
     // Check for request to hash
     if (strcmp(input, "hash") == 0) {
-        // Validate hash-ability
-        if (context->board->cells[SCORE_P1] >= 64) {
-            renderOutput("Cannot hash board with score player 1 >= 64", CHEAT_PREFIX);
-            return;
-        }
-
-        // Make sure all playing cells are empty < 32
-        for (int i = 0; i < 6; i++) {
-            if (context->board->cells[i] >= 32 || context->board->cells[i + 7] >= 32) {
-                renderOutput("Cannot hash board with playing cell >= 32", CHEAT_PREFIX);
-                return;
-            }
-        }
-
-        uint64_t hash = hashBoard(context->board);
-        char message[256];
-        snprintf(message, sizeof(message), "Hash: %llu", hash);
-        renderOutput(message, CHEAT_PREFIX);
-        return;
+       __uint128_t hash = hashBoard(context->board);
+       char message[256];
+       // Format the hash as hexadecimal
+       snprintf(message, sizeof(message), "Hash: %016llx%016llx", 
+                (unsigned long long)(hash >> 64), 
+                (unsigned long long)(hash & 0xFFFFFFFFFFFFFFFFULL));
+       renderOutput(message, CHEAT_PREFIX);
+       return;
     }
 
     // Check for request to load
@@ -85,27 +77,23 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
             return;
         }
 
-        // Parse the number as uint64_t
-        char *end;
-        uint64_t hash = strtoull(input + 5, &end, 10);
+        // Prepare to parse the hash as hexadecimal
+        uint64_t high = 0, low = 0;
+        int parsedCount = sscanf(input + 5, "%16llx%16llx", &high, &low);
+        __uint128_t hash = ((__uint128_t)high << 64) | low;
 
-        if (end == input + 5 || *end != '\0') {
-            renderOutput("Invalid hash", CHEAT_PREFIX);
-            return;
-        }
-
-        // Check if hash is negative or conversion was unsuccessful
-        if (hash < 0) {
+        // Check if the parsing was successful and exactly two 64-bit parts were read
+        if (parsedCount != 2) {
             renderOutput("Invalid hash", CHEAT_PREFIX);
             return;
         }
 
         // Load board
-        uint8_t total = context->config->stones * 12;
-        loadBoard(context->board, hash, total);
+        loadBoard(context->board, hash);
         renderOutput("Loaded board", CHEAT_PREFIX);
         return;
     }
+    #endif
 
     // Check for request to switch
     if (strcmp(input, "switch") == 0) {

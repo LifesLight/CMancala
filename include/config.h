@@ -4,6 +4,11 @@
  * Copyright (c) Alexander Kurtz 2024
  */
 
+/**
+ * Allows hashing of boards
+ * Requires 128 bit integers
+*/
+#define HASHING
 
 /*
  * Board is constructed like this:

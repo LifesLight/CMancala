@@ -72,14 +72,16 @@ void makeMoveOnBoardAvalanche(Board *board, const uint8_t actionIndex);
 void makeMoveManual(Board* board, int index);
 
 /**
- * Returns a reversible hash of the board if total number of stones is known.
- * Also only guaranteed to be unique per board if uniform distribution with <= 5 stones per cell.
- * Also dont't know about avalanche mode
+ * Hashing requires 128 bit integers
 */
-uint64_t hashBoard(const Board *board);
+#ifdef HASHING
+/**
+ * Returns a reversible hash of the board.
+*/
+__uint128_t hashBoard(const Board *board);
 
 /**
  * Loads a board from a packed hash
- * Requires the total number of stones to be known
 */
-void loadBoard(Board *board, const uint64_t hash, const uint8_t total);
+void loadBoard(Board *board, const __uint128_t hash);
+#endif

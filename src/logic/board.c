@@ -203,58 +203,34 @@ void makeMoveManual(Board* board, int index) {
     processBoardTerminal(board);
 }
 
-uint64_t hashBoard(const Board *board) {
-    uint64_t packed = 0;
+#ifdef HASHING
+__uint128_t hashBoard(const Board *board) {
+    __uint128_t packed = 0;
 
     // Store playing color in the first bit
-    packed |= ((uint64_t)(board->color == 1 ? 1 : 0));
+    packed |= ((__uint128_t)(board->color == 1 ? 1 : 0));
 
-    // Store 
-    packed |= ((uint64_t)(board->cells[SCORE_P1] & 0x3F)) << 1;
-
-    // 
-    int shift = 7;
-    for (int i = LBOUND_P1 + 1; i < SCORE_P1; i++) {
-        packed |= ((uint64_t)(board->cells[i] & 0x1F)) << shift;
-        shift += 5;
-    }
-
-    // Cell 6 is implied by the total number of stones
-
-    // Pack cells 7 to 11 (5 bits each)
-    for (int i = LBOUND_P2; i < HBOUND_P2; i++) {
-        packed |= ((uint64_t)(board->cells[i] & 0x1F)) << shift;
-        shift += 5;
+    // Pack each cell's stones as 8 bits each, starting from the 2nd bit position
+    int shift = 1;
+    for (int i = 0; i < 14; i++) {
+        // Use 8 bits for each cell
+        packed |= ((__uint128_t)(board->cells[i] & 0xFF)) << shift;
+        shift += 8;
     }
 
     return packed;
 }
 
-void loadBoard(Board *board, const uint64_t packed, const uint8_t total) {
+void loadBoard(Board *board, const __uint128_t packed) {
     // Load color from the first bit
     board->color = (packed & 0x01) ? 1 : -1;
 
-    // Unpack cell 0 from 6 bits, starting after the color bit
-    board->cells[0] = (packed >> 1) & 0x3F;
-    uint8_t sum = board->cells[0];
-
-    // Unpack cells 1-5 and 7-11
-     // Start shifting from bit 7
-    int shift = 7;
-    for (int i = 1; i <= 5; i++) {
-        board->cells[i] = (packed >> shift) & 0x1F;
-        sum += board->cells[i];
-        shift += 5;
+    // Unpack each cell's stones from the packed value, 8 bits each, starting from the 2nd bit
+    int shift = 1;
+    for (int i = 0; i < 14; i++) {
+        // Retrieve 8 bits for each cell
+        board->cells[i] = (packed >> shift) & 0xFF;
+        shift += 8;
     }
-
-    // Calculate implied cell 6
-    for (int i = 7; i <= 11; i++) {
-        board->cells[i] = (packed >> shift) & 0x1F;
-        sum += board->cells[i];
-        shift += 5;
-    }
-
-    // Calculate the implied cell 6 value
-    printf("Total: %d, Sum: %d\n", total, sum);
-    board->cells[6] = total - sum;
 }
+#endif
