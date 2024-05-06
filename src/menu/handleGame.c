@@ -256,7 +256,7 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
     }
 
     char* message = malloc(256);
-    asprintf(&message, "Unknown command: %s. Type \"help\" to get all current commands", input);
+    asprintf(&message, "Unknown command: \"%s\". Type \"help\" to get all current commands", input);
     renderOutput(message, CHEAT_PREFIX);
     free(message);
     free(input);
