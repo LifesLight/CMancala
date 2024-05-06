@@ -250,11 +250,10 @@ void handleConfigInput(bool* requestedStart, Config* config) {
         config->timeLimit = time;
 
         char message[256];
-        snprintf(message, sizeof(message), "Updated time limit to");
         if (time == 0) {
-            snprintf(message, sizeof(message), "%s unlimited", message);
+            snprintf(message, sizeof(message), "Updated time limit to unlimited");
         } else {
-            snprintf(message, sizeof(message), "%s %g", message, time);
+            snprintf(message, sizeof(message), "Updated time limit to %g", time);
         }
         renderOutput(message, CONFIG_PREFIX);
         return;
@@ -274,11 +273,10 @@ void handleConfigInput(bool* requestedStart, Config* config) {
         config->depth = depth;
 
         char message[256];
-        snprintf(message, sizeof(message), "Updated depth limit to");
         if (depth == 0) {
-            snprintf(message, sizeof(message), "%s unlimited", message);
+            snprintf(message, sizeof(message), "Updated depth limit to unlimited");
         } else {
-            snprintf(message, sizeof(message), "%s %d", message, depth);
+            snprintf(message, sizeof(message), "Updated depth limit to %d", depth);
         }
         renderOutput(message, CONFIG_PREFIX);
         return;
