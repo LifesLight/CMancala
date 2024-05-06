@@ -7,9 +7,9 @@
 void renderCheatHelp() {
     renderOutput("Commands:", CHEAT_PREFIX);
     renderOutput("  step                             : Step to the next turn", CHEAT_PREFIX);
-    #ifdef HASHING
-    renderOutput("  hash                             : Hash the current board", CHEAT_PREFIX);
-    renderOutput("  load [hash]                      : Load the board from hash", CHEAT_PREFIX);
+    #ifdef ENCODING
+    renderOutput("  encode                           : Encode the current board", CHEAT_PREFIX);
+    renderOutput("  load [encoding]                  : Load the board from the encoding", CHEAT_PREFIX);
     #endif
     renderOutput("  undo                             : Undo the last move", CHEAT_PREFIX);
     renderOutput("  switch                           : Switch the next player", CHEAT_PREFIX);
@@ -56,15 +56,15 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
         return;
     }
 
-    #ifdef HASHING
+    #ifdef ENCODING
     // Check for request to hash
-    if (strcmp(input, "hash") == 0) {
-       __uint128_t hash = hashBoard(context->board);
+    if (strcmp(input, "encode") == 0) {
+       __uint128_t code = encodeBoard(context->board);
        char message[256];
        // Format the hash as hexadecimal
-       snprintf(message, sizeof(message), "Hash: %016llx%016llx", 
-                (unsigned long long)(hash >> 64), 
-                (unsigned long long)(hash & 0xFFFFFFFFFFFFFFFFULL));
+       snprintf(message, sizeof(message), "Code: %016llx%016llx", 
+                (unsigned long long)(code >> 64), 
+                (unsigned long long)(code & 0xFFFFFFFFFFFFFFFFULL));
        renderOutput(message, CHEAT_PREFIX);
        return;
     }
@@ -80,11 +80,11 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
         // Prepare to parse the hash as hexadecimal
         uint64_t high = 0, low = 0;
         int parsedCount = sscanf(input + 5, "%16llx%16llx", (unsigned long long int *)&high, (unsigned long long int *)&low);
-        __uint128_t hash = ((__uint128_t)high << 64) | low;
+        __uint128_t code = ((__uint128_t)high << 64) | low;
 
         // Check if the parsing was successful and exactly two 64-bit parts were read
         if (parsedCount != 2) {
-            renderOutput("Invalid hash", CHEAT_PREFIX);
+            renderOutput("Invalid code", CHEAT_PREFIX);
             return;
         }
 
@@ -93,7 +93,7 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
         context->lastEvaluation = INT32_MAX;
 
         // Load board
-        loadBoard(context->board, hash);
+        decodeBoard(context->board, code);
         renderOutput("Loaded board", CHEAT_PREFIX);
         return;
     }

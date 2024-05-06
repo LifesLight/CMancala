@@ -74,14 +74,14 @@ void makeMoveManual(Board* board, int index);
 /**
  * Hashing requires 128 bit integers
 */
-#ifdef HASHING
+#ifdef ENCODING
 /**
- * Returns a reversible hash of the board.
+ * Returns a reversible encoding of the board.
 */
-__uint128_t hashBoard(const Board *board);
+__uint128_t encodeBoard(const Board *board);
 
 /**
- * Loads a board from a packed hash
+ * Loads a board from a reversable encoding.
 */
-void loadBoard(Board *board, const __uint128_t hash);
+void decodeBoard(Board *board, const __uint128_t hash);
 #endif

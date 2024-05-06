@@ -5,10 +5,10 @@
  */
 
 /**
- * Allows hashing of boards
+ * Allows encoding of boards
  * Requires 128 bit integers
 */
-#define HASHING
+#define ENCODING
 
 /**
  * Tracks the troughput of the last simulation

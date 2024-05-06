@@ -205,8 +205,8 @@ void makeMoveManual(Board* board, int index) {
     processBoardTerminal(board);
 }
 
-#ifdef HASHING
-__uint128_t hashBoard(const Board *board) {
+#ifdef ENCODING
+__uint128_t encodeBoard(const Board *board) {
     __uint128_t packed = 0;
 
     // Store playing color in the first bit
@@ -223,7 +223,7 @@ __uint128_t hashBoard(const Board *board) {
     return packed;
 }
 
-void loadBoard(Board *board, const __uint128_t packed) {
+void decodeBoard(Board *board, const __uint128_t packed) {
     // Load color from the first bit
     board->color = (packed & 0x01) ? 1 : -1;
 
