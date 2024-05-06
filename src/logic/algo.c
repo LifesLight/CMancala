@@ -4,8 +4,6 @@
 
 #include "algo.h"
 
-bool solved;
-
 #ifdef TRACK_TROUGHPUT
 int64_t nodes;
 #endif
@@ -19,7 +17,7 @@ int max(const int a, const int b) {
     return (a > b) ? a : b;
 }
 
-int negamax(Board *board, int alpha, const int beta, const int depth) {
+int negamax(Board *board, int alpha, const int beta, const int depth, bool* solved) {
     // Terminally check
     // The order of the checks is important here
     // Otherwise we could have a empty side, without adding up the opponents pieces to his score
@@ -30,7 +28,7 @@ int negamax(Board *board, int alpha, const int beta, const int depth) {
     // Check if depth limit is reached
     if (depth == 0) {
         // If we ever get depth limited in a non-terminal state, the game is not solved
-        solved = false;
+        *solved = false;
         return board->color * getBoardEvaluation(board);
     }
 
@@ -44,6 +42,10 @@ int negamax(Board *board, int alpha, const int beta, const int depth) {
     // Will be needed in every iteration
     Board boardCopy;
     int score;
+
+    #ifdef GREEDY_SOLVING
+    bool solvedTemp;
+    #endif
 
     // Iterate over all possible moves
     const int8_t start = (board->color == 1)  ? HBOUND_P1 : HBOUND_P2;
@@ -59,16 +61,43 @@ int negamax(Board *board, int alpha, const int beta, const int depth) {
         copyBoard(board, &boardCopy);
         makeMoveFunction(&boardCopy, i);
 
+        #ifdef GREEDY_SOLVING
+        solvedTemp = true;
+        #endif
+
         // Branch to check if this player is still playing
-        if (board->color == boardCopy.color)
+        if (board->color == boardCopy.color) {
             // If yes, call negamax with current parameters and no inversion
-            score = negamax(&boardCopy, alpha, beta, depth - 1);
-        else
+            #ifdef GREEDY_SOLVING
+            score = negamax(&boardCopy, alpha, beta, depth - 1, &solvedTemp);
+            #else
+            score = negamax(&boardCopy, alpha, beta, depth - 1, solved);
+            #endif
+        } else {
             // If no, call negamax with inverted parameters for the other player
-            score = -negamax(&boardCopy, -beta, -alpha, depth - 1);
+            #ifdef GREEDY_SOLVING
+            score = -negamax(&boardCopy, -beta, -alpha, depth - 1, &solvedTemp);
+            #else
+            score = -negamax(&boardCopy, -beta, -alpha, depth - 1, solved);
+            #endif
+        }
 
         // Update parameters
+        #ifdef GREEDY_SOLVING
+        if (score > reference) {
+            reference = score;
+            if (solvedTemp) {
+                *solved = true;
+                if (score > 0) {
+                    break;
+                }
+            } else {
+                *solved = false;
+            }
+        }
+        #else
         reference = max(reference, score);
+        #endif
         alpha = max(alpha, reference);
 
         // If this branch certainly worse than another, prune it
@@ -76,6 +105,8 @@ int negamax(Board *board, int alpha, const int beta, const int depth) {
             break;
         }
     }
+
+    // TODO: Do something if node is solved
 
     return reference;
 }
@@ -145,14 +176,14 @@ NegamaxTrace negamaxWithTrace(Board *board, int alpha, const int beta, const int
     return result;
 }
 
-int negamaxWithMove(Board *board, int *bestMove, int alpha, const int beta, const int depth) {
+int negamaxWithMove(Board *board, int *bestMove, int alpha, const int beta, const int depth, bool* solved) {
     if (processBoardTerminal(board)) {
         *bestMove = -1;
         return board->color * getBoardEvaluation(board);
     }
 
     if (depth == 0) {
-        solved = false;
+        *solved = false;
         *bestMove = -1;
         return board->color * getBoardEvaluation(board);
     }
@@ -163,6 +194,12 @@ int negamaxWithMove(Board *board, int *bestMove, int alpha, const int beta, cons
 
     int reference = INT32_MIN;
     int score;
+
+    #ifdef GREEDY_SOLVING
+    *solved = true;
+    #else
+    bool solvedTemp;
+    #endif
 
     const int8_t start = (board->color == 1)  ? HBOUND_P1 : HBOUND_P2;
     const int8_t end = (board->color == 1)    ? LBOUND_P1 : LBOUND_P2;
@@ -176,10 +213,29 @@ int negamaxWithMove(Board *board, int *bestMove, int alpha, const int beta, cons
         copyBoard(board, &boardCopy);
         makeMoveFunction(&boardCopy, i);
 
-        if (board->color == boardCopy.color)
-            score = negamax(&boardCopy, alpha, beta, depth - 1);
-        else
-            score = -negamax(&boardCopy, -beta, -alpha, depth - 1);
+        #ifndef GREEDY_SOLVING
+        solvedTemp = true;
+        #endif
+
+        if (board->color == boardCopy.color) {
+            #ifdef GREEDY_SOLVING
+            score = negamax(&boardCopy, alpha, beta, depth - 1, solved);
+            #else
+            score = negamax(&boardCopy, alpha, beta, depth - 1, &solvedTemp);
+            if (!solvedTemp) {
+                *solved = false;
+            }
+            #endif
+        } else {
+            #ifdef GREEDY_SOLVING
+            score = -negamax(&boardCopy, -beta, -alpha, depth - 1, solved);
+            #else
+            score = -negamax(&boardCopy, -beta, -alpha, depth - 1, &solvedTemp);
+            if (!solvedTemp) {
+                *solved = false;
+            }
+            #endif
+        }
 
         if (score > reference) {
             reference = score;
@@ -192,6 +248,8 @@ int negamaxWithMove(Board *board, int *bestMove, int alpha, const int beta, cons
             break;
         }
     }
+
+    // TODO: Do something if node is solved
 
     return reference;
 }
@@ -240,10 +298,11 @@ void negamaxAspirationRoot(Context* context) {
      * Iterative deepening loop
      * Runs until depth limit is reached or time limit is reached
     */
+    bool solved;
     while (true) {
         // Track if game is solved
         solved = true;
-        score = negamaxWithMove(context->board, &bestMove, alpha, beta, currentDepth);
+        score = negamaxWithMove(context->board, &bestMove, alpha, beta, currentDepth, &solved);
 
         /**
          * Check if score is outside of aspiration window
@@ -255,9 +314,15 @@ void negamaxAspirationRoot(Context* context) {
             currentDepth += depthStep;
 
             // Check if game is solved
+            #ifdef GREEDY_SOLVING
+            if (solved && score > 0) {
+                break;
+            }
+            #else
             if (solved) {
                 break;
             }
+            #endif
 
             // Check for depth limit
             if (currentDepth > context->config->depth && context->config->depth > 0) {

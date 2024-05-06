@@ -222,9 +222,17 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
             renderOutput(message, CHEAT_PREFIX);
 
             if (context->lastSolved) {
-                snprintf(message, sizeof(message), "  Solved: true");
+                #ifdef GREEDY_SOLVING
+                snprintf(message, sizeof(message), "  Solved: true (greedy)");
+                #else
+                snprintf(message, sizeof(message), "  Solved: true (full)");
+                #endif
             } else {
-                snprintf(message, sizeof(message), "  Solved: false");
+                #ifdef GREEDY_SOLVING
+                snprintf(message, sizeof(message), "  Solved: false (greedy)");
+                #else
+                snprintf(message, sizeof(message), "  Solved: false (full)");
+                #endif
             }
             renderOutput(message, CHEAT_PREFIX);
 

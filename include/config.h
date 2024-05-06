@@ -15,6 +15,12 @@
 */
 #define TRACK_TROUGHPUT
 
+/**
+ * Enables greedy solving
+ * Greedy solving accepts any solution that is solved and winning
+*/
+#define GREEDY_SOLVING
+
 /*
  * Board is constructed like this:
  * Score cells are 6 and 13

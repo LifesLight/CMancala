@@ -16,8 +16,6 @@
 #include "render.h"
 #include "config.h"
 
-extern bool solved;
-
 #ifdef TRACK_TROUGHPUT
 extern int64_t nodes;
 #endif
@@ -35,13 +33,13 @@ int min(const int a, const int b);
 /**
  * Negamax algorithm with alpha-beta pruning.
 */
-int negamax(Board *board, int alpha, const int beta, const int depth);
+int negamax(Board *board, int alpha, const int beta, const int depth, bool* solved);
 
 /**
  * Negamax algorithm with alpha-beta pruning and best move output.
 */
 int negamaxWithMove(
-    Board *board, int *bestMove, int alpha, const int beta, const int depth);
+    Board *board, int *bestMove, int alpha, const int beta, const int depth, bool* solved);
 
 /**
  * Negamax algorithm with alpha-beta pruning and trace output.
