@@ -5,6 +5,8 @@
 
 #include "board.h"
 
+MakeMoveFunction makeMoveFunction = NULL;
+
 void setMoveFunction(MoveFunction moveFunction) {
     switch (moveFunction) {
         case CLASSIC_MOVE:

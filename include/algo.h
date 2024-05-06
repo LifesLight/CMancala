@@ -16,6 +16,8 @@
 #include "render.h"
 #include "config.h"
 
+extern bool solved;
+
 /**
  * Returns the maximum of two integers.
 */

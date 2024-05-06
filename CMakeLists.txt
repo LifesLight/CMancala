@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 project(CMancala)
 
 set(CMAKE_C_STANDARD 23)
+set(CMAKE_C_COMPILER "gcc")
 
 set(SOURCE_FILES
     src/main.c

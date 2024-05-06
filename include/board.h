@@ -15,7 +15,7 @@
 
 typedef void (*MakeMoveFunction)(Board*, const uint8_t);
 
-MakeMoveFunction makeMoveFunction;
+extern MakeMoveFunction makeMoveFunction;
 
 /**
  * Sets the move function to use
