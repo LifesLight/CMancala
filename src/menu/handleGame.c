@@ -88,6 +88,10 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
             return;
         }
 
+        // Save previous board
+        copyBoard(context->board, context->lastBoard);
+        context->lastEvaluation = INT32_MAX;
+
         // Load board
         loadBoard(context->board, hash);
         renderOutput("Loaded board", CHEAT_PREFIX);

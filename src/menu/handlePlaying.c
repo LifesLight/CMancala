@@ -126,7 +126,7 @@ void getMoveHuman(bool* requestMenu, Context* context) {
 }
 
 void stepGame(bool* requestedMenu, Context* context) {
-    //renderBoard(context->board, PLAY_PREFIX, context->config);
+    renderBoard(context->board, PLAY_PREFIX, context->config);
 
     // Check turn
     if (context->board->color == 1) {
@@ -175,7 +175,7 @@ void stepGame(bool* requestedMenu, Context* context) {
 
     char message[256];
     snprintf(message, sizeof(message), "Move: %d", move > 5 ? 13 - move : move + 1);
-    //renderOutput(message, PLAY_PREFIX);
+    renderOutput(message, PLAY_PREFIX);
 
     copyBoard(context->board, context->lastBoard);
     makeMoveManual(context->board, move);
