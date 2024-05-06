@@ -52,16 +52,10 @@ void printConfig(Config* config) {
     }
     renderOutput(message, CONFIG_PREFIX);
 
-    snprintf(message, sizeof(message), "  Time: %g", config->timeLimit);
-    if (config->timeLimit == 0) {
-        snprintf(message, sizeof(message), "%s (unlimited)", message);
-    }
+    snprintf(message, sizeof(message), "  Time: %g%s", config->timeLimit, config->timeLimit == 0 ? " (unlimited)" : "");
     renderOutput(message, CONFIG_PREFIX);
 
-    snprintf(message, sizeof(message), "  Depth: %d", config->depth);
-    if (config->depth == 0) {
-        snprintf(message, sizeof(message), "%s (unlimited)", message);
-    }
+    snprintf(message, sizeof(message), "  Depth: %d%s", config->depth, config->depth == 0 ? " (unlimited)" : "");
     renderOutput(message, CONFIG_PREFIX);
 
     snprintf(message, sizeof(message), "  Starting: %d", config->startColor == 1 ? 1 : 2);

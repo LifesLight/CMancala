@@ -79,7 +79,7 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
 
         // Prepare to parse the hash as hexadecimal
         uint64_t high = 0, low = 0;
-        int parsedCount = sscanf(input + 5, "%16llx%16llx", &high, &low);
+        int parsedCount = sscanf(input + 5, "%16llx%16llx", (unsigned long long int *)&high, (unsigned long long int *)&low);
         __uint128_t hash = ((__uint128_t)high << 64) | low;
 
         // Check if the parsing was successful and exactly two 64-bit parts were read
@@ -141,13 +141,12 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
 
             if (move > 5) {
                 move = 13 - move;
-                snprintf(message, sizeof(message), "[%*d|%s] >>", width, context->lastDepth - i, "Player 2");
+                snprintf(message, sizeof(message), "[%*d|%s] >> %d", width, context->lastDepth - i, "Player 2", move);
             } else {
                 move = move + 1;
-                snprintf(message, sizeof(message), "[%*d|%s] >>", width, context->lastDepth - i, "Player 1");
+                snprintf(message, sizeof(message), "[%*d|%s] >> %d", width, context->lastDepth - i, "Player 1", move);
             }
 
-            snprintf(message, sizeof(message), "%s %d", message, move);
             renderOutput(message, CHEAT_PREFIX);
         }
 
