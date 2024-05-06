@@ -6,6 +6,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <time.h>
 
 #include "config.h"
 
@@ -57,4 +58,8 @@ typedef struct {
     int lastDepth;
     bool lastSolved;
     bool gameOver;
+    #ifdef TRACK_TROUGHPUT
+    double lastTime;
+    uint64_t lastNodes;
+    #endif
 } Context;

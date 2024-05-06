@@ -10,6 +10,11 @@
 */
 #define HASHING
 
+/**
+ * Tracks the troughput of the last simulation
+*/
+#define TRACK_TROUGHPUT
+
 /*
  * Board is constructed like this:
  * Score cells are 6 and 13

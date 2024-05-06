@@ -227,6 +227,14 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
                 snprintf(message, sizeof(message), "  Solved: false");
             }
             renderOutput(message, CHEAT_PREFIX);
+
+            #ifdef TRACK_TROUGHPUT
+            int64_t totalNodes = context->lastNodes;
+            double totalTime = context->lastTime;
+            double nodesPerSecond = totalNodes / totalTime;
+            snprintf(message, sizeof(message), "  Troughput: %f million nodes/s", nodesPerSecond / 1000000);
+            renderOutput(message, CHEAT_PREFIX);
+            #endif
         }
 
         return;

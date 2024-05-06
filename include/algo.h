@@ -18,6 +18,10 @@
 
 extern bool solved;
 
+#ifdef TRACK_TROUGHPUT
+extern int64_t nodes;
+#endif
+
 /**
  * Returns the maximum of two integers.
 */

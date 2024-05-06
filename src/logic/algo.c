@@ -6,6 +6,11 @@
 
 bool solved;
 
+#ifdef TRACK_TROUGHPUT
+int64_t nodes;
+#endif
+
+
 int min(const int a, const int b) {
     return (a < b) ? a : b;
 }
@@ -28,6 +33,10 @@ int negamax(Board *board, int alpha, const int beta, const int depth) {
         solved = false;
         return board->color * getBoardEvaluation(board);
     }
+
+    #ifdef TRACK_TROUGHPUT
+    nodes++;
+    #endif
 
     // Keeping track of best score
     int reference = INT32_MIN;
@@ -148,6 +157,10 @@ int negamaxWithMove(Board *board, int *bestMove, int alpha, const int beta, cons
         return board->color * getBoardEvaluation(board);
     }
 
+    #ifdef TRACK_TROUGHPUT
+    nodes++;
+    #endif
+
     int reference = INT32_MIN;
     int score;
 
@@ -214,6 +227,13 @@ void negamaxAspirationRoot(Context* context) {
     */
     clock_t start = clock();
 
+    /**
+     * If tracking is enabled, reset nodes counter
+    */
+    #ifdef TRACK_TROUGHPUT
+    nodes = 0;
+    #endif
+
     renderOutput("Thinking...", PLAY_PREFIX);
 
     /**
@@ -257,6 +277,16 @@ void negamaxAspirationRoot(Context* context) {
             beta = score + windowSize;
         }
     }
+
+    /**
+     * Compute real time taken
+    */
+    #ifdef TRACK_TROUGHPUT
+    double timeTaken = (double)(clock() - start) / CLOCKS_PER_SEC;
+    context->lastTime = timeTaken;
+    context->lastNodes = nodes;
+    #endif
+
 
     // Warn about high window misses
     // When this happens often, the window size should be increased
