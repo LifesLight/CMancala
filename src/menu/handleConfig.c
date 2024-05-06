@@ -23,102 +23,108 @@ void renderConfigHelp() {
 }
 
 void printConfig(Config* config) {
-    char* message = malloc(256);
+    char message[256];
+
     renderOutput("Current configuration:", CONFIG_PREFIX);
-    asprintf(&message, "  Stones: %d", config->stones);
+    snprintf(message, sizeof(message), "  Stones: %d", config->stones);
     renderOutput(message, CONFIG_PREFIX);
+
     switch (config->distribution) {
         case UNIFORM_DIST:
-            asprintf(&message, "  Distribution: uniform");
+            snprintf(message, sizeof(message), "  Distribution: uniform");
             break;
         case RANDOM_DIST:
-            asprintf(&message, "  Distribution: random");
+            snprintf(message, sizeof(message), "  Distribution: random");
             break;
     }
     renderOutput(message, CONFIG_PREFIX);
-    asprintf(&message, "  Seed: %d", config->seed);
+
+    snprintf(message, sizeof(message), "  Seed: %d", config->seed);
     renderOutput(message, CONFIG_PREFIX);
+
     switch (config->moveFunction) {
         case CLASSIC_MOVE:
-            asprintf(&message, "  Mode: classic");
+            snprintf(message, sizeof(message), "  Mode: classic");
             break;
         case AVALANCHE_MOVE:
-            asprintf(&message, "  Mode: avalanche");
+            snprintf(message, sizeof(message), "  Mode: avalanche");
             break;
     }
     renderOutput(message, CONFIG_PREFIX);
-    asprintf(&message, "  Time: %g", config->timeLimit);
+
+    snprintf(message, sizeof(message), "  Time: %g", config->timeLimit);
     if (config->timeLimit == 0) {
-        asprintf(&message, "%s (unlimited)", message);
+        snprintf(message, sizeof(message), "%s (unlimited)", message);
     }
     renderOutput(message, CONFIG_PREFIX);
-    asprintf(&message, "  Depth: %d", config->depth);
+
+    snprintf(message, sizeof(message), "  Depth: %d", config->depth);
     if (config->depth == 0) {
-        asprintf(&message, "%s (unlimited)", message);
+        snprintf(message, sizeof(message), "%s (unlimited)", message);
     }
     renderOutput(message, CONFIG_PREFIX);
-    asprintf(&message, "  Starting: %d", config->startColor == 1 ? 1 : 2);
+
+    snprintf(message, sizeof(message), "  Starting: %d", config->startColor == 1 ? 1 : 2);
     renderOutput(message, CONFIG_PREFIX);
+
     switch (config->player1) {
         case HUMAN_AGENT:
-            asprintf(&message, "  Player 1: human");
+            snprintf(message, sizeof(message), "  Player 1: human");
             break;
         case RANDOM_AGENT:
-            asprintf(&message, "  Player 1: random");
+            snprintf(message, sizeof(message), "  Player 1: random");
             break;
         case AI_AGENT:
-            asprintf(&message, "  Player 1: ai");
+            snprintf(message, sizeof(message), "  Player 1: ai");
             break;
     }
     renderOutput(message, CONFIG_PREFIX);
+
     switch (config->player2) {
         case HUMAN_AGENT:
-            asprintf(&message, "  Player 2: human");
+            snprintf(message, sizeof(message), "  Player 2: human");
             break;
         case RANDOM_AGENT:
-            asprintf(&message, "  Player 2: random");
+            snprintf(message, sizeof(message), "  Player 2: random");
             break;
         case AI_AGENT:
-            asprintf(&message, "  Player 2: ai");
+            snprintf(message, sizeof(message), "  Player 2: ai");
             break;
     }
     renderOutput(message, CONFIG_PREFIX);
-    asprintf(&message, "  Autoplay: %s", config->autoplay ? "true" : "false");
+
+    snprintf(message, sizeof(message), "  Autoplay: %s", config->autoplay ? "true" : "false");
     renderOutput(message, CONFIG_PREFIX);
-    free(message);
 }
+
 
 
 void handleConfigInput(bool* requestedStart, Config* config) {
     // Wait for user input
-    char* input = malloc(256);
+    char input[256];
     getInput(input, CONFIG_PREFIX);
 
     // Parse input
     // If just newline (empty) continue
     if (strlen(input) == 0) {
-        free(input);
         return;
     }
 
     // Check for help
     if (strcmp(input, "help") == 0) {
         renderConfigHelp();
-        free(input);
         return;
     }
 
     // Check for start
     if (strcmp(input, "start") == 0) {
         *requestedStart = true;
-        free(input);
         return;
     }
 
     // Check for display
     if (strcmp(input, "display") == 0) {
         printConfig(config);
-        free(input);
         return;
     }
 
@@ -132,30 +138,24 @@ void handleConfigInput(bool* requestedStart, Config* config) {
             config->moveFunction = CLASSIC_MOVE;
             if (originalMode == CLASSIC_MOVE) {
                 renderOutput("Mode already set to classic", CONFIG_PREFIX);
-                free(input);
                 return;
             }
 
             renderOutput("Updated mode to classic", CONFIG_PREFIX);
-            free(input);
             return;
         } else if (strcmp(input + 5, "avalanche") == 0) {
             config->moveFunction = AVALANCHE_MOVE;
             if (originalMode == AVALANCHE_MOVE) {
                 renderOutput("Mode already set to avalanche", CONFIG_PREFIX);
-                free(input);
                 return;
             }
 
             renderOutput("Updated mode to avalanche", CONFIG_PREFIX);
-            free(input);
             return;
         } else {
-            char* message = malloc(256);
-            asprintf(&message, "Invalid mode \"%s\"", input + 5);
+            char message[256];
+            snprintf(message, sizeof(message), "Invalid mode \"%s\"", input + 5);
             renderOutput(message, CONFIG_PREFIX);
-            free(message);
-            free(input);
             return;
         }
     }
@@ -167,27 +167,23 @@ void handleConfigInput(bool* requestedStart, Config* config) {
 
         if (stones <= 0) {
             renderOutput("Invalid number of stones", CONFIG_PREFIX);
-            free(input);
             return;
         }
 
         // Validate bounds
         if (stones * 12 > UINT8_MAX) {
-            char* message = malloc(256);
-            asprintf(&message, "Reducing %d stones per cell to %d to avoid uint8_t overflow", stones, UINT8_MAX / 12);
+            char message[256];
+            snprintf(message, sizeof(message), "Reducing %d stones per cell to %d to avoid uint8_t overflow", stones, UINT8_MAX / 12);
             renderOutput(message, CONFIG_PREFIX);
-            free(message);
             stones = UINT8_MAX / 12;
         }
 
         // Update config
         config->stones = stones;
 
-        char* message = malloc(256);
-        asprintf(&message, "Updated stones to %d", stones);
+        char message[256];
+        snprintf(message, sizeof(message), "Updated stones to %d", stones);
         renderOutput(message, CONFIG_PREFIX);
-        free(input);
-        free(message);
         return;
     }
 
@@ -201,30 +197,24 @@ void handleConfigInput(bool* requestedStart, Config* config) {
             config->autoplay = true;
             if (originalAutoplay) {
                 renderOutput("Autoplay already enabled", CONFIG_PREFIX);
-                free(input);
                 return;
             }
 
             renderOutput("Enabled autoplay", CONFIG_PREFIX);
-            free(input);
             return;
         } else if (strcmp(input + 9, "false") == 0 || strcmp(input + 9, "0") == 0) {
             config->autoplay = false;
             if (!originalAutoplay) {
                 renderOutput("Autoplay already disabled", CONFIG_PREFIX);
-                free(input);
                 return;
             }
 
             renderOutput("Disabled autoplay", CONFIG_PREFIX);
-            free(input);
             return;
         } else {
-            char* message = malloc(256);
-            asprintf(&message, "Invalid autoplay \"%s\"", input + 9);
+            char message[256];
+            snprintf(message, sizeof(message), "Invalid autoplay \"%s\"", input + 9);
             renderOutput(message, CONFIG_PREFIX);
-            free(message);
-            free(input);
             return;
         }
     }
@@ -246,11 +236,9 @@ void handleConfigInput(bool* requestedStart, Config* config) {
             config->seed = seed;
         }
 
-        char* message = malloc(256);
-        asprintf(&message, "Updated seed to %d", seed);
+        char message[256];
+        snprintf(message, sizeof(message), "Updated seed to %d", seed);
         renderOutput(message, CONFIG_PREFIX);
-        free(input);
-        free(message);
         return;
     }
 
@@ -261,23 +249,20 @@ void handleConfigInput(bool* requestedStart, Config* config) {
 
         if (time < 0) {
             renderOutput("Invalid time limit", CONFIG_PREFIX);
-            free(input);
             return;
         }
 
         // Update config
         config->timeLimit = time;
 
-        char* message = malloc(256);
-        asprintf(&message, "Updated time limit to");
+        char message[256];
+        snprintf(message, sizeof(message), "Updated time limit to");
         if (time == 0) {
-            asprintf(&message, "%s unlimited", message);
+            snprintf(message, sizeof(message), "%s unlimited", message);
         } else {
-            asprintf(&message, "%s %g", message, time);
+            snprintf(message, sizeof(message), "%s %g", message, time);
         }
         renderOutput(message, CONFIG_PREFIX);
-        free(input);
-        free(message);
         return;
     }
 
@@ -288,23 +273,20 @@ void handleConfigInput(bool* requestedStart, Config* config) {
 
         if (depth < 0) {
             renderOutput("Invalid depth limit", CONFIG_PREFIX);
-            free(input);
             return;
         }
 
         // Update config
         config->depth = depth;
 
-        char* message = malloc(256);
-        asprintf(&message, "Updated depth limit to");
+        char message[256];
+        snprintf(message, sizeof(message), "Updated depth limit to");
         if (depth == 0) {
-            asprintf(&message, "%s unlimited", message);
+            snprintf(message, sizeof(message), "%s unlimited", message);
         } else {
-            asprintf(&message, "%s %d", message, depth);
+            snprintf(message, sizeof(message), "%s %d", message, depth);
         }
         renderOutput(message, CONFIG_PREFIX);
-        free(input);
-        free(message);
         return;
     }
 
@@ -315,18 +297,15 @@ void handleConfigInput(bool* requestedStart, Config* config) {
 
         if (starting != 1 && starting != 2) {
             renderOutput("Invalid starting color", CONFIG_PREFIX);
-            free(input);
             return;
         }
 
         // Update config
         config->startColor = starting == 1 ? 1 : -1;
 
-        char* message = malloc(256);
-        asprintf(&message, "Updated starting player to %d", starting);
+        char message[256];
+        snprintf(message, sizeof(message), "Updated starting player to %d", starting);
         renderOutput(message, CONFIG_PREFIX);
-        free(input);
-        free(message);
         return;
     }
 
@@ -337,7 +316,6 @@ void handleConfigInput(bool* requestedStart, Config* config) {
 
         if (player != 1 && player != 2) {
             renderOutput("Invalid player", CONFIG_PREFIX);
-            free(input);
             return;
         }
 
@@ -348,11 +326,9 @@ void handleConfigInput(bool* requestedStart, Config* config) {
             } else {
                 config->player2 = HUMAN_AGENT;
             }
-            char* message = malloc(256);
-            asprintf(&message, "Updated player %d to human", player);
+            char message[256];
+            snprintf(message, sizeof(message), "Updated player %d to human", player);
             renderOutput(message, CONFIG_PREFIX);
-            free(input);
-            free(message);
             return;
         } else if (strncmp(input + 9, "random", 6) == 0) {
             if (player == 1) {
@@ -360,11 +336,9 @@ void handleConfigInput(bool* requestedStart, Config* config) {
             } else {
                 config->player2 = RANDOM_AGENT;
             }
-            char* message = malloc(256);
-            asprintf(&message, "Updated player %d to random", player);
+            char message[256];
+            snprintf(message, sizeof(message), "Updated player %d to random", player);
             renderOutput(message, CONFIG_PREFIX);
-            free(input);
-            free(message);
             return;
         } else if (strncmp(input + 9, "ai", 2) == 0) {
             if (player == 1) {
@@ -372,18 +346,14 @@ void handleConfigInput(bool* requestedStart, Config* config) {
             } else {
                 config->player2 = AI_AGENT;
             }
-            char* message = malloc(256);
-            asprintf(&message, "Updated player %d to ai", player);
+            char message[256];
+            snprintf(message, sizeof(message), "Updated player %d to ai", player);
             renderOutput(message, CONFIG_PREFIX);
-            free(input);
-            free(message);
             return;
         } else {
-            char* message = malloc(256);
-            asprintf(&message, "Invalid agent \"%s\"", input + 9);
+            char message[256];
+            snprintf(message, sizeof(message), "Invalid agent \"%s\"", input + 9);
             renderOutput(message, CONFIG_PREFIX);
-            free(input);
-            free(message);
             return;
         }
     }
@@ -398,38 +368,30 @@ void handleConfigInput(bool* requestedStart, Config* config) {
             config->distribution = UNIFORM_DIST;
             if (originalDistribution == UNIFORM_DIST) {
                 renderOutput("Distribution already set to uniform", CONFIG_PREFIX);
-                free(input);
                 return;
             }
 
             renderOutput("Updated distribution to uniform", CONFIG_PREFIX);
-            free(input);
             return;
         } else if (strcmp(input + 13, "random") == 0) {
             config->distribution = RANDOM_DIST;
             if (originalDistribution == RANDOM_DIST) {
                 renderOutput("Distribution already set to random", CONFIG_PREFIX);
-                free(input);
                 return;
             }
 
             renderOutput("Updated distribution to random", CONFIG_PREFIX);
-            free(input);
             return;
         } else {
-            char* message = malloc(256);
-            asprintf(&message, "Invalid distribution \"%s\"", input + 13);
+            char message[256];
+            snprintf(message, sizeof(message), "Invalid distribution \"%s\"", input + 13);
             renderOutput(message, CONFIG_PREFIX);
-            free(input);
-            free(message);
             return;
         }
     }
 
     // Unknown command
-    char* message = malloc(256);
-    asprintf(&message, "Unknown command \"%s\". Type \"help\" to get all current commands", input);
+    char message[256];
+    snprintf(message, sizeof(message), "Unknown command \"%s\". Type \"help\" to get all current commands", input);
     renderOutput(message, CONFIG_PREFIX);
-    free(message);
-    free(input);
 }

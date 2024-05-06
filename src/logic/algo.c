@@ -261,10 +261,9 @@ void negamaxAspirationRoot(Context* context) {
     // Warn about high window misses
     // When this happens often, the window size should be increased
     if (windowMisses > currentDepth) {
-        char* message = malloc(256);
-        asprintf(&message, "[WARNING]: High window misses! (You may increase \"windowSize\" in algo.c)");
+        char message[256];
+        snprintf(message, sizeof(message), "[WARNING]: High window misses! (You may increase \"windowSize\" in algo.c)");
         renderOutput(message, PLAY_PREFIX);
-        free(message);
     }
 
     // Return best move and score

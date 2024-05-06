@@ -80,10 +80,9 @@ void updateCell(Board* board, int player, int idx, int value) {
     int futureSum = currentSum + value;
 
     if (futureSum > UINT8_MAX) {
-        char* message = malloc(256);
-        asprintf(&message, "Can't update cell from %d to %d. Risk of overflow (%d / %d)", board->cells[cellIndex], value, futureSum, UINT8_MAX);
+        char message[256];
+        snprintf(message, sizeof(message), "Can't update cell from %d to %d. Risk of overflow (%d / %d)", board->cells[cellIndex], value, futureSum, UINT8_MAX);
         renderOutput(message, PLAY_PREFIX);
-        free(message);
         return;
     }
 

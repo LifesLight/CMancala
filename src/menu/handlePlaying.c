@@ -19,14 +19,28 @@ void getMoveAi(Context* context) {
 
 void getMoveRandom(Context* context) {
     Board* board = context->board;
-    int offset = board->color == 1 ? 0 : 7;
 
-    int idx = rand() % 6 + offset;
-    while (board->cells[idx] == 0) {
-        idx = rand() % 6 + offset;
+    const int8_t start = (board->color == 1)  ? HBOUND_P1 : HBOUND_P2;
+    const int8_t end = (board->color == 1)    ? LBOUND_P1 : LBOUND_P2;
+
+    // First, count the non-empty cells and store their indices
+    int nonEmptyCells[6];
+    int count = 0;
+    for (int8_t i = start; i >= end; i--) {
+        if (board->cells[i] != 0) {
+            nonEmptyCells[count++] = i;
+        }
     }
 
-    context->lastMove = idx;
+    // Only proceed if there is at least one non-empty cell
+    if (count > 0) {
+        int randomIndex = rand() % count;
+        context->lastMove = nonEmptyCells[randomIndex];
+    } else {
+        renderOutput("Random agent could not find valid move", PLAY_PREFIX);
+        quitGame();
+    }
+
     return;
 }
 
@@ -43,20 +57,17 @@ void getMoveHuman(bool* requestMenu, Context* context) {
         // Check for request for menu
         if (strcmp(input, "menu") == 0) {
             *requestMenu = true;
-            free(input);
             return;
         }
 
         // If empty just continue
         if (strcmp(input, "") == 0) {
-            free(input);
             continue;
         }
 
         // Check for help
         if (strcmp(input, "help") == 0) {
             renderPlayHelp();
-            free(input);
             continue;
         }
 
@@ -66,8 +77,7 @@ void getMoveHuman(bool* requestMenu, Context* context) {
 
             if (idx < 1 || idx >= 7) {
                 renderOutput("Invalid index", CHEAT_PREFIX);
-                free(input);
-                continue;;
+                continue;
             }
 
             idx = idx - 1;
@@ -79,13 +89,11 @@ void getMoveHuman(bool* requestMenu, Context* context) {
             Board* board = context->board;
             if (board->cells[idx] == 0) {
                 renderOutput("Cell is empty", CHEAT_PREFIX);
-                free(input);
                 continue;;
             }
 
             context->lastMove = idx;
 
-            free(input);
             break;
         }
 
@@ -94,7 +102,6 @@ void getMoveHuman(bool* requestMenu, Context* context) {
             int idx = atoi(input + 5);
             if (idx < 1 || idx > 6) {
                 renderOutput("Invalid index", CHEAT_PREFIX);
-                free(input);
                 continue;
             }
 
@@ -103,28 +110,23 @@ void getMoveHuman(bool* requestMenu, Context* context) {
             Board* board = context->board;
             if (board->cells[idx] == 0) {
                 renderOutput("Cell is empty", CHEAT_PREFIX);
-                free(input);
                 continue;
             }
 
             context->lastMove = idx;
-
-            free(input);
             return;
         }
 
-        char* message = malloc(256);
-        asprintf(&message, "Unknown command: \"%s\". Type \"help\" to get all current commands", input);
+        char message[256];
+        snprintf(message, sizeof(message), "Unknown command: \"%s\". Type \"help\" to get all current commands", input);
         renderOutput(message, PLAY_PREFIX);
-        free(input);
-        free(message);
     }
 
     return;
 }
 
 void stepGame(bool* requestedMenu, Context* context) {
-    renderBoard(context->board, PLAY_PREFIX, context->config);
+    //renderBoard(context->board, PLAY_PREFIX, context->config);
 
     // Check turn
     if (context->board->color == 1) {
@@ -171,11 +173,11 @@ void stepGame(bool* requestedMenu, Context* context) {
 
     int move = context->lastMove;
 
-    char* message = malloc(256);
-    asprintf(&message, "Move: %d", move > 5 ? 13 - move : move + 1);
-    renderOutput(message, PLAY_PREFIX);
+    char message[256];
+    snprintf(message, sizeof(message), "Move: %d", move > 5 ? 13 - move : move + 1);
+    //renderOutput(message, PLAY_PREFIX);
 
     copyBoard(context->board, context->lastBoard);
-    makeMoveManual(context->board, context->lastMove);
+    makeMoveManual(context->board, move);
     return;
 }

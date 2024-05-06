@@ -7,6 +7,8 @@
 void renderCheatHelp() {
     renderOutput("Commands:", CHEAT_PREFIX);
     renderOutput("  step                             : Step to the next turn", CHEAT_PREFIX);
+    renderOutput("  hash                             : Hash the current board", CHEAT_PREFIX);
+    renderOutput("  load [hash]                      : Load the board from hash", CHEAT_PREFIX);
     renderOutput("  undo                             : Undo the last move", CHEAT_PREFIX);
     renderOutput("  switch                           : Switch the next player", CHEAT_PREFIX);
     renderOutput("  edit [player] [idx] [value]      : Edit cell value", CHEAT_PREFIX);
@@ -25,14 +27,13 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
     // Load hashed gamestate -> maybe in config?
     // Reevaluate Evaluate gamestate
 
-    char* input = malloc(256);
+    char input[256];
     getInput(input, CHEAT_PREFIX);
 
 
     // Check for request to step
     if (strcmp(input, "step") == 0) {
         *requestContinue = true;
-        free(input);
         return;
     }
 
@@ -40,7 +41,6 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
     if (strcmp(input, "undo") == 0) {
         if (context->lastMove == -1) {
             renderOutput("No move to undo", CHEAT_PREFIX);
-            free(input);
             return;
         }
 
@@ -51,7 +51,59 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
         context->lastSolved = false;
         context->gameOver = false;
         renderOutput("Undid last move", CHEAT_PREFIX);
-        free(input);
+        return;
+    }
+
+    // Check for request to hash
+    if (strcmp(input, "hash") == 0) {
+        // Validate hash-ability
+        if (context->board->cells[SCORE_P1] >= 64) {
+            renderOutput("Cannot hash board with score player 1 >= 64", CHEAT_PREFIX);
+            return;
+        }
+
+        // Make sure all playing cells are empty < 32
+        for (int i = 0; i < 6; i++) {
+            if (context->board->cells[i] >= 32 || context->board->cells[i + 7] >= 32) {
+                renderOutput("Cannot hash board with playing cell >= 32", CHEAT_PREFIX);
+                return;
+            }
+        }
+
+        uint64_t hash = hashBoard(context->board);
+        char message[256];
+        snprintf(message, sizeof(message), "Hash: %llu", hash);
+        renderOutput(message, CHEAT_PREFIX);
+        return;
+    }
+
+    // Check for request to load
+    if (strncmp(input, "load ", 5) == 0) {
+        // Check for valid input length
+        if (strlen(input) < 7) {
+            renderOutput("Invalid load command", CHEAT_PREFIX);
+            return;
+        }
+
+        // Parse the number as uint64_t
+        char *end;
+        uint64_t hash = strtoull(input + 5, &end, 10);
+
+        if (end == input + 5 || *end != '\0') {
+            renderOutput("Invalid hash", CHEAT_PREFIX);
+            return;
+        }
+
+        // Check if hash is negative or conversion was unsuccessful
+        if (hash < 0) {
+            renderOutput("Invalid hash", CHEAT_PREFIX);
+            return;
+        }
+
+        // Load board
+        uint8_t total = context->config->stones * 12;
+        loadBoard(context->board, hash, total);
+        renderOutput("Loaded board", CHEAT_PREFIX);
         return;
     }
 
@@ -59,7 +111,6 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
     if (strcmp(input, "switch") == 0) {
         context->board->color = context->board->color * -1;
         renderOutput("Switched player", CHEAT_PREFIX);
-        free(input);
         return;
     }
 
@@ -67,13 +118,11 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
     if (strcmp(input, "trace") == 0) {
         if (context->lastMove == -1) {
             renderOutput("No move to trace", CHEAT_PREFIX);
-            free(input);
             return;
         }
 
         if (context->lastEvaluation == INT32_MAX) {
             renderOutput("No evaluation to trace", CHEAT_PREFIX);
-            free(input);
             return;
         }
 
@@ -90,7 +139,7 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
 
         int width = snprintf(NULL, 0, "%d", stepsToWin);
         for (int i = context->lastDepth - 1; i >= 0; i--) {
-            char* message = malloc(256);
+            char message[256];
 
             int move = trace.moves[i];
 
@@ -100,19 +149,17 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
 
             if (move > 5) {
                 move = 13 - move;
-                asprintf(&message, "[%*d|%s] >>", width, context->lastDepth - i, "Player 2");
+                snprintf(message, sizeof(message), "[%*d|%s] >>", width, context->lastDepth - i, "Player 2");
             } else {
                 move = move + 1;
-                asprintf(&message, "[%*d|%s] >>", width, context->lastDepth - i, "Player 1");
+                snprintf(message, sizeof(message), "[%*d|%s] >>", width, context->lastDepth - i, "Player 1");
             }
 
-            asprintf(&message, "%s %d", message, move);
+            snprintf(message, sizeof(message), "%s %d", message, move);
             renderOutput(message, CHEAT_PREFIX);
-            free(message);
         }
 
         free(trace.moves);
-        free(input);
         return;
     }
 
@@ -121,7 +168,6 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
         // Check for valid input
         if (strlen(input) < 7) {
             renderOutput("Invalid edit command", CHEAT_PREFIX);
-            free(input);
             return;
         }
 
@@ -133,7 +179,6 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
             player = -1;
         } else {
             renderOutput("Invalid player", CHEAT_PREFIX);
-            free(input);
             return;
         }
 
@@ -141,7 +186,6 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
         int idx = atoi(input + 7);
         if (idx < 1 || idx > 6) {
             renderOutput("Invalid idx", CHEAT_PREFIX);
-            free(input);
             return;
         }
 
@@ -149,57 +193,51 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
         int value = atoi(input + 9);
         if (value < 0) {
             renderOutput("Invalid value", CHEAT_PREFIX);
-            free(input);
             return;
         }
 
         // Update cell
         updateCell(context->board, player, idx, value);
-        free(input);
         return;
     }
 
     // If empty just return
     if (strcmp(input, "") == 0) {
-        free(input);
         return;
     }
 
     // Check for render
     if (strcmp(input, "render") == 0) {
         renderBoard(context->board, CHEAT_PREFIX, context->config);
-        free(input);
         return;
     }
 
     // Check for last
     if (strcmp(input, "last") == 0) {
-        char* message = malloc(256);
-        asprintf(&message, "Metadata:");
+        char message[256];
+        snprintf(message, sizeof(message), "Metadata:");
         renderOutput(message, CHEAT_PREFIX);
 
         if (context->lastMove != -1) {
-            asprintf(&message, "  Move: %d", context->lastMove > 5 ? 13 - context->lastMove : context->lastMove + 1);
+            snprintf(message, sizeof(message), "  Move: %d", context->lastMove > 5 ? 13 - context->lastMove : context->lastMove + 1);
             renderOutput(message, CHEAT_PREFIX);
         }
 
         if (context->lastEvaluation != INT32_MAX) {
-            asprintf(&message, "  Depth: %d", context->lastDepth);
+            snprintf(message, sizeof(message), "  Depth: %d", context->lastDepth);
             renderOutput(message, CHEAT_PREFIX);
 
-            asprintf(&message, "  Evaluation: %d", context->lastEvaluation);
+            snprintf(message, sizeof(message), "  Evaluation: %d", context->lastEvaluation);
             renderOutput(message, CHEAT_PREFIX);
 
             if (context->lastSolved) {
-                asprintf(&message, "  Solved: true");
+                snprintf(message, sizeof(message), "  Solved: true");
             } else {
-                asprintf(&message, "  Solved: false");
+                snprintf(message, sizeof(message), "  Solved: false");
             }
             renderOutput(message, CHEAT_PREFIX);
         }
 
-        free(message);
-        free(input);
         return;
     }
 
@@ -213,30 +251,24 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
             context->config->autoplay = true;
             if (originalAutoplay) {
                 renderOutput("Autoplay already enabled", CHEAT_PREFIX);
-                free(input);
                 return;
             }
 
             renderOutput("Enabled autoplay", CHEAT_PREFIX);
-            free(input);
             return;
         } else if (strcmp(input + 9, "false") == 0 || strcmp(input + 9, "0") == 0) {
             context->config->autoplay = false;
             if (!originalAutoplay) {
                 renderOutput("Autoplay already disabled", CHEAT_PREFIX);
-                free(input);
                 return;
             }
 
             renderOutput("Disabled autoplay", CHEAT_PREFIX);
-            free(input);
             return;
         } else {
-            char* message = malloc(256);
-            asprintf(&message, "Invalid autoplay \"%s\"", input + 9);
+            char message[256];
+            snprintf(message, sizeof(message), "Invalid autoplay \"%s\"", input + 9);
             renderOutput(message, CHEAT_PREFIX);
-            free(message);
-            free(input);
             return;
         }
     }
@@ -244,22 +276,18 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
     // Check for request to config
     if (strcmp(input, "config") == 0) {
         *requestedConfig = true;
-        free(input);
         return;
     }
 
     // Check for help
     if (strcmp(input, "help") == 0) {
         renderCheatHelp();
-        free(input);
         return;
     }
 
-    char* message = malloc(256);
-    asprintf(&message, "Unknown command: \"%s\". Type \"help\" to get all current commands", input);
+    char message[256];
+    snprintf(message, sizeof(message), "Unknown command: \"%s\". Type \"help\" to get all current commands", input);
     renderOutput(message, CHEAT_PREFIX);
-    free(message);
-    free(input);
     return;
 }
 
@@ -306,16 +334,16 @@ void startGameHandling(Config* config) {
                 int score1 = board.cells[SCORE_P1];
                 int score2 = board.cells[SCORE_P2];
 
-                char* message = malloc(256);
+                char message[256];
                 if (score1 > score2) {
-                    asprintf(&message, "Player 1 wins");
+                    snprintf(message, sizeof(message), "Player 1 wins");
                 } else if (score1 < score2) {
-                    asprintf(&message, "Player 2 wins");
+                    snprintf(message, sizeof(message), "Player 2 wins");
                 } else {
-                    asprintf(&message, "Draw");
+                    snprintf(message, sizeof(message), "Draw");
                 }
 
-                asprintf(&message, "%s, score: %d - %d", message, score1, score2);
+                snprintf(message, sizeof(message), "%s, score: %d - %d", message, score1, score2);
                 renderOutput(message, PLAY_PREFIX);
 
                 break;
