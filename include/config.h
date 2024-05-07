@@ -17,9 +17,11 @@
 
 /**
  * Enables greedy solving
- * Greedy solving accepts any solution that is solved and winning
+ * Greedy solving accepts any solution that is solved and above a certain threshold
+ * This will lead to a move trace that ends the game in a winning fashion with a minimum of moves
+ * This is not a perfect solution as we will only win by GOOD_ENOUGH but it drastically reduces the search space
 */
-//#define GREEDY_SOLVING
+#define GREEDY_SOLVING
 
 #ifdef GREEDY_SOLVING
 /**

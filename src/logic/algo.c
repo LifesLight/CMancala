@@ -89,7 +89,7 @@ int negamax(Board *board, int alpha, const int beta, const int depth, bool* solv
             if (solvedTemp) {
                 *solved = true;
 
-                if (score > GOOD_ENOUGH) {
+                if (score >= GOOD_ENOUGH) {
                     break;
                 }
             } else {
@@ -237,7 +237,7 @@ int negamaxWithMove(Board *board, int *bestMove, int alpha, const int beta, cons
             if (solvedTemp) {
                 *solved = true;
 
-                if (score > GOOD_ENOUGH) {
+                if (score >= GOOD_ENOUGH) {
                     break;
                 }
             } else {
@@ -319,7 +319,7 @@ void negamaxAspirationRoot(Context* context) {
 
             // Check if game is solved
             #ifdef GREEDY_SOLVING
-            if (solved && score > GOOD_ENOUGH) {
+            if (solved && score >= GOOD_ENOUGH) {
                 break;
             }
             #else
