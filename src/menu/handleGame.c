@@ -225,22 +225,22 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
                 #ifdef GREEDY_SOLVING
                 snprintf(message, sizeof(message), "  Solved: true (greedy)");
                 #else
-                snprintf(message, sizeof(message), "  Solved: true (full)");
+                snprintf(message, sizeof(message), "  Solved: true");
                 #endif
             } else {
                 #ifdef GREEDY_SOLVING
                 snprintf(message, sizeof(message), "  Solved: false (greedy)");
                 #else
-                snprintf(message, sizeof(message), "  Solved: false (full)");
+                snprintf(message, sizeof(message), "  Solved: false");
                 #endif
             }
             renderOutput(message, CHEAT_PREFIX);
 
-            #ifdef TRACK_TROUGHPUT
+            #ifdef TRACK_THROUGHPUT
             int64_t totalNodes = context->lastNodes;
             double totalTime = context->lastTime;
             double nodesPerSecond = totalNodes / totalTime;
-            snprintf(message, sizeof(message), "  Troughput: %f million nodes/s", nodesPerSecond / 1000000);
+            snprintf(message, sizeof(message), "  Throughput: %f million nodes/s", nodesPerSecond / 1000000);
             renderOutput(message, CHEAT_PREFIX);
             #endif
         }

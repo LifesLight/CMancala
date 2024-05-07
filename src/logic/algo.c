@@ -4,7 +4,7 @@
 
 #include "algo.h"
 
-#ifdef TRACK_TROUGHPUT
+#ifdef TRACK_THROUGHPUT
 int64_t nodes;
 #endif
 
@@ -32,7 +32,7 @@ int negamax(Board *board, int alpha, const int beta, const int depth, bool* solv
         return board->color * getBoardEvaluation(board);
     }
 
-    #ifdef TRACK_TROUGHPUT
+    #ifdef TRACK_THROUGHPUT
     nodes++;
     #endif
 
@@ -189,7 +189,7 @@ int negamaxWithMove(Board *board, int *bestMove, int alpha, const int beta, cons
         return board->color * getBoardEvaluation(board);
     }
 
-    #ifdef TRACK_TROUGHPUT
+    #ifdef TRACK_THROUGHPUT
     nodes++;
     #endif
 
@@ -292,7 +292,7 @@ void negamaxAspirationRoot(Context* context) {
     /**
      * If tracking is enabled, reset nodes counter
     */
-    #ifdef TRACK_TROUGHPUT
+    #ifdef TRACK_THROUGHPUT
     nodes = 0;
     #endif
 
@@ -350,7 +350,7 @@ void negamaxAspirationRoot(Context* context) {
     /**
      * Compute real time taken
     */
-    #ifdef TRACK_TROUGHPUT
+    #ifdef TRACK_THROUGHPUT
     double timeTaken = (double)(clock() - start) / CLOCKS_PER_SEC;
     context->lastTime = timeTaken;
     context->lastNodes = nodes;

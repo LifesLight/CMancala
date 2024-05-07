@@ -16,7 +16,7 @@
 #include "render.h"
 #include "config.h"
 
-#ifdef TRACK_TROUGHPUT
+#ifdef TRACK_THROUGHPUT
 extern int64_t nodes;
 #endif
 
