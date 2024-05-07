@@ -88,7 +88,8 @@ int negamax(Board *board, int alpha, const int beta, const int depth, bool* solv
             reference = score;
             if (solvedTemp) {
                 *solved = true;
-                if (score > 0) {
+
+                if (score > GOOD_ENOUGH) {
                     break;
                 }
             } else {
@@ -196,8 +197,6 @@ int negamaxWithMove(Board *board, int *bestMove, int alpha, const int beta, cons
     int score;
 
     #ifdef GREEDY_SOLVING
-    *solved = true;
-    #else
     bool solvedTemp;
     #endif
 
@@ -213,33 +212,38 @@ int negamaxWithMove(Board *board, int *bestMove, int alpha, const int beta, cons
         copyBoard(board, &boardCopy);
         makeMoveFunction(&boardCopy, i);
 
-        #ifndef GREEDY_SOLVING
+        #ifdef GREEDY_SOLVING
         solvedTemp = true;
         #endif
 
         if (board->color == boardCopy.color) {
             #ifdef GREEDY_SOLVING
-            score = negamax(&boardCopy, alpha, beta, depth - 1, solved);
-            #else
             score = negamax(&boardCopy, alpha, beta, depth - 1, &solvedTemp);
-            if (!solvedTemp) {
-                *solved = false;
-            }
+            #else
+            score = negamax(&boardCopy, alpha, beta, depth - 1, solved);
             #endif
         } else {
             #ifdef GREEDY_SOLVING
-            score = -negamax(&boardCopy, -beta, -alpha, depth - 1, solved);
-            #else
             score = -negamax(&boardCopy, -beta, -alpha, depth - 1, &solvedTemp);
-            if (!solvedTemp) {
-                *solved = false;
-            }
+            #else
+            score = -negamax(&boardCopy, -beta, -alpha, depth - 1, solved);
             #endif
         }
 
         if (score > reference) {
             reference = score;
             *bestMove = i;
+            #ifdef GREEDY_SOLVING
+            if (solvedTemp) {
+                *solved = true;
+
+                if (score > GOOD_ENOUGH) {
+                    break;
+                }
+            } else {
+                *solved = false;
+            }
+            #endif
         }
 
         alpha = max(alpha, reference);
@@ -315,7 +319,7 @@ void negamaxAspirationRoot(Context* context) {
 
             // Check if game is solved
             #ifdef GREEDY_SOLVING
-            if (solved && score > 0) {
+            if (solved && score > GOOD_ENOUGH) {
                 break;
             }
             #else
