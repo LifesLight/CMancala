@@ -33,7 +33,8 @@ int min(const int a, const int b);
 /**
  * Negamax algorithm with alpha-beta pruning.
 */
-int negamax(Board *board, int alpha, const int beta, const int depth, bool* solved);
+int negamax(
+    Board *board, int alpha, const int beta, const int depth, bool* solved);
 
 /**
  * Negamax algorithm with alpha-beta pruning and best move output.
@@ -53,3 +54,10 @@ NegamaxTrace negamaxWithTrace(
  * Negamax with iterative deepening and aspiration window search.
 */
 void negamaxAspirationRoot(Context* context);
+
+/**
+ * Negamax root with distribution.
+ * Full search without any optimizations.
+*/
+void negamaxRootWithDistribution(
+    Board *board, int depth, int32_t* distribution, bool* solved);

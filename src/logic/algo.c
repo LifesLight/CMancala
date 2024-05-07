@@ -371,3 +371,41 @@ void negamaxAspirationRoot(Context* context) {
     context->lastDepth = currentDepth - 1;
     context->lastSolved = solved;
 }
+
+/**
+ * Negamax root with distribution
+ * Full search without any optimizations
+*/
+void negamaxRootWithDistribution(Board *board, int depth, int32_t* distribution, bool* solved) {
+    int score;
+
+    renderOutput("Thinking...", PLAY_PREFIX);
+
+    const int8_t start = (board->color == 1)  ? HBOUND_P1 : HBOUND_P2;
+    const int8_t end = (board->color == 1)    ? LBOUND_P1 : LBOUND_P2;
+
+    int index = 5;
+    for (int8_t i = start; i >= end; i--) {
+        if (board->cells[i] == 0) {
+            distribution[index] = INT32_MIN;
+            index--;
+            continue;
+        }
+
+        Board boardCopy;
+        copyBoard(board, &boardCopy);
+        makeMoveFunction(&boardCopy, i);
+
+        int alpha = INT32_MIN + 1;
+        int beta = INT32_MAX;
+
+        if (board->color == boardCopy.color) {
+            score = negamax(&boardCopy, alpha, beta, depth - 1, solved);
+        } else {
+            score = -negamax(&boardCopy, -beta, -alpha, depth - 1, solved);
+        }
+
+        distribution[index] = score;
+        index--;
+    }
+}

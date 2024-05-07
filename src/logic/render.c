@@ -5,9 +5,9 @@
 #include "render.h"
 
 
-void renderBoard(const Board *board, const char* prefix, const Config* config) {
+void renderCustomBoard(const int32_t *cells, const int8_t color, const char* prefix, const Config* config) {
     char* playerDescriptor;
-    if (board->color == 1) {
+    if (color == 1) {
         switch (config->player1) {
             case HUMAN_AGENT:
                 playerDescriptor = "Player";
@@ -50,30 +50,42 @@ void renderBoard(const Board *board, const char* prefix, const Config* config) {
     // Upper row
     printf("%s%s%s%s%s%s%s", prefix, OUTPUT_PREFIX, TL, HL, HL, HL, ER);
     for (int i = HBOUND_P2; i > LBOUND_P2; --i) {
-        printf("%3d%s", board->cells[i], VL);
+        if (cells[i] == INT32_MIN)
+            printf(" X %s", VL);
+        else
+            printf("%3d%s", cells[i], VL);
     }
-    printf("%3d%s%s%s%s%s", board->cells[LBOUND_P2], EL, HL, HL, HL, TR);
+    if (cells[LBOUND_P2] == INT32_MIN)
+        printf(" X %s%s%s%s%s", EL, HL, HL, HL, TR);
+    else
+        printf("%3d%s%s%s%s%s", cells[LBOUND_P2], EL, HL, HL, HL, TR);
 
-    if (board->color == -1) {
+    if (color == -1) {
         printf("  %s%s", PLAYER_INDICATOR, playerDescriptor);
     }
     printf("\n");
 
     // Middle separator
-    printf("%s%s%s%3d%s%s", prefix, OUTPUT_PREFIX, VL, board->cells[SCORE_P2], EL, HL);
+    printf("%s%s%s%3d%s%s", prefix, OUTPUT_PREFIX, VL, cells[SCORE_P2], EL, HL);
     for (int i = LBOUND_P1; i < HBOUND_P1; ++i) {
         printf("%s%s%s%s", HL, HL, CR, HL);
     }
-    printf("%s%s%s%3d%s\n", HL, HL, ER, board->cells[SCORE_P1], VL);
+    printf("%s%s%s%3d%s\n", HL, HL, ER, cells[SCORE_P1], VL);
 
     // Lower row
     printf("%s%s%s%s%s%s%s", prefix, OUTPUT_PREFIX, BL, HL, HL, HL, ER);
     for (int i = LBOUND_P1; i < HBOUND_P1; ++i) {
-        printf("%3d%s", board->cells[i], VL);
+        if (cells[i] == INT32_MIN)
+            printf(" X %s", VL);
+        else
+            printf("%3d%s", cells[i], VL);
     }
-    printf("%3d%s%s%s%s%s", board->cells[HBOUND_P1], EL, HL, HL, HL, BR);
+    if (cells[HBOUND_P1] == INT32_MIN)
+        printf(" X %s%s%s%s%s", EL, HL, HL, HL, BR);
+    else
+        printf("%3d%s%s%s%s%s", cells[HBOUND_P1], EL, HL, HL, HL, BR);
 
-    if (board->color == 1) {
+    if (color == 1) {
         printf("  %s%s", PLAYER_INDICATOR, playerDescriptor);
     }
     printf("\n");
@@ -84,6 +96,15 @@ void renderBoard(const Board *board, const char* prefix, const Config* config) {
         printf("%s%s%s%s", HL, HL, EB, HL);
     }
     printf("%s%s%s\n", HL, HL, BR);
+}
+
+void renderBoard(const Board *board, const char* prefix, const Config* config) {
+    int cells[14];
+    for (int i = 0; i < 14; ++i) {
+        cells[i] = board->cells[i];
+    }
+
+    renderCustomBoard(cells, board->color, prefix, config);
 }
 
 void renderWelcome() {

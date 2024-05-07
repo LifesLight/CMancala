@@ -15,6 +15,7 @@ void renderCheatHelp() {
     renderOutput("  switch                           : Switch the next player", CHEAT_PREFIX);
     renderOutput("  edit [player] [idx] [value]      : Edit cell value", CHEAT_PREFIX);
     renderOutput("  render                           : Render the current board", CHEAT_PREFIX);
+    renderOutput("  analyze [(depth)]                : Run a full analysis on the board", CHEAT_PREFIX);
     renderOutput("  last                             : Fetch the last moves metadata", CHEAT_PREFIX);
     renderOutput("  trace                            : Compute move trace of the last move (requires cached evaluation)", CHEAT_PREFIX);
     renderOutput("  autoplay [true|false]            : If enabled the game loop will automatically continue", CONFIG_PREFIX);
@@ -53,6 +54,44 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
         context->lastSolved = false;
         context->gameOver = false;
         renderOutput("Undid last move", CHEAT_PREFIX);
+        return;
+    }
+
+    // Check for request to analyze
+    if (strncmp(input, "analyze", 7) == 0) {
+        int depth = 10;
+
+        // Check for custom depth
+        if (strlen(input) > 7) {
+            depth = atoi(input + 8);
+        }
+
+        if (depth < 1) {
+            renderOutput("Invalid depth", CHEAT_PREFIX);
+            return;
+        }
+
+        // Manually
+        int distribution[6];
+        bool solved = true;
+        negamaxRootWithDistribution(context->board, depth, distribution, &solved);
+
+        int renderCells[14];
+        for (int i = 0; i < 14; i++) {
+            renderCells[i] = context->board->cells[i];
+        }
+        if (context->board->color == 1) {
+            for (int i = 0; i < 6; i++) {
+                renderCells[i] = distribution[i];
+            }
+        } else {
+            for (int i = 0; i < 6; i++) {
+                renderCells[i + 7] = distribution[i];
+            }
+        }
+
+        renderCustomBoard(renderCells, context->board->color, CHEAT_PREFIX, context->config);
+
         return;
     }
 
