@@ -125,6 +125,11 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
         // Prepare to parse the hash as hexadecimal
         uint64_t high = 0, low = 0;
 
+        // Remove leading spaces
+        while (input[5] == ' ') {
+            sprintf(input, "%s", input + 1);
+        }
+
         // Add 6 trailing zeros to the input
         char temp[256];
         snprintf(temp, sizeof(temp), "000000%s", input + 5);
