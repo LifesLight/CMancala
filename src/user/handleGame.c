@@ -107,7 +107,7 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
 
         // Remove first 6 characters
         char temp[256];
-        strncpy(temp, message + 6, sizeof(temp));
+        strncpy(temp, message + 5, sizeof(temp));
         snprintf(message, sizeof(message), "Code: %s", temp);
 
         renderOutput(message, CHEAT_PREFIX);
@@ -132,7 +132,7 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
 
         // Add 6 trailing zeros to the input
         char temp[256];
-        snprintf(temp, sizeof(temp), "000000%s", input + 5);
+        snprintf(temp, sizeof(temp), "00000%s", input + 5);
 
         // Read in temp as hexadecimal
         int parsedCount = sscanf(temp, "%16llx%16llx", (unsigned long long int *)&high, (unsigned long long int *)&low);
