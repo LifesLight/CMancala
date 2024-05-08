@@ -59,7 +59,7 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
 
     // Check for request to analyze
     if (strncmp(input, "analyze", 7) == 0) {
-        int depth = 10;
+        int depth = 14;
 
         // Check for custom depth
         if (strlen(input) > 7) {
@@ -98,14 +98,20 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
     #ifdef ENCODING
     // Check for request to hash
     if (strcmp(input, "encode") == 0) {
-       __uint128_t code = encodeBoard(context->board);
-       char message[256];
-       // Format the hash as hexadecimal
-       snprintf(message, sizeof(message), "Code: %016llx%016llx", 
+        __uint128_t code = encodeBoard(context->board);
+        char message[256];
+        // Format the hash as hexadecimal
+        snprintf(message, sizeof(message), "%016llx%016llx", 
                 (unsigned long long)(code >> 64), 
                 (unsigned long long)(code & 0xFFFFFFFFFFFFFFFFULL));
-       renderOutput(message, CHEAT_PREFIX);
-       return;
+
+        // Remove first 6 characters
+        char temp[256];
+        strncpy(temp, message + 6, sizeof(temp));
+        snprintf(message, sizeof(message), "Code: %s", temp);
+
+        renderOutput(message, CHEAT_PREFIX);
+        return;
     }
 
     // Check for request to load
@@ -118,7 +124,13 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
 
         // Prepare to parse the hash as hexadecimal
         uint64_t high = 0, low = 0;
-        int parsedCount = sscanf(input + 5, "%16llx%16llx", (unsigned long long int *)&high, (unsigned long long int *)&low);
+
+        // Add 6 trailing zeros to the input
+        char temp[256];
+        snprintf(temp, sizeof(temp), "000000%s", input + 5);
+
+        // Read in temp as hexadecimal
+        int parsedCount = sscanf(temp, "%16llx%16llx", (unsigned long long int *)&high, (unsigned long long int *)&low);
         __uint128_t code = ((__uint128_t)high << 64) | low;
 
         // Check if the parsing was successful and exactly two 64-bit parts were read

@@ -8,12 +8,12 @@ set(SOURCE_FILES
     src/main.c
     src/logic/utility.c
     src/logic/board.c
-    src/logic/render.c
     src/logic/algo.c
-    src/menu/handleConfig.c
-    src/menu/handleGame.c
-    src/menu/handlePlaying.c
-    src/menu/interface.c
+    src/user/render.c
+    src/user/handleConfig.c
+    src/user/handleGame.c
+    src/user/handlePlaying.c
+    src/user/interface.c
 )
 
 include_directories(include)
