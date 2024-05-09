@@ -20,11 +20,10 @@ include_directories(include)
 
 add_executable(CMancala ${SOURCE_FILES})
 
-# Set base optimization flag
-set(OPTIMIZATION_FLAGS "-O3")
 
+# Optimization flags, windows doesn't need these since we are using Release mode
 if(NOT WIN32)
-  set(NO_WINDOWS_FLAGS "-flto -march=native -fno-stack-protector -Wall -Wextra -pedantic")
+  set(NO_WINDOWS_FLAGS "-O3 -flto -march=native -fno-stack-protector -Wall -Wextra -pedantic")
 else()
   set(NO_WINDOWS_FLAGS "")
 endif()
