@@ -57,7 +57,6 @@ typedef struct {
     int lastMove;
     int lastDepth;
     bool lastSolved;
-    bool gameOver;
     #ifdef TRACK_THROUGHPUT
     double lastTime;
     uint64_t lastNodes;

@@ -52,7 +52,6 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
         context->lastEvaluation = INT32_MAX;
         context->lastDepth = 0;
         context->lastSolved = false;
-        context->gameOver = false;
         renderOutput("Undid last move", CHEAT_PREFIX);
         return;
     }
@@ -370,7 +369,6 @@ void startGameHandling(Config* config) {
         .lastMove = -1,
         .lastDepth = 0,
         .lastSolved = false,
-        .gameOver = false
     };
 
     // Start game loop
@@ -378,18 +376,17 @@ void startGameHandling(Config* config) {
     bool requestedContinue = config->autoplay ? true : false;
 
     while(!requestedConfig) {
-        while(requestedContinue && !context.gameOver) {
+        if (isBoardTerminal(context.board)) {
+            requestedContinue = false;
+        }
+
+        while(requestedContinue) {
             bool requestedMenu = false;
 
             stepGame(&requestedMenu, &context);
 
-            if (!config->autoplay || requestedMenu) {
-                requestedContinue = false;
-                break;
-            }
-
-            if (isBoardPlayerOneEmpty(&board) || isBoardPlayerTwoEmpty(&board)) {
-                context.gameOver = true;
+            // Only inform about winner if a player made the game end
+            if (isBoardTerminal(context.board)) {
                 requestedContinue = false;
 
                 renderBoard(&board, PLAY_PREFIX, config);
@@ -409,6 +406,11 @@ void startGameHandling(Config* config) {
                 snprintf(message, sizeof(message), "%s, score: %d - %d", message, score1, score2);
                 renderOutput(message, PLAY_PREFIX);
 
+                break;
+            }
+
+            if (!config->autoplay || requestedMenu) {
+                requestedContinue = false;
                 break;
             }
         }

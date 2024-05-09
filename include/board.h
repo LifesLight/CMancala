@@ -66,6 +66,11 @@ void makeMoveOnBoardClassic(Board *board, const uint8_t actionIndex);
 void makeMoveOnBoardAvalanche(Board *board, const uint8_t actionIndex);
 
 /**
+ * Checks if game is over without handling terminal
+*/
+bool isBoardTerminal(const Board *board);
+
+/**
  * Makes a move on the board
  * Also automatically handles terminal check
 */

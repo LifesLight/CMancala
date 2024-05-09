@@ -205,6 +205,10 @@ void makeMoveManual(Board* board, int index) {
     processBoardTerminal(board);
 }
 
+bool isBoardTerminal(const Board *board) {
+    return isBoardPlayerOneEmpty(board) || isBoardPlayerTwoEmpty(board);
+}
+
 #ifdef ENCODING
 __uint128_t encodeBoard(const Board *board) {
     __uint128_t packed = 0;
