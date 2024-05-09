@@ -77,16 +77,12 @@ bool isBoardTerminal(const Board *board);
 void makeMoveManual(Board* board, int index);
 
 /**
- * Hashing requires 128 bit integers
-*/
-#ifdef ENCODING
-/**
  * Returns a reversible encoding of the board.
 */
-__uint128_t encodeBoard(const Board *board);
+char* encodeBoard(const Board *board);
 
 /**
- * Loads a board from a reversable encoding.
+ * Loads a board from a reversible encoding.
+ * Returns success
 */
-void decodeBoard(Board *board, const __uint128_t hash);
-#endif
+bool decodeBoard(Board *board, const char* code);

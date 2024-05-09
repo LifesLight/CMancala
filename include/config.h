@@ -4,14 +4,6 @@
  * Copyright (c) Alexander Kurtz 2024
  */
 
-#ifndef _WIN32
-/**
- * Allows encoding of boards
- * Requires 128 bit integers
-*/
-#define ENCODING
-#endif
-
 /**
  * Tracks the throughput of the last simulation
 */

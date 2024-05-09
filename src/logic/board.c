@@ -209,34 +209,65 @@ bool isBoardTerminal(const Board *board) {
     return isBoardPlayerOneEmpty(board) || isBoardPlayerTwoEmpty(board);
 }
 
-#ifdef ENCODING
-__uint128_t encodeBoard(const Board *board) {
-    __uint128_t packed = 0;
+char* encodeBoard(const Board *board) {
+    uint64_t low = 0;
+    uint64_t high = 0;
 
     // Store playing color in the first bit
-    packed |= ((__uint128_t)(board->color == 1 ? 1 : 0));
+    low |= ((uint64_t)(board->color == 1 ? 1 : 0));
 
     // Pack each cell's stones as 8 bits each, starting from the 2nd bit position
     int shift = 1;
     for (int i = 0; i < 14; i++) {
         // Use 8 bits for each cell
-        packed |= ((__uint128_t)(board->cells[i] & 0xFF)) << shift;
+        if (shift < 64) {
+            // Shift can be contained within `low`
+            low |= (unsigned long long)(board->cells[i] & 0xFF) << shift;
+        } else {
+            // Shift goes into `high`
+            high |= (unsigned long long)(board->cells[i] & 0xFF) << (shift - 64);
+        }
         shift += 8;
     }
 
-    return packed;
+    char message[256];
+    // Format the hash as hexadecimal
+    snprintf(message, sizeof(message), "%016llx%016llx", high, low);
+
+    // Remove first 5 characters
+    char temp[256];
+    strncpy(temp, message + 5, sizeof(temp));
+
+    // Convert to heap allocated char
+    char* result = (char*)malloc(strlen(temp) + 1);
+    strcpy(result, temp);
+
+    return result;
 }
 
-void decodeBoard(Board *board, const __uint128_t packed) {
-    // Load color from the first bit
-    board->color = (packed & 0x01) ? 1 : -1;
+bool decodeBoard(Board *board, const char* code) {
+    uint64_t high = 0, low = 0;
+    int parsedCount = sscanf(code, "%16llx%16llx", &high, &low);
 
-    // Unpack each cell's stones from the packed value, 8 bits each, starting from the 2nd bit
+    if (parsedCount != 2) {
+        return false;
+    }
+
+    // Load color from the first bit of `low`
+    board->color = (low & 0x01) ? 1 : -1;
+
+    // Unpack each cell's stones from `high` and `low`, 8 bits each, starting from the 2nd bit
     int shift = 1;
     for (int i = 0; i < 14; i++) {
-        // Retrieve 8 bits for each cell
-        board->cells[i] = (packed >> shift) & 0xFF;
+        if (shift < 64) {
+            // If the shift is within the first 64 bits
+            board->cells[i] = (low >> shift) & 0xFF;
+        } else {
+            // If the shift moves into the `high` portion
+            board->cells[i] = (high >> (shift - 64)) & 0xFF;
+        }
         shift += 8;
     }
+
+    return true;
 }
-#endif

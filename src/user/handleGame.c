@@ -94,21 +94,14 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
         return;
     }
 
-    #ifdef ENCODING
     // Check for request to hash
     if (strcmp(input, "encode") == 0) {
-        __uint128_t code = encodeBoard(context->board);
+        char* code = encodeBoard(context->board);
+
         char message[256];
-        // Format the hash as hexadecimal
-        snprintf(message, sizeof(message), "%016llx%016llx", 
-                (unsigned long long)(code >> 64), 
-                (unsigned long long)(code & 0xFFFFFFFFFFFFFFFFULL));
+        snprintf(message, sizeof(message), "Code: %s", code);
 
-        // Remove first 6 characters
-        char temp[256];
-        strncpy(temp, message + 5, sizeof(temp));
-        snprintf(message, sizeof(message), "Code: %s", temp);
-
+        free (code);
         renderOutput(message, CHEAT_PREFIX);
         return;
     }
@@ -121,38 +114,30 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
             return;
         }
 
-        // Prepare to parse the hash as hexadecimal
-        uint64_t high = 0, low = 0;
-
         // Remove leading spaces
         while (input[5] == ' ') {
             sprintf(input, "%s", input + 1);
         }
 
-        // Add 6 trailing zeros to the input
+        // Add 5 trailing zeros to the input
         char temp[256];
         snprintf(temp, sizeof(temp), "00000%s", input + 5);
-
-        // Read in temp as hexadecimal
-        int parsedCount = sscanf(temp, "%16llx%16llx", (unsigned long long int *)&high, (unsigned long long int *)&low);
-        __uint128_t code = ((__uint128_t)high << 64) | low;
-
-        // Check if the parsing was successful and exactly two 64-bit parts were read
-        if (parsedCount != 2) {
-            renderOutput("Invalid code", CHEAT_PREFIX);
-            return;
-        }
 
         // Save previous board
         copyBoard(context->board, context->lastBoard);
         context->lastEvaluation = INT32_MAX;
 
         // Load board
-        decodeBoard(context->board, code);
+        bool success = decodeBoard(context->board, temp);
+
+        if (!success) {
+            renderOutput("Invalid code", CHEAT_PREFIX);
+            return;
+        }
+
         renderOutput("Loaded board", CHEAT_PREFIX);
         return;
     }
-    #endif
 
     // Check for request to switch
     if (strcmp(input, "switch") == 0) {
