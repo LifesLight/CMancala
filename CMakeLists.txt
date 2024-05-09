@@ -20,4 +20,13 @@ include_directories(include)
 
 add_executable(CMancala ${SOURCE_FILES})
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3 -flto -march=native -fno-stack-protector -Wall -Wextra -pedantic")
+# Set base optimization flag
+set(OPTIMIZATION_FLAGS "-O3")
+
+if(NOT WIN32)
+  set(NO_WINDOWS_FLAGS "-flto -march=native -fno-stack-protector -Wall -Wextra -pedantic")
+else()
+  set(NO_WINDOWS_FLAGS "")
+endif()
+
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OPTIMIZATION_FLAGS} ${NO_WINDOWS_FLAGS}")

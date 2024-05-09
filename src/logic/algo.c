@@ -9,6 +9,7 @@ int64_t nodes;
 #endif
 
 
+#ifndef _WIN32
 int min(const int a, const int b) {
     return (a < b) ? a : b;
 }
@@ -16,6 +17,7 @@ int min(const int a, const int b) {
 int max(const int a, const int b) {
     return (a > b) ? a : b;
 }
+#endif
 
 int negamax(Board *board, int alpha, const int beta, const int depth, bool* solved) {
     // Terminally check

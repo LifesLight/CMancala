@@ -20,6 +20,7 @@
 extern int64_t nodes;
 #endif
 
+#ifndef _WIN32
 /**
  * Returns the maximum of two integers.
 */
@@ -29,6 +30,7 @@ int max(const int a, const int b);
  * Returns the minimum of two integers.
 */
 int min(const int a, const int b);
+#endif
 
 /**
  * Negamax algorithm with alpha-beta pruning.

@@ -9,7 +9,10 @@
 #include <string.h>
 #include <stdbool.h>
 #include <ctype.h>
+
+#ifndef _WIN32
 #include <unistd.h>
+#endif
 
 #include "config.h"
 #include "containers.h"

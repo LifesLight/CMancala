@@ -20,7 +20,12 @@ void trimSpaces(char *str) {
 }
 
 void getInput(char *input, const char *prefix) {
-    bool isInteractive = isatty(STDIN_FILENO);
+    bool isInteractive;
+    #ifdef _WIN32
+    isInteractive = true;
+    #else
+    isInteractive = isatty(STDIN_FILENO);
+    #endif
 
     while (true) {
         printf("%s%s", prefix, INPUT_PREFIX);
