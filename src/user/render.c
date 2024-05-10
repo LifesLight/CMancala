@@ -2,7 +2,7 @@
  * Copyright (c) Alexander Kurtz 2023
  */
 
-#include "render.h"
+#include "user/render.h"
 
 
 void renderCustomBoard(const int32_t *cells, const int8_t color, const char* prefix, const Config* config) {

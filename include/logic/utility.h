@@ -16,8 +16,8 @@
 
 #include "config.h"
 #include "containers.h"
-#include "board.h"
-#include "render.h"
+#include "logic/board.h"
+#include "user/render.h"
 
 void getInput(char* input, const char* prefix);
 void initializeBoardFromConfig(Board* board, Config* config);

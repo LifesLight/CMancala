@@ -1,9 +1,8 @@
-#include "handleConfig.h"
-
 /**
  * Copyright (c) Alexander Kurtz 2024
  */
 
+#include "user/handleConfig.h"
 
 void renderConfigHelp() {
     renderOutput("Commands:", CONFIG_PREFIX);

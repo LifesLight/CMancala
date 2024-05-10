@@ -2,7 +2,7 @@
  * Copyright (c) Alexander Kurtz 2024
  */
 
-#include "utility.h"
+#include "logic/utility.h"
 
 
 void quitGame() {

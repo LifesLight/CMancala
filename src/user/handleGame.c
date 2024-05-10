@@ -2,7 +2,7 @@
  * Copyright (c) Alexander Kurtz 2024
  */
 
-#include "handleGame.h"
+#include "user/handleGame.h"
 
 void renderCheatHelp() {
     renderOutput("Commands:", CHEAT_PREFIX);

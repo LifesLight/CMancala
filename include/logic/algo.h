@@ -12,8 +12,8 @@
 #include <time.h>
 
 #include "containers.h"
-#include "board.h"
-#include "render.h"
+#include "logic/board.h"
+#include "user/render.h"
 #include "config.h"
 
 #ifdef TRACK_THROUGHPUT

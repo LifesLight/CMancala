@@ -3,7 +3,7 @@
  */
 
 
-#include "board.h"
+#include "logic/board.h"
 
 MakeMoveFunction makeMoveFunction = NULL;
 

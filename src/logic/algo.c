@@ -2,7 +2,7 @@
  * Copyright (c) Alexander Kurtz 2023
  */
 
-#include "algo.h"
+#include "logic/algo.h"
 
 #ifdef TRACK_THROUGHPUT
 int64_t nodes;

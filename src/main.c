@@ -2,7 +2,7 @@
  * Copyright (c) Alexander Kurtz 2023
 */
 
-#include "interface.h"
+#include "user/interface.h"
 
 /**
  * Program entry point
