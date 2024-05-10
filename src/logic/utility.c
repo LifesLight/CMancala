@@ -4,6 +4,15 @@
 
 #include "logic/utility.h"
 
+#ifndef _WIN32
+int min(const int a, const int b) {
+    return (a < b) ? a : b;
+}
+
+int max(const int a, const int b) {
+    return (a > b) ? a : b;
+}
+#endif
 
 void quitGame() {
     exit(0);

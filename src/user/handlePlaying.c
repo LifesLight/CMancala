@@ -14,7 +14,7 @@ void renderPlayHelp() {
 }
 
 void getMoveAi(Context* context) {
-    negamaxAspirationRoot(context);
+    GLOBAL_negamaxAspirationRoot(context);
 }
 
 void getMoveRandom(Context* context) {

@@ -19,6 +19,11 @@
 #include "logic/board.h"
 #include "user/render.h"
 
+#ifndef _WIN32
+int min(const int a, const int b);
+int max(const int a, const int b);
+#endif
+
 void getInput(char* input, const char* prefix);
 void initializeBoardFromConfig(Board* board, Config* config);
 void quitGame();

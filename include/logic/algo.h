@@ -15,34 +15,13 @@
 #include "logic/board.h"
 #include "user/render.h"
 #include "config.h"
-
-#ifdef TRACK_THROUGHPUT
-extern int64_t nodes;
-#endif
-
-#ifndef _WIN32
-/**
- * Returns the maximum of two integers.
-*/
-int max(const int a, const int b);
+#include "logic/solver/global.h"
+#include "logic/solver/quick.h"
+#include "logic/solver/local.h"
 
 /**
- * Returns the minimum of two integers.
+ * Here are global algorithms, regardless the solver
 */
-int min(const int a, const int b);
-#endif
-
-/**
- * Negamax algorithm with alpha-beta pruning.
-*/
-int negamax(
-    Board *board, int alpha, const int beta, const int depth, bool* solved);
-
-/**
- * Negamax algorithm with alpha-beta pruning and best move output.
-*/
-int negamaxWithMove(
-    Board *board, int *bestMove, int alpha, const int beta, const int depth, bool* solved);
 
 /**
  * Negamax algorithm with alpha-beta pruning and trace output.
@@ -51,15 +30,3 @@ int negamaxWithMove(
 */
 NegamaxTrace negamaxWithTrace(
     Board *board, int alpha, const int beta, const int depth);
-
-/**
- * Negamax with iterative deepening and aspiration window search.
-*/
-void negamaxAspirationRoot(Context* context);
-
-/**
- * Negamax root with distribution.
- * Full search without any optimizations.
-*/
-void negamaxRootWithDistribution(
-    Board *board, int depth, int32_t* distribution, bool* solved);

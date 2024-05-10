@@ -5,11 +5,6 @@
  */
 
 /**
- * Tracks the throughput of the last simulation
-*/
-#define TRACK_THROUGHPUT
-
-/**
  * Enables greedy solving
  * Greedy solving accepts any solution that is solved and above a certain threshold
  * This will lead to a move trace that ends the game in a winning fashion with a minimum of moves
@@ -20,7 +15,7 @@
 #ifdef GREEDY_SOLVING
 /**
  * Specify how which evaluation is good enough for the solver
- * We will early terminate when a guranteed win with this eval is found
+ * We will early terminate when a guaranteed win with this eval is found
 */
 #define GOOD_ENOUGH 1
 #endif

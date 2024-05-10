@@ -14,6 +14,10 @@ set(SOURCE_FILES
     src/user/handleGame.c
     src/user/handlePlaying.c
     src/user/interface.c
+    src/logic/solver/global.c
+    src/logic/solver/local.c
+    src/logic/solver/quick.c
+    src/logic/solver/troughput.c
 )
 
 include_directories(include)

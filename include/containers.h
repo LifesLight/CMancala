@@ -26,6 +26,12 @@ typedef enum {
     AVALANCHE_MOVE
 } MoveFunction;
 
+typedef enum {
+    QUICK_SOLVER,
+    LOCAL_SOLVER,
+    GLOBAL_SOLVER
+} Solver;
+
 typedef struct {
     int stones;
     Distribution distribution;
@@ -37,6 +43,7 @@ typedef struct {
     Agent player1;
     Agent player2;
     MoveFunction moveFunction;
+    Solver solver;
 } Config;
 
 typedef struct {
@@ -57,8 +64,6 @@ typedef struct {
     int lastMove;
     int lastDepth;
     bool lastSolved;
-    #ifdef TRACK_THROUGHPUT
     double lastTime;
     uint64_t lastNodes;
-    #endif
 } Context;

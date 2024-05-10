@@ -72,8 +72,8 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
 
         // Manually
         int distribution[6];
-        bool solved = true;
-        negamaxRootWithDistribution(context->board, depth, distribution, &solved);
+        GLOBAL_negamaxRootWithDistribution(context->board, depth, distribution);
+        bool solved = GLOBAL_isSolved();
 
         int renderCells[14];
         for (int i = 0; i < 14; i++) {
