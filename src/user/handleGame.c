@@ -7,15 +7,13 @@
 void renderCheatHelp() {
     renderOutput("Commands:", CHEAT_PREFIX);
     renderOutput("  step                             : Step to the next turn", CHEAT_PREFIX);
-    #ifdef ENCODING
     renderOutput("  encode                           : Encode the current board", CHEAT_PREFIX);
     renderOutput("  load [encoding]                  : Load the board from the encoding", CHEAT_PREFIX);
-    #endif
     renderOutput("  undo                             : Undo the last move", CHEAT_PREFIX);
     renderOutput("  switch                           : Switch the next player", CHEAT_PREFIX);
     renderOutput("  edit [player] [idx] [value]      : Edit cell value", CHEAT_PREFIX);
     renderOutput("  render                           : Render the current board", CHEAT_PREFIX);
-    renderOutput("  analyze [(depth)]                : Run a full analysis on the board", CHEAT_PREFIX);
+    renderOutput("  analyze --solver --depth         : Run a full analysis on the board, solver and depth can be specified", CHEAT_PREFIX);
     renderOutput("  last                             : Fetch the last moves metadata", CHEAT_PREFIX);
     renderOutput("  trace                            : Compute move trace of the last move (requires cached evaluation)", CHEAT_PREFIX);
     renderOutput("  autoplay [true|false]            : If enabled the game loop will automatically continue", CONFIG_PREFIX);
@@ -58,22 +56,69 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
 
     // Check for request to analyze
     if (strncmp(input, "analyze", 7) == 0) {
-        int depth = 14;
+        char internalInput[256];
+        snprintf(internalInput, sizeof(internalInput), "%s", input + 8);
 
-        // Check for custom depth
-        if (strlen(input) > 7) {
-            depth = atoi(input + 8);
+        // Default depth
+        int depth = 14;
+        Solver solver = context->config->solver;
+        int goodEnough = context->config->quickSolverGoodEnough;
+
+        // Find --solver and --depth in the input string
+        char *solverPoint = strstr(internalInput, "--solver");
+        char *depthPoint = strstr(internalInput, "--depth");
+
+        // Parse and set the solver configuration
+        if (solverPoint != NULL) {
+            solverPoint += 9;  // Move pointer past "--solver "
+            char *nextSpace = strchr(solverPoint, ' ');  // Find next space after solver argument
+            if (nextSpace != NULL) *nextSpace = '\0';  // Null-terminate the solver argument
+
+            // Check for specific solvers and optionally parse the 'goodEnough' value for quick
+            if (strcmp(solverPoint, "global") == 0) {
+                solver = GLOBAL_SOLVER;
+            } else if (strncmp(solverPoint, "quick", 5) == 0) {
+                solver = QUICK_SOLVER;
+                char *goodEnoughValue = nextSpace ? nextSpace + 1 : NULL;
+                if (goodEnoughValue && *goodEnoughValue) {
+                    goodEnough = atoi(goodEnoughValue);
+
+                    if (goodEnough < 0) {
+                        renderOutput("Invalid goodEnough value", CHEAT_PREFIX);
+                        goodEnough = context->config->quickSolverGoodEnough;
+                        return;
+                    }
+                }
+            } else if (strcmp(solverPoint, "local") == 0) {
+                solver = LOCAL_SOLVER;
+            } else {
+                renderOutput("Invalid solver", CHEAT_PREFIX);
+                return;
+            }
         }
 
-        if (depth < 1) {
-            renderOutput("Invalid depth", CHEAT_PREFIX);
-            return;
+        // Parse and set the depth configuration
+        if (depthPoint != NULL) {
+            depthPoint += 8;  // Move pointer past "--depth "
+            char *endPtr;
+            int parsedDepth = strtol(depthPoint, &endPtr, 10);
+            if (depthPoint == endPtr) {
+                renderOutput("Invalid depth value", CHEAT_PREFIX);
+                return;
+            }
+            depth = parsedDepth;
         }
 
         // Manually
         int distribution[6];
-        GLOBAL_negamaxRootWithDistribution(context->board, depth, distribution);
-        bool solved = GLOBAL_isSolved();
+        bool solved;
+
+        // TODO handle custom solver and quick good enough
+
+        if (goodEnough != -1) {
+            QUICK_setGoodEnough(goodEnough);
+        }
+        distributionRoot(context->board, depth, distribution, &solved, solver);
 
         int renderCells[14];
         for (int i = 0; i < 14; i++) {
@@ -90,6 +135,29 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
         }
 
         renderCustomBoard(renderCells, context->board->color, CHEAT_PREFIX, context->config);
+
+        switch (solver) {
+            case GLOBAL_SOLVER:
+                renderOutput("Solver: Global", CHEAT_PREFIX);
+                break;
+            case QUICK_SOLVER: {
+                char message[256];
+                snprintf(message, sizeof(message), "Solver: Quick @%d", goodEnough);
+                renderOutput(message, CHEAT_PREFIX);
+                break;
+            }
+            case LOCAL_SOLVER:
+                renderOutput("Solver: Local", CHEAT_PREFIX);
+                break;
+        }
+
+        if (solved) {
+            renderOutput("Solved", CHEAT_PREFIX);
+        }
+
+        char message[256];
+        snprintf(message, sizeof(message), "Depth: %d", depth);
+        renderOutput(message, CHEAT_PREFIX);
 
         return;
     }
@@ -158,7 +226,7 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
             return;
         }
 
-        NegamaxTrace trace = negamaxWithTrace(context->lastBoard, context->lastEvaluation - 1, context->lastEvaluation + 1, context->lastDepth);
+        NegamaxTrace trace = traceRoot(context->lastBoard, context->lastEvaluation - 1, context->lastEvaluation + 1, context->lastDepth);
 
         int stepsToWin = 0;
         for (int i = context->lastDepth - 1; i >= 0; i--) {
@@ -262,27 +330,17 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
             renderOutput(message, CHEAT_PREFIX);
 
             if (context->lastSolved) {
-                #ifdef GREEDY_SOLVING
-                snprintf(message, sizeof(message), "  Solved: true (greedy)");
-                #else
                 snprintf(message, sizeof(message), "  Solved: true");
-                #endif
             } else {
-                #ifdef GREEDY_SOLVING
-                snprintf(message, sizeof(message), "  Solved: false (greedy)");
-                #else
                 snprintf(message, sizeof(message), "  Solved: false");
-                #endif
             }
             renderOutput(message, CHEAT_PREFIX);
 
-            #ifdef TRACK_THROUGHPUT
             int64_t totalNodes = context->lastNodes;
             double totalTime = context->lastTime;
             double nodesPerSecond = totalNodes / totalTime;
             snprintf(message, sizeof(message), "  Throughput: %f million nodes/s", nodesPerSecond / 1000000);
             renderOutput(message, CHEAT_PREFIX);
-            #endif
         }
 
         return;

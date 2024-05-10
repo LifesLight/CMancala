@@ -13,6 +13,7 @@ void renderConfigHelp() {
     renderOutput("  mode [classic|avalanche]         : Set game mode", CONFIG_PREFIX);
     renderOutput("  time [number >= 0]               : Set time limit for AI in seconds, if 0 unlimited", CONFIG_PREFIX);
     renderOutput("  depth [number >= 0]              : Set depth limit for AI, if 0 unlimited", CONFIG_PREFIX);
+    renderOutput("  solver [global|local|quick]      : Set default solver for AI", CONFIG_PREFIX);
     renderOutput("  starting [1|2]                   : Configure starting player", CONFIG_PREFIX);
     renderOutput("  player [1|2] [human|random|ai]   : Configure player", CONFIG_PREFIX);
     renderOutput("  display                          : Display current configuration", CONFIG_PREFIX);
@@ -55,6 +56,19 @@ void printConfig(Config* config) {
     renderOutput(message, CONFIG_PREFIX);
 
     snprintf(message, sizeof(message), "  Depth: %d%s", config->depth, config->depth == 0 ? " (unlimited)" : "");
+    renderOutput(message, CONFIG_PREFIX);
+
+    switch (config->solver) {
+        case GLOBAL_SOLVER:
+            snprintf(message, sizeof(message), "  Solver: global");
+            break;
+        case QUICK_SOLVER:
+            snprintf(message, sizeof(message), "  Solver: quick @%d", config->quickSolverGoodEnough);
+            break;
+        case LOCAL_SOLVER:
+            snprintf(message, sizeof(message), "  Solver: local");
+            break;
+    }
     renderOutput(message, CONFIG_PREFIX);
 
     snprintf(message, sizeof(message), "  Starting: %d", config->startColor == 1 ? 1 : 2);
@@ -119,6 +133,60 @@ void handleConfigInput(bool* requestedStart, Config* config) {
     if (strcmp(input, "display") == 0) {
         printConfig(config);
         return;
+    }
+
+    // Check for solver
+    if (strncmp(input, "solver ", 7) == 0) {
+        // Save original solver
+        Solver originalSolver = config->solver;
+
+        // Check if valid solver
+        if (strcmp(input + 7, "global") == 0) {
+            config->solver = GLOBAL_SOLVER;
+            if (originalSolver == GLOBAL_SOLVER) {
+                renderOutput("Solver already set to global", CONFIG_PREFIX);
+                return;
+            }
+
+            renderOutput("Updated solver to global", CONFIG_PREFIX);
+            return;
+        } else if (strncmp(input + 7, "quick", 5) == 0) {
+            config->solver = QUICK_SOLVER;
+            if (originalSolver == QUICK_SOLVER) {
+                renderOutput("Solver already set to quick", CONFIG_PREFIX);
+            } else {
+                renderOutput("Updated solver to quick", CONFIG_PREFIX);
+            }
+
+            // Check for good enough
+            if (strlen(input) > 12) {
+                int goodEnough = atoi(input + 12);
+                if (goodEnough <= 0) {
+                    renderOutput("Invalid good enough value", CONFIG_PREFIX);
+                    return;
+                }
+
+                config->quickSolverGoodEnough = goodEnough;
+                char message[256];
+                snprintf(message, sizeof(message), "Updated good enough to %d", goodEnough);
+                renderOutput(message, CONFIG_PREFIX);
+            }
+            return;
+        } else if (strcmp(input + 7, "local") == 0) {
+            config->solver = LOCAL_SOLVER;
+            if (originalSolver == LOCAL_SOLVER) {
+                renderOutput("Solver already set to local", CONFIG_PREFIX);
+                return;
+            }
+
+            renderOutput("Updated solver to local", CONFIG_PREFIX);
+            return;
+        } else {
+            char message[256];
+            snprintf(message, sizeof(message), "Invalid solver \"%s\"", input + 7);
+            renderOutput(message, CONFIG_PREFIX);
+            return;
+        }
     }
 
     // Check for mode

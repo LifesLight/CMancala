@@ -20,7 +20,9 @@ void startInterface() {
         .autoplay = true,
         .player1 = HUMAN_AGENT,
         .player2 = AI_AGENT,
-        .moveFunction = CLASSIC_MOVE
+        .moveFunction = CLASSIC_MOVE,
+        .solver = GLOBAL_SOLVER,
+        .quickSolverGoodEnough = 1
     };
 
     // Global loop

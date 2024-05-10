@@ -28,5 +28,9 @@
  * trace array needs to be size of depth.
  * this ONLY works when depth and alpha beta are from a valid computation.
 */
-NegamaxTrace negamaxWithTrace(
+NegamaxTrace traceRoot(
     Board *board, int alpha, const int beta, const int depth);
+
+void aspirationRoot(Context* context, Solver solver);
+
+void distributionRoot(Board *board, int depth, int32_t* distribution, bool *solved, Solver solver);

@@ -15,6 +15,7 @@
 #include "user/render.h"
 #include "logic/solver/troughput.h"
 #include "logic/utility.h"
+#include "logic/solver/common.h"
 #include "config.h"
 
 /**
@@ -38,6 +39,4 @@ void LOCAL_negamaxAspirationRoot(Context* context);
  * Negamax root with distribution.
  * Full search without any optimizations.
 */
-void LOCAL_negamaxRootWithDistribution(
-    Board *board, int depth, int32_t* distribution, bool* solved);
-
+void LOCAL_negamaxRootWithDistribution(Board *board, int depth, int32_t* distribution, bool* solved);

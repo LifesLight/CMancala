@@ -124,142 +124,19 @@ int GLOBAL_negamaxWithMove(Board *board, int *bestMove, int alpha, const int bet
  * Negamax with iterative deepening and aspiration window search
 */
 void GLOBAL_negamaxAspirationRoot(Context* context) {
-    /**
-     * Aspiration window search hyperparameters
-    */
-    const int windowSize = 1;
-    const int depthStep = 1;
-
-    /**
-     * Default values for alpha and beta
-    */
-    int alpha = INT32_MIN + 1;
-    int beta = INT32_MAX;
-    int score;
-
-    /**
-     * Iterative deepening running parameters
-    */
-    int currentDepth = 1;
-    int bestMove = -1;
-
-    // Used to keep track of window misses for warning
-    int windowMisses = 0;
-
-    /**
-     * Start timer for time limit
-    */
-    clock_t start = clock();
-
-    /**
-     * If tracking is enabled, reset nodes counter
-    */
-    nodeCount = 0;
-
-    renderOutput("Thinking...", PLAY_PREFIX);
-
-    /**
-     * Iterative deepening loop
-     * Runs until depth limit is reached or time limit is reached
-    */
-    solved = true;
-    while (true) {
-        // Track if game is solved
-        solved = true;
-        score = GLOBAL_negamaxWithMove(context->board, &bestMove, alpha, beta, currentDepth);
-
-        /**
-         * Check if score is outside of aspiration window
-         * If yes, research with offset window
-        */
-
-        // If score is inside window, increase depth
-        if (score > alpha && score < beta) {
-            currentDepth += depthStep;
-
-            if (solved) {
-                break;
-            }
-
-            // Check for depth limit
-            if (currentDepth > context->config->depth && context->config->depth > 0) {
-                break;
-            }
-
-            // Check for time limit
-            if (((double)(clock() - start) / CLOCKS_PER_SEC) >= context->config->timeLimit && context->config->timeLimit > 0) {
-                break;
-            }
-        } else {
-            // If score is outside window, research with offset window
-            windowMisses++;
-
-            // Update alpha and beta for new search
-            alpha = score - windowSize;
-            beta = score + windowSize;
-        }
-    }
-
-    /**
-     * Compute real time taken
-    */
-    double timeTaken = (double)(clock() - start) / CLOCKS_PER_SEC;
-    context->lastTime = timeTaken;
-    context->lastNodes = nodeCount;
-
-    // Warn about high window misses
-    // When this happens often, the window size should be increased
-    if (windowMisses > currentDepth) {
-        char message[256];
-        snprintf(message, sizeof(message), "[WARNING]: High window misses! (You may increase \"windowSize\" in algo.c)");
-        renderOutput(message, PLAY_PREFIX);
-    }
-
-    // Return best move and score
-    context->lastMove = bestMove;
-    context->lastEvaluation = score;
-    context->lastDepth = currentDepth - 1;
-    context->lastSolved = solved;
+    INITIALIZE_VARS;
+    ITERATIVE_DEEPENING_LOOP(
+        GLOBAL_negamaxWithMove(context->board, &bestMove, alpha, beta, currentDepth),
+        if (solved) break;
+    );
 }
 
 /**
  * Negamax root with distribution
  * Full search without any optimizations
 */
-void GLOBAL_negamaxRootWithDistribution(Board *board, int depth, int32_t* distribution) {
-    int score;
-
-    renderOutput("Thinking...", PLAY_PREFIX);
-
-    const int8_t start = (board->color == 1)  ? HBOUND_P1 : HBOUND_P2;
-    const int8_t end = (board->color == 1)    ? LBOUND_P1 : LBOUND_P2;
-
-    int index = 5;
-    for (int8_t i = start; i >= end; i--) {
-        if (board->cells[i] == 0) {
-            distribution[index] = INT32_MIN;
-            index--;
-            continue;
-        }
-
-        Board boardCopy;
-        copyBoard(board, &boardCopy);
-        makeMoveFunction(&boardCopy, i);
-
-        int alpha = INT32_MIN + 1;
-        int beta = INT32_MAX;
-
-        if (board->color == boardCopy.color) {
-            score = GLOBAL_negamax(&boardCopy, alpha, beta, depth - 1);
-        } else {
-            score = -GLOBAL_negamax(&boardCopy, -beta, -alpha, depth - 1);
-        }
-
-        distribution[index] = score;
-        index--;
-    }
-}
-
-bool GLOBAL_isSolved() {
-    return solved;
+void GLOBAL_negamaxRootWithDistribution(Board *board, int depth, int32_t* distribution, bool *returnSolved) {
+    solved = true;
+    NEGAMAX_ROOT_BODY(board, depth, distribution, GLOBAL_negamax(&boardCopy, alpha, beta, depth - 1));
+    *returnSolved = solved;
 }
