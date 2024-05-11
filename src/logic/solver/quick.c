@@ -11,6 +11,7 @@ int QUICK_negamax(Board *board, int alpha, const int beta, const int depth, bool
     // The order of the checks is important here
     // Otherwise we could have a empty side, without adding up the opponents pieces to his score
     if (processBoardTerminal(board)) {
+        *solved = true;
         return board->color * getBoardEvaluation(board);
     }
 
@@ -30,6 +31,8 @@ int QUICK_negamax(Board *board, int alpha, const int beta, const int depth, bool
     Board boardCopy;
     int score;
     bool solvedTemp;
+    bool solvedBest = false;
+    bool solvedAll = true;
 
     // Iterate over all possible moves
     const int8_t start = (board->color == 1)  ? HBOUND_P1 : HBOUND_P2;
@@ -44,7 +47,7 @@ int QUICK_negamax(Board *board, int alpha, const int beta, const int depth, bool
         // Make copied board with move made
         copyBoard(board, &boardCopy);
         makeMoveFunction(&boardCopy, i);
-        solvedTemp = true;
+        solvedTemp = false;
 
         // Branch to check if this player is still playing
         if (board->color == boardCopy.color) {
@@ -55,20 +58,28 @@ int QUICK_negamax(Board *board, int alpha, const int beta, const int depth, bool
             score = -QUICK_negamax(&boardCopy, -beta, -alpha, depth - 1, &solvedTemp);
         }
 
-        // Update parameters
-        reference = max(reference, score);
+        if (!solvedTemp) {
+            solvedAll = false;
+        }
+
+        if (score > reference) {
+            reference = score;
+            solvedBest = solvedTemp;
+
+            if (reference >= cutoff && solvedTemp) {
+                break;
+            }
+        }
         alpha = max(alpha, reference);
 
         // If this branch certainly worse than another, prune it
         if (alpha >= beta) {
             break;
         }
+    }
 
-        // Early termination
-        if (solvedTemp && score >= cutoff) {
-            *solved = true;
-            break;
-        }
+    if (solvedAll || (solvedBest && reference >= cutoff) ) {
+        *solved = true;
     }
 
     return reference;
@@ -77,6 +88,7 @@ int QUICK_negamax(Board *board, int alpha, const int beta, const int depth, bool
 int QUICK_negamaxWithMove(Board *board, int *bestMove, int alpha, const int beta, const int depth, bool* solved) {
     if (processBoardTerminal(board)) {
         *bestMove = -1;
+        *solved = true;
         return board->color * getBoardEvaluation(board);
     }
 
@@ -91,11 +103,15 @@ int QUICK_negamaxWithMove(Board *board, int *bestMove, int alpha, const int beta
     int reference = INT32_MIN;
     int score;
     bool solvedTemp;
+    bool solvedBest = false;
+    bool solvedAll = true;
 
     const int8_t start = (board->color == 1)  ? HBOUND_P1 : HBOUND_P2;
     const int8_t end = (board->color == 1)    ? LBOUND_P1 : LBOUND_P2;
 
     Board boardCopy;
+
+    *solved = false;
 
     for (int8_t i = start; i >= end; i--) {
         if (board->cells[i] == 0) {
@@ -103,7 +119,7 @@ int QUICK_negamaxWithMove(Board *board, int *bestMove, int alpha, const int beta
         }
         copyBoard(board, &boardCopy);
         makeMoveFunction(&boardCopy, i);
-        solvedTemp = true;
+        solvedTemp = false;
 
         if (board->color == boardCopy.color) {
             score = QUICK_negamax(&boardCopy, alpha, beta, depth - 1, &solvedTemp);
@@ -111,66 +127,45 @@ int QUICK_negamaxWithMove(Board *board, int *bestMove, int alpha, const int beta
             score = -QUICK_negamax(&boardCopy, -beta, -alpha, depth - 1, &solvedTemp);
         }
 
+        if (!solvedTemp) {
+            solvedAll = false;
+        }
+
         if (score > reference) {
             reference = score;
             *bestMove = i;
-            if (solvedTemp) {
-                *solved = true;
+            solvedBest = solvedTemp;
 
-                if (score >= cutoff) {
-                    break;
-                }
-            } else {
-                *solved = false;
+            if (reference >= cutoff && solvedTemp) {
+                break;
             }
         }
 
         alpha = max(alpha, reference);
 
         if (alpha >= beta) {
-            //break;
+            break;
         }
     }
 
-    // TODO: Do something if node is solved
+    if (solvedAll || (solvedBest && reference >= cutoff) ) {
+        *solved = true;
+    }
 
     return reference;
 }
-
 /**
  * Negamax with iterative deepening and aspiration window search
  * Quick solver is bugged with null window search
  * We just need to solve it with a fixed depth
 */
 void QUICK_negamaxAspirationRoot(Context* context) {
-    if (context->config->depth == 0) {
-        renderOutput("Quick solver needs a fixed depth to work!", PLAY_PREFIX);
-        context->lastSolved = false;
-        context->lastMove = -1;
-        context->lastEvaluation = INT32_MAX;
-        return;
-    }
-
-    nodeCount = 0;
-
-    int alpha = INT32_MIN + 1;
-    int beta = INT32_MAX;
-
-    int bestMove = -1;
+    INITIALIZE_VARS;
     bool solved = true;
-
-    clock_t start = clock();
-
-    int score = QUICK_negamaxWithMove(context->board, &bestMove, alpha, beta, context->config->depth, &solved);
-
-    double timeTaken = (double)(clock() - start) / CLOCKS_PER_SEC;
-    context->lastTime = timeTaken;
-    context->lastNodes = nodeCount;
-
-    context->lastMove = bestMove;
-    context->lastEvaluation = score;
-    context->lastDepth = context->config->depth;
-    context->lastSolved = solved;
+    ITERATIVE_DEEPENING_LOOP(
+        QUICK_negamaxWithMove(context->board, &bestMove, alpha, beta, currentDepth, &solved),
+        if (solved && score >= cutoff) break;
+    );
 }
 
 /**

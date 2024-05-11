@@ -16,7 +16,7 @@
     int windowMisses = 0; \
     clock_t start = clock(); \
     nodeCount = 0; \
-    renderOutput("Thinking...", PLAY_PREFIX); \
+    renderOutput("Thinking...", CHEAT_PREFIX); \
 
 // Macro for the iterative deepening loop
 // 'negamaxCall' is the function call, 'additionalBreak' is the custom break conditions

@@ -31,6 +31,11 @@ CMancala employs a Negamax algorithm with Alpha-Beta pruning, tailored to accomm
 - **Double Move Handling**: The algorithm adjusts search parameters based on whether the player's turn continues or switches to the opponent.
 - **Aspiration Windows with Iterative Deepening**: This technique allows for time-limited searches while enhancing performance.
 
+### Solvers
+- **GLOBAL:**<br>The reference solver. Is only satisfied once the complete game tree is exhaustively searched for the best possible move at the current node.
+- **LOCAL:** *EXPERIMENTAL*<br>Similar to GLOBAL but with knowledge of every nodes subtree solve status. This allows for *experimental* optimizations like solved node caching.
+- **QUICK**<br>The fastest solver. Is not required to find the best move at every node, only one which satisfies a provided cutoff evaluation. This allows for significantly faster solves (or searches in general) at the expense of only finding **a** winning move instead of the **most** winning move.
+
 ## Restrictions
 - The game is designed to support a maximum of 224 stones on the board at any given time.
 
