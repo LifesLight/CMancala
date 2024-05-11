@@ -6,7 +6,7 @@
 
 int8_t cache[CACHE_SIZE];
 
-uint64_t hashBoard(Board* board) {
+uint64_t translateBoard(Board* board) {
     uint64_t hash = 0;
 
     // Make first bit the current player
@@ -41,7 +41,7 @@ void startCache() {
 }
 
 void cacheNode(Board* board, int evaluation) {
-    uint64_t hashValue = hashBoard(board);
+    uint64_t hashValue = translateBoard(board);
 
     if (hashValue == UINT64_MAX) {
         return;
@@ -52,11 +52,15 @@ void cacheNode(Board* board, int evaluation) {
     scoreDelta *= board->color;
     evaluation -= scoreDelta;
 
+    if (evaluation > INT8_MAX || evaluation < INT8_MIN + 1) {
+        return;
+    }
+
     cache[hashValue % CACHE_SIZE] = evaluation;
 }
 
 int getCachedValue(Board* board) {
-    uint64_t hashValue = hashBoard(board);
+    uint64_t hashValue = translateBoard(board);
     if (hashValue == UINT64_MAX) {
         return INT32_MIN;
     }
