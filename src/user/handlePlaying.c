@@ -173,6 +173,11 @@ void stepGame(bool* requestedMenu, Context* context) {
 
     int move = context->lastMove;
 
+    if (move == -1) {
+        renderOutput("No move", PLAY_PREFIX);
+        return;
+    }
+
     char message[256];
     snprintf(message, sizeof(message), "Move: %d", move > 5 ? 13 - move : move + 1);
     renderOutput(message, PLAY_PREFIX);

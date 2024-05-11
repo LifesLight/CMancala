@@ -63,7 +63,7 @@ void printConfig(Config* config) {
             snprintf(message, sizeof(message), "  Solver: global");
             break;
         case QUICK_SOLVER:
-            snprintf(message, sizeof(message), "  Solver: quick @%d", config->quickSolverGoodEnough);
+            snprintf(message, sizeof(message), "  Solver: quick @%d", config->quickSolverCutoff);
             break;
         case LOCAL_SOLVER:
             snprintf(message, sizeof(message), "  Solver: local");
@@ -158,17 +158,17 @@ void handleConfigInput(bool* requestedStart, Config* config) {
                 renderOutput("Updated solver to quick", CONFIG_PREFIX);
             }
 
-            // Check for good enough
+            // Check for cutoff
             if (strlen(input) > 12) {
-                int goodEnough = atoi(input + 12);
-                if (goodEnough <= 0) {
-                    renderOutput("Invalid good enough value", CONFIG_PREFIX);
+                int cutoff = atoi(input + 12);
+                if (cutoff <= 0) {
+                    renderOutput("Invalid cutoff value", CONFIG_PREFIX);
                     return;
                 }
 
-                config->quickSolverGoodEnough = goodEnough;
+                config->quickSolverCutoff = cutoff;
                 char message[256];
-                snprintf(message, sizeof(message), "Updated good enough to %d", goodEnough);
+                snprintf(message, sizeof(message), "Updated cutoff to %d", cutoff);
                 renderOutput(message, CONFIG_PREFIX);
             }
             return;

@@ -62,7 +62,7 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
         // Default depth
         int depth = 14;
         Solver solver = context->config->solver;
-        int goodEnough = context->config->quickSolverGoodEnough;
+        int cutoff = context->config->quickSolverCutoff;
 
         // Find --solver and --depth in the input string
         char *solverPoint = strstr(internalInput, "--solver");
@@ -74,19 +74,18 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
             char *nextSpace = strchr(solverPoint, ' ');  // Find next space after solver argument
             if (nextSpace != NULL) *nextSpace = '\0';  // Null-terminate the solver argument
 
-            // Check for specific solvers and optionally parse the 'goodEnough' value for quick
+            // Check for specific solvers and optionally parse the 'cutoff' value for quick
             if (strcmp(solverPoint, "global") == 0) {
                 solver = GLOBAL_SOLVER;
             } else if (strncmp(solverPoint, "quick", 5) == 0) {
                 solver = QUICK_SOLVER;
-                char *goodEnoughValue = nextSpace ? nextSpace + 1 : NULL;
-                if (goodEnoughValue && *goodEnoughValue) {
-                    goodEnough = atoi(goodEnoughValue);
+                char *cutoffValue = nextSpace ? nextSpace + 1 : NULL;
+                if (cutoffValue && *cutoffValue) {
+                    cutoff = atoi(cutoffValue);
 
-                    if (goodEnough < 0) {
-                        renderOutput("Invalid goodEnough value", CHEAT_PREFIX);
-                        goodEnough = context->config->quickSolverGoodEnough;
-                        return;
+                    if (cutoff < 1) {
+                        renderOutput("Invalid/No cutoff specification", CHEAT_PREFIX);
+                        cutoff = context->config->quickSolverCutoff;
                     }
                 }
             } else if (strcmp(solverPoint, "local") == 0) {
@@ -113,10 +112,10 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
         int distribution[6];
         bool solved;
 
-        // TODO handle custom solver and quick good enough
+        // TODO handle custom solver and quick cutoff
 
-        if (goodEnough != -1) {
-            QUICK_setGoodEnough(goodEnough);
+        if (cutoff != -1) {
+            QUICK_setCutoff(cutoff);
         }
         distributionRoot(context->board, depth, distribution, &solved, solver);
 
@@ -142,7 +141,7 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
                 break;
             case QUICK_SOLVER: {
                 char message[256];
-                snprintf(message, sizeof(message), "Solver: Quick @%d", goodEnough);
+                snprintf(message, sizeof(message), "Solver: Quick @%d", cutoff);
                 renderOutput(message, CHEAT_PREFIX);
                 break;
             }

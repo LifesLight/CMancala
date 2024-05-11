@@ -14,7 +14,7 @@
 
 #ifdef GREEDY_SOLVING
 /**
- * Specify how which evaluation is good enough for the solver
+ * Specify how which evaluation is cutoff for the solver
  * We will early terminate when a guaranteed win with this eval is found
 */
 #define GOOD_ENOUGH 1

@@ -41,4 +41,4 @@ void QUICK_negamaxAspirationRoot(Context* context);
 */
 void QUICK_negamaxRootWithDistribution(Board *board, int depth, int32_t* distribution, bool* solved);
 
-void QUICK_setGoodEnough(int32_t goodEnough);
+void QUICK_setCutoff(int32_t cutoff);

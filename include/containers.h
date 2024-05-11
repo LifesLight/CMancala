@@ -44,7 +44,7 @@ typedef struct {
     Agent player2;
     MoveFunction moveFunction;
     Solver solver;
-    int quickSolverGoodEnough;
+    int quickSolverCutoff;
 } Config;
 
 typedef struct {

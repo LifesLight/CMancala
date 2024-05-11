@@ -11,7 +11,7 @@ void aspirationRoot(Context* context, Solver solver) {
             GLOBAL_negamaxAspirationRoot(context);
             break;
         case QUICK_SOLVER:
-            QUICK_setGoodEnough(context->config->quickSolverGoodEnough);
+            QUICK_setCutoff(context->config->quickSolverCutoff);
             QUICK_negamaxAspirationRoot(context);
             break;
         case LOCAL_SOLVER:
