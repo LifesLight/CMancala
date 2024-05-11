@@ -56,26 +56,20 @@ int QUICK_negamax(Board *board, int alpha, const int beta, const int depth, bool
         }
 
         // Update parameters
-        if (score > reference) {
-            reference = score;
-            if (solvedTemp) {
-                *solved = true;
-                if (score >= cutoff) {
-                    break;
-                }
-            } else {
-                *solved = false;
-            }
-        }
+        reference = max(reference, score);
         alpha = max(alpha, reference);
 
         // If this branch certainly worse than another, prune it
         if (alpha >= beta) {
             break;
         }
-    }
 
-    // TODO: Do something if node is solved
+        // Early termination
+        if (solvedTemp && score >= cutoff) {
+            *solved = true;
+            break;
+        }
+    }
 
     return reference;
 }
