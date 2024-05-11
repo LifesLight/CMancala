@@ -29,15 +29,6 @@
 #include "config.h"
 #include "logic/board.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-/**
- * Hashes a compatible board into a 64bit integer.
-*/
-uint64_t hashBoard(Board* board);
-
 /**
  * Starts the cache.
 */
@@ -57,7 +48,3 @@ int getCachedValue(Board* board);
  * Gets the number of cached nodes.
 */
 int getCachedNodeCount();
-
-#ifdef __cplusplus
-}
-#endif

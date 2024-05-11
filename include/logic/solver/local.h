@@ -16,7 +16,7 @@
 #include "logic/solver/troughput.h"
 #include "logic/utility.h"
 #include "logic/solver/common.h"
-#include "logic/solver/solveCache.hpp"
+#include "logic/solver/solveCache.h"
 #include "config.h"
 
 /**

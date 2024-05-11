@@ -7,7 +7,6 @@ set(CMAKE_C_COMPILER "gcc")
 set(CMAKE_CXX_COMPILER "g++")
 
 set(SOURCE_FILES
-    src/logic/solver/solveCache.cpp
     src/main.c
     src/logic/utility.c
     src/logic/board.c
@@ -21,6 +20,7 @@ set(SOURCE_FILES
     src/logic/solver/local.c
     src/logic/solver/quick.c
     src/logic/solver/troughput.c
+    src/logic/solver/solveCache.c
 )
 
 include_directories(include)
