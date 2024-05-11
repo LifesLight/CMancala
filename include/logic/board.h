@@ -13,6 +13,13 @@
 #include "config.h"
 #include "containers.h"
 
+/*
+ * Board is constructed like this:
+ * Score cells are 6 and 13
+ * Indicies P1: 0 - 5
+ * Indicies P2: 7 - 12
+ */
+
 typedef void (*MakeMoveFunction)(Board*, const uint8_t);
 
 extern MakeMoveFunction makeMoveFunction;

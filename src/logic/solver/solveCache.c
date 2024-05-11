@@ -6,7 +6,7 @@
 
 int8_t cache[CACHE_SIZE];
 
-uint64_t translateBoard(Board* board) {
+uint64_t translateBoard(Board* board, int8_t window) {
     uint64_t hash = 0;
 
     // Make first bit the current player
@@ -15,7 +15,18 @@ uint64_t translateBoard(Board* board) {
     int offset = 1;
     uint8_t value;
 
-    for (int8_t i = HBOUND_P1; i >= LBOUND_P1; i--) {
+    // First 2 get 4 bits
+    for (int i = 0; i < 2; i++) {
+        value = board->cells[i];
+        if (value > 15) {
+            return UINT64_MAX;
+        }
+        hash |= ((uint64_t)(value & 0x0F)) << offset;
+        offset += 4;
+    }
+
+    // Next 4 get 5 bits
+    for (int i = 2; i < 6; i++) {
         value = board->cells[i];
         if (value > 31) {
             return UINT64_MAX;
@@ -24,7 +35,18 @@ uint64_t translateBoard(Board* board) {
         offset += 5;
     }
 
-    for (int8_t i = HBOUND_P2; i >= LBOUND_P2; i--) {
+    // Other player first 2 get 4 bits
+    for (int i = 7; i < 9; i++) {
+        value = board->cells[i];
+        if (value > 15) {
+            return UINT64_MAX;
+        }
+        hash |= ((uint64_t)(value & 0x0F)) << offset;
+        offset += 4;
+    }
+
+    // Other player next 4 get 5 bits
+    for (int i = 9; i < 13; i++) {
         value = board->cells[i];
         if (value > 31) {
             return UINT64_MAX;
@@ -32,6 +54,9 @@ uint64_t translateBoard(Board* board) {
         hash |= ((uint64_t)(value & 0x1F)) << offset;
         offset += 5;
     }
+
+    // Last 8 bits are window id
+    hash |= ((uint64_t)window) << offset;
 
     return hash;
 }
@@ -40,8 +65,8 @@ void startCache() {
     memset(cache, INT8_MIN, CACHE_SIZE);
 }
 
-void cacheNode(Board* board, int evaluation) {
-    uint64_t hashValue = translateBoard(board);
+void cacheNode(Board* board, int evaluation, int8_t window) {
+    uint64_t hashValue = translateBoard(board, window);
 
     if (hashValue == UINT64_MAX) {
         return;
@@ -59,8 +84,8 @@ void cacheNode(Board* board, int evaluation) {
     cache[hashValue % CACHE_SIZE] = evaluation;
 }
 
-int getCachedValue(Board* board) {
-    uint64_t hashValue = translateBoard(board);
+int getCachedValue(Board* board, int8_t window) {
+    uint64_t hashValue = translateBoard(board, window);
     if (hashValue == UINT64_MAX) {
         return INT32_MIN;
     }

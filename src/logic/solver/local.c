@@ -20,8 +20,10 @@ int LOCAL_negamax(Board *board, int alpha, const int beta, const int depth, bool
         return board->color * getBoardEvaluation(board);
     }
 
+    const int windowId = alpha + 1;
+
     // Check if board is cached
-    int cachedValue = getCachedValue(board);
+    int cachedValue = getCachedValue(board, windowId);
     if (cachedValue != INT32_MIN) {
         return cachedValue;
     }
@@ -70,7 +72,7 @@ int LOCAL_negamax(Board *board, int alpha, const int beta, const int depth, bool
 
     // If subtree is solved, cache it
     if (*solvedSubtree) {
-        cacheNode(board, reference);
+        cacheNode(board, reference, windowId);
     }
 
     return reference;
@@ -137,7 +139,6 @@ void LOCAL_negamaxAspirationRoot(Context* context) {
         LOCAL_negamaxWithMove(context->board, &bestMove, alpha, beta, currentDepth, &solved),
         if (solved) break;
     );
-    printf("Cached: %d\n", getCachedNodeCount());
 }
 
 /**

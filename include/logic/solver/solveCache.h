@@ -20,8 +20,11 @@
  * 
  * The board gets encoded like:
  * Score cells don't get encoded
- * Playing cells get 5 bits
+ * 
  * Current player gets 1 bit
+ * First 2 playing cells get 4 bits each
+ * Other playing cells get 5 bits each
+ * Remaining 8 bits go to window id
 */
 
 #include <stdint.h>
@@ -37,12 +40,12 @@ void startCache();
 /**
  * Caches a node.
 */
-void cacheNode(Board* board, int evaluation);
+void cacheNode(Board* board, int evaluation, int8_t window);
 
 /**
  * Gets a cached value.
 */
-int getCachedValue(Board* board);
+int getCachedValue(Board* board, int8_t window);
 
 /**
  * Gets the number of cached nodes.
