@@ -4,6 +4,7 @@
 
 #include "logic/solver/local.h"
 
+
 int LOCAL_negamax(Board *board, int alpha, const int beta, const int depth, bool* solvedSubtree) {
     // Terminally check
     // The order of the checks is important here
@@ -17,6 +18,12 @@ int LOCAL_negamax(Board *board, int alpha, const int beta, const int depth, bool
         // If we ever get depth limited in a non-terminal state, the game is not solved
         *solvedSubtree = false;
         return board->color * getBoardEvaluation(board);
+    }
+
+    // Check if board is cached
+    int cachedValue = getCachedValue(board);
+    if (cachedValue != INT32_MIN) {
+        return cachedValue;
     }
 
     nodeCount++;
@@ -61,7 +68,10 @@ int LOCAL_negamax(Board *board, int alpha, const int beta, const int depth, bool
         }
     }
 
-    // TODO: Do something if node is solved
+    // If subtree is solved, cache it
+    if (*solvedSubtree) {
+        cacheNode(board, reference);
+    }
 
     return reference;
 }
@@ -127,6 +137,7 @@ void LOCAL_negamaxAspirationRoot(Context* context) {
         LOCAL_negamaxWithMove(context->board, &bestMove, alpha, beta, currentDepth, &solved),
         if (solved) break;
     );
+    printf("Cached: %d\n", getCachedNodeCount());
 }
 
 /**

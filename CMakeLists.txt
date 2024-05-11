@@ -2,9 +2,12 @@ cmake_minimum_required(VERSION 3.20)
 project(CMancala)
 
 set(CMAKE_C_STANDARD 23)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_C_COMPILER "gcc")
+set(CMAKE_CXX_COMPILER "g++")
 
 set(SOURCE_FILES
+    src/logic/solver/solveCache.cpp
     src/main.c
     src/logic/utility.c
     src/logic/board.c

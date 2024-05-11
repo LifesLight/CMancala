@@ -20,6 +20,12 @@
 #define GOOD_ENOUGH 1
 #endif
 
+/**
+ * Cache size for local solver.
+ * (4294967296 is max size)
+ */
+#define CACHE_SIZE 100000000
+
 /*
  * Board is constructed like this:
  * Score cells are 6 and 13

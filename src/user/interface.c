@@ -32,6 +32,7 @@ void startInterface() {
 
         if (requestedStart) {
             srand(config.seed);
+            startCache();
             startGameHandling(&config);
         }
     }
