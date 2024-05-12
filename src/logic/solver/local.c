@@ -190,5 +190,114 @@ void LOCAL_negamaxRootWithDistribution(Board *board, int depth, int32_t* distrib
         return;
     }
 
+    printf("!WARNING!: LOCAL solver is only designed for null window searches, this is COMPLETELY invalidated\n");
+
     NEGAMAX_ROOT_BODY(board, depth, distribution, LOCAL_negamax(&boardCopy, alpha, beta, depth - 1, solved));
+}
+
+/**
+ * DEBUGGING
+*/
+
+/**
+ * This is just the normal LOCAL negamax but we never write the cache instead we check if this clean value matches it.
+*/
+int VALIDATE_negamax(Board *board, int alpha, const int beta, const int depth, bool* solved) {
+    // Terminally check
+    // The order of the checks is important here
+    // Otherwise we could have a empty side, without adding up the opponents pieces to his score
+    if (processBoardTerminal(board)) {
+        *solved = true;
+        return board->color * getBoardEvaluation(board);
+    }
+
+    // Check if depth limit is reached
+    if (depth == 0) {
+        // If we ever get depth limited in a non-terminal state, the game is not solved
+        *solved = false;
+        return board->color * getBoardEvaluation(board);
+    }
+
+    const int windowId = alpha + 1;
+    nodeCount++;
+
+    // Keeping track of best score
+    int reference = INT32_MIN;
+
+    // Will be needed in every iteration
+    Board boardCopy;
+    int score;
+    bool solvedTemp;
+    *solved = true;
+
+    // Iterate over all possible moves
+    const int8_t start = (board->color == 1)  ? HBOUND_P1 : HBOUND_P2;
+    const int8_t end = (board->color == 1)    ? LBOUND_P1 : LBOUND_P2;
+
+    for (int8_t i = start; i >= end; i--) {
+        // Filter invalid moves
+        if (board->cells[i] == 0) {
+            continue;
+        }
+
+        // Make copied board with move made
+        copyBoard(board, &boardCopy);
+        makeMoveFunction(&boardCopy, i);
+
+        solvedTemp = false;
+
+        // Branch to check if this player is still playing
+        if (board->color == boardCopy.color) {
+            // If yes, call negamax with current parameters and no inversion
+            score = VALIDATE_negamax(&boardCopy, alpha, beta, depth - 1, &solvedTemp);
+        } else {
+            // If no, call negamax with inverted parameters for the other player
+            score = -VALIDATE_negamax(&boardCopy, -beta, -alpha, depth - 1, &solvedTemp);
+        }
+
+        if (!solvedTemp) {
+            *solved = false;
+        }
+
+        // Update parameters
+        reference = max(reference, score);
+        alpha = max(alpha, reference);
+
+        // If this branch certainly worse than another, prune it
+        if (alpha >= beta) {
+            break;
+        }
+    }
+
+    // VALIDATE CACHE
+    if (*solved) {
+        int cachedValue = getCachedValue(board, windowId);
+
+        // if not in cache cant be wrong
+        if (cachedValue != INT32_MIN) {
+            if (cachedValue != reference) {
+                printf("Cache mismatch: %d != %d\n", cachedValue, reference);
+            }
+        }
+    }
+
+    return reference;
+}
+
+/**
+ * Debug Negamax with iterative deepening and aspiration window search
+*/
+void validateCache(Context* context) {
+    if (getCacheSize() == 0) {
+        renderOutput("Error: LOCAL solver needs a cache size > 0, use \"cache recommended\" in config", PLAY_PREFIX);
+        context->lastMove = -1;
+        return;
+    }
+
+    INITIALIZE_VARS;
+    bool solved;
+    ITERATIVE_DEEPENING_LOOP(
+        VALIDATE_negamax(context->board, alpha, beta, currentDepth, &solved),
+        if (solved) break;
+    );
 }

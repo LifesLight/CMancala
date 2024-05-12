@@ -15,6 +15,7 @@ void renderCheatHelp() {
     renderOutput("  render                           : Render the current board", CHEAT_PREFIX);
     renderOutput("  analyze --solver --depth         : Run a full analysis on the board, solver and depth can be specified", CHEAT_PREFIX);
     renderOutput("  last                             : Fetch the last moves metadata", CHEAT_PREFIX);
+    renderOutput("  cache                            : Fetch the cache stats", CHEAT_PREFIX);
     renderOutput("  trace                            : Compute move trace of the last move (requires cached evaluation)", CHEAT_PREFIX);
     renderOutput("  autoplay [true|false]            : If enabled the game loop will automatically continue", CONFIG_PREFIX);
     renderOutput("  config                           : Return the config menu. Will discard the current game", CHEAT_PREFIX);
@@ -31,6 +32,19 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
     char input[256];
     getInput(input, CHEAT_PREFIX);
 
+    /**
+     * DEBUG
+    */
+   if (strcmp(input, "valCache") == 0) {
+        int realDepth = context->config->depth;
+        double realTime = context->config->timeLimit;
+        context->config->depth = context->lastDepth;
+        context->config->timeLimit = 0;
+        validateCache(context);
+        context->config->depth = realDepth;
+        context->config->timeLimit = realTime;
+        return;
+    }
 
     // Check for request to step
     if (strcmp(input, "step") == 0) {
@@ -348,10 +362,16 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
             renderOutput(message, CHEAT_PREFIX);
         }
 
-        if (getCacheSize() > 0) {
-            renderCacheStats();
-        }
+        return;
+    }
 
+    // Check for cache
+    if (strcmp(input, "cache") == 0) {
+        if (getCacheSize() == 0) {
+            renderOutput("  Cache disabled", CHEAT_PREFIX);
+            return;
+        }
+        renderCacheStats();
         return;
     }
 

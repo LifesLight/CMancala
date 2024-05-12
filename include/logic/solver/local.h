@@ -41,3 +41,5 @@ void LOCAL_negamaxAspirationRoot(Context* context);
  * Full search without any optimizations.
 */
 void LOCAL_negamaxRootWithDistribution(Board *board, int depth, int32_t* distribution, bool* solved);
+
+void validateCache(Context* context);

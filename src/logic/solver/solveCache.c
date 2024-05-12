@@ -80,7 +80,7 @@ uint64_t translateBoard(Board* board, int8_t window) {
 }
 
 // Hash function to get into the array index
-uint32_t primaryHash(uint64_t hash) {
+uint32_t indexHash(uint64_t hash) {
     return hash % cacheSize;
 }
 
@@ -117,7 +117,7 @@ void cacheNode(Board* board, int evaluation, int8_t window) {
     const int8_t entryValue = evaluation;
 
     // Get the primary hash
-    const uint32_t index = primaryHash(hashValue);
+    const uint32_t index = indexHash(hashValue);
 
     // Check if exists already
     // This completely validates the entry
@@ -129,6 +129,7 @@ void cacheNode(Board* board, int evaluation, int8_t window) {
     if (cache[index].value == UNSET_VALUE) {
         Entry entry = {entryValue, hashValue};
         cache[index] = entry;
+        return;
     }
 
     // If we get here, that means the key is occupied by another entry, we always overwrite
@@ -147,7 +148,7 @@ int getCachedValue(Board* board, int8_t window) {
     }
 
     // Get the primary hash
-    const int index = primaryHash(hashValue);
+    const int index = indexHash(hashValue);
 
     // Check if the entry is unset
     if (cache[index].value == UNSET_VALUE) {
@@ -236,7 +237,7 @@ void renderCacheStats() {
 
     sprintf(message, "  Overwrites: %lld", overwrites);
     renderOutput(message, CHEAT_PREFIX);
-    sprintf(message, "  Invalid reads: %lld", invalidReads);
+    sprintf(message, "  Unsuccessful: %lld", invalidReads);
     renderOutput(message, CHEAT_PREFIX);
     sprintf(message, "  Hits: %lld", hits);
     renderOutput(message, CHEAT_PREFIX);
