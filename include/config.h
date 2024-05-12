@@ -24,7 +24,7 @@
  * Cache size for local solver.
  * (4294967296 is max size)
  */
-#define CACHE_SIZE 10000139
+#define CACHE_SIZE 10139
 
 /*
  * Board is constructed like this:

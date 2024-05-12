@@ -16,7 +16,7 @@
     int windowMisses = 0; \
     clock_t start = clock(); \
     nodeCount = 0; \
-    renderOutput("Thinking...", CHEAT_PREFIX); \
+    renderOutput("Thinking...", PLAY_PREFIX); \
 
 // Macro for the iterative deepening loop
 // 'negamaxCall' is the function call, 'additionalBreak' is the custom break conditions
@@ -50,7 +50,7 @@
 
 // Macro for the function body with a placeholder for the negamax function call
 #define NEGAMAX_ROOT_BODY(board, depth, distribution, negamaxCall) \
-    renderOutput("Thinking...", PLAY_PREFIX); \
+    renderOutput("Thinking...", CHEAT_PREFIX); \
     const int8_t start = (board->color == 1) ? HBOUND_P1 : HBOUND_P2; \
     const int8_t end = (board->color == 1) ? LBOUND_P1 : LBOUND_P2; \
     int index = 5; \

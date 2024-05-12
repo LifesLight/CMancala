@@ -30,7 +30,7 @@ int QUICK_negamax(Board *board, int alpha, const int beta, const int depth, bool
     // Will be needed in every iteration
     Board boardCopy;
     int score;
-    bool solvedTemp;
+    bool solvedBranch;
     bool solvedBest = false;
     bool solvedAll = true;
 
@@ -47,26 +47,26 @@ int QUICK_negamax(Board *board, int alpha, const int beta, const int depth, bool
         // Make copied board with move made
         copyBoard(board, &boardCopy);
         makeMoveFunction(&boardCopy, i);
-        solvedTemp = false;
+        solvedBranch = false;
 
         // Branch to check if this player is still playing
         if (board->color == boardCopy.color) {
             // If yes, call negamax with current parameters and no inversion
-            score = QUICK_negamax(&boardCopy, alpha, beta, depth - 1, &solvedTemp);
+            score = QUICK_negamax(&boardCopy, alpha, beta, depth - 1, &solvedBranch);
         } else {
             // If no, call negamax with inverted parameters for the other player
-            score = -QUICK_negamax(&boardCopy, -beta, -alpha, depth - 1, &solvedTemp);
+            score = -QUICK_negamax(&boardCopy, -beta, -alpha, depth - 1, &solvedBranch);
         }
 
-        if (!solvedTemp) {
+        if (!solvedBranch) {
             solvedAll = false;
         }
 
         if (score > reference) {
             reference = score;
-            solvedBest = solvedTemp;
+            solvedBest = solvedBranch;
 
-            if (reference >= cutoff && solvedTemp) {
+            if (reference >= cutoff && solvedBranch) {
                 break;
             }
         }
@@ -92,8 +92,9 @@ int QUICK_negamaxWithMove(Board *board, int *bestMove, int alpha, const int beta
         return board->color * getBoardEvaluation(board);
     }
 
+    *solved = false;
+
     if (depth == 0) {
-        *solved = false;
         *bestMove = -1;
         return board->color * getBoardEvaluation(board);
     }
@@ -102,16 +103,13 @@ int QUICK_negamaxWithMove(Board *board, int *bestMove, int alpha, const int beta
 
     int reference = INT32_MIN;
     int score;
-    bool solvedTemp;
+    bool solvedBranch;
     bool solvedBest = false;
     bool solvedAll = true;
+    Board boardCopy;
 
     const int8_t start = (board->color == 1)  ? HBOUND_P1 : HBOUND_P2;
     const int8_t end = (board->color == 1)    ? LBOUND_P1 : LBOUND_P2;
-
-    Board boardCopy;
-
-    *solved = false;
 
     for (int8_t i = start; i >= end; i--) {
         if (board->cells[i] == 0) {
@@ -119,24 +117,24 @@ int QUICK_negamaxWithMove(Board *board, int *bestMove, int alpha, const int beta
         }
         copyBoard(board, &boardCopy);
         makeMoveFunction(&boardCopy, i);
-        solvedTemp = false;
+        solvedBranch = false;
 
         if (board->color == boardCopy.color) {
-            score = QUICK_negamax(&boardCopy, alpha, beta, depth - 1, &solvedTemp);
+            score = QUICK_negamax(&boardCopy, alpha, beta, depth - 1, &solvedBranch);
         } else {
-            score = -QUICK_negamax(&boardCopy, -beta, -alpha, depth - 1, &solvedTemp);
+            score = -QUICK_negamax(&boardCopy, -beta, -alpha, depth - 1, &solvedBranch);
         }
 
-        if (!solvedTemp) {
+        if (!solvedBranch) {
             solvedAll = false;
         }
 
         if (score > reference) {
             reference = score;
             *bestMove = i;
-            solvedBest = solvedTemp;
+            solvedBest = solvedBranch;
 
-            if (reference >= cutoff && solvedTemp) {
+            if (reference >= cutoff && solvedBranch) {
                 break;
             }
         }
