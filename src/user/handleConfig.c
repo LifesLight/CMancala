@@ -14,6 +14,7 @@ void renderConfigHelp() {
     renderOutput("  time [number >= 0]               : Set time limit for AI in seconds, if 0 unlimited", CONFIG_PREFIX);
     renderOutput("  depth [number >= 0]              : Set depth limit for AI, if 0 unlimited", CONFIG_PREFIX);
     renderOutput("  solver [global|local|quick]      : Set default solver for AI", CONFIG_PREFIX);
+    renderOutput("  cache [number]                   : Set cache size for specific solvers, highly recommended to be a prime", CONFIG_PREFIX);
     renderOutput("  starting [1|2]                   : Configure starting player", CONFIG_PREFIX);
     renderOutput("  player [1|2] [human|random|ai]   : Configure player", CONFIG_PREFIX);
     renderOutput("  display                          : Display current configuration", CONFIG_PREFIX);
@@ -70,6 +71,11 @@ void printConfig(Config* config) {
             break;
     }
     renderOutput(message, CONFIG_PREFIX);
+
+    if (getCacheSize() > 0) {
+        snprintf(message, sizeof(message), "  Cache size: %d", getCacheSize());
+        renderOutput(message, CONFIG_PREFIX);
+    }
 
     snprintf(message, sizeof(message), "  Starting: %d", config->startColor == 1 ? 1 : 2);
     renderOutput(message, CONFIG_PREFIX);
@@ -132,6 +138,33 @@ void handleConfigInput(bool* requestedStart, Config* config) {
     // Check for display
     if (strcmp(input, "display") == 0) {
         printConfig(config);
+        return;
+    }
+
+    // Check for cache
+    if (strncmp(input, "cache ", 6) == 0) {
+        int cacheSize;
+
+        // Check if next is "recommended"
+        if (strcmp(input + 6, "recommended") == 0) {
+            int recommendedCacheSize = RECOMMENDED_CACHE_SIZE;
+            cacheSize = recommendedCacheSize;
+        } else {
+            // Check if valid number
+            cacheSize = atoi(input + 6);
+
+            if (cacheSize < 0) {
+                renderOutput("Invalid cache size", CONFIG_PREFIX);
+                return;
+            }
+        }
+
+        // Update cache
+        startCache(cacheSize);
+
+        char message[256];
+        snprintf(message, sizeof(message), "Updated cache size to %d", cacheSize);
+        renderOutput(message, CONFIG_PREFIX);
         return;
     }
 

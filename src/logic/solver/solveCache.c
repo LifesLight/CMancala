@@ -8,11 +8,21 @@
  * We are using 8 validation bits for the hash
 */
 
+typedef struct {
+    int8_t value;
+    uint64_t key;
+} Entry;
 
-int32_t cache[CACHE_SIZE];
+Entry* cache;
+
+uint32_t cacheSize = 0;
 uint64_t overwrites;
 uint64_t invalidReads;
 uint64_t hits;
+
+uint32_t getCacheSize() {
+    return cacheSize;
+}
 
 uint64_t translateBoard(Board* board, int8_t window) {
     uint64_t hash = 0;
@@ -71,18 +81,18 @@ uint64_t translateBoard(Board* board, int8_t window) {
 
 // Hash function to get into the array index
 uint32_t primaryHash(uint64_t hash) {
-    return hash % CACHE_SIZE;
+    return hash % cacheSize;
 }
 
-// Secondary hash to compute the 8 check bits
-uint32_t secondaryHash(uint64_t hash) {
-    return hash % 16777216;
-}
-
-void startCache() {
-    for (int i = 0; i < CACHE_SIZE; i++) {
-        cache[i] = UNSET_VALUE;
+void startCache(uint32_t size) {
+    cacheSize = size;
+    free(cache);
+    cache = malloc(sizeof(Entry) * cacheSize);
+    for (int i = 0; i < (int64_t)cacheSize; i++) {
+        cache[i].value = UNSET_VALUE;
+        cache[i].key = 0;
     }
+
     overwrites = 0;
     invalidReads = 0;
     hits = 0;
@@ -105,30 +115,27 @@ void cacheNode(Board* board, int evaluation, int8_t window) {
     }
 
     const int8_t entryValue = evaluation;
-    const uint32_t entryCheck = secondaryHash(hashValue);
-
-    // Merge both into the 32 bit entry
-    const int32_t entry = (entryValue & 0xFF) | ((entryCheck & 0xFFFFFF) << 8);
 
     // Get the primary hash
     const uint32_t index = primaryHash(hashValue);
 
-    // Check if the entry is already in the cache
-    if (cache[index] == entry) {
+    // Check if exists already
+    // This completely validates the entry
+    if (cache[index].key == hashValue) {
         return;
     }
 
     // Check if the entry is empty
-    if (cache[index] == UNSET_VALUE) {
+    if (cache[index].value == UNSET_VALUE) {
+        Entry entry = {entryValue, hashValue};
         cache[index] = entry;
-        return;
     }
 
-    // Collision resolution
+    // If we get here, that means the key is occupied by another entry, we always overwrite
+    // We hope that newer keys are more likely to be accessed
     overwrites++;
-
-    // We always overwrite the entry
-    cache[index] = entry;
+    cache[index].value = entryValue;
+    cache[index].key = hashValue;
 }
 
 int getCachedValue(Board* board, int8_t window) {
@@ -142,24 +149,20 @@ int getCachedValue(Board* board, int8_t window) {
     // Get the primary hash
     const int index = primaryHash(hashValue);
 
-    // Check if the entry is empty
-    if (cache[index] == UNSET_VALUE) {
+    // Check if the entry is unset
+    if (cache[index].value == UNSET_VALUE) {
         return INT32_MIN;
     }
 
-    int32_t entry = cache[index];
-
-    // Validate check bits
-    const uint32_t entryCheck = secondaryHash(hashValue);
-    if ((entryCheck & 0xFFFFFF) != ((entry >> 8) & 0xFFFFFF)) {
+    // Check if the key matches
+    if (cache[index].key != hashValue) {
         invalidReads++;
         return INT32_MIN;
     }
 
+    // We have a hit
     hits++;
-
-    // Extract the evaluation
-    int8_t value = entry & 0xFF;
+    int value = cache[index].value;
 
     // Adjust for score cells
     int scoreDelta = board->cells[SCORE_P1] - board->cells[SCORE_P2];
@@ -167,78 +170,75 @@ int getCachedValue(Board* board, int8_t window) {
     return value + scoreDelta;
 }
 
-int getCachedNodeCount() {
-    int count = 0;
-
-    for (int i = 0; i < CACHE_SIZE; i++) {
-        if (cache[i] != UNSET_VALUE) {
-            count++;
-        }
-    }
-
-    return count;
-}
-
 /**
  * Render the cache stats
 */
-void renderCacheDistribution() {
-    int chunkSize = 0;
-    int chunkCount = 0;
-    int chunkStart = 0;
-    int chunkType = cache[0] != UNSET_VALUE; // 1 for set, 0 for unset
+typedef struct {
+    int start;
+    int size;
+    int type;
+} Chunk;
 
+int compareChunks(const void *a, const void *b) {
+    return ((Chunk*)b)->size - ((Chunk*)a)->size;
+}
 
+void renderCacheStats() {
     char message[100];
-    sprintf(message, "  Cache size: %d", CACHE_SIZE);
+    sprintf(message, "  Cache size: %d", cacheSize);
+    renderOutput(message, CHEAT_PREFIX);
     sprintf(message, "  Top %d cache chunks:", OUTPUT_CHUNK_COUNT);
     renderOutput(message, CHEAT_PREFIX);
     renderOutput("  Chunk Type | Start Index | Chunk Size", CHEAT_PREFIX);
     renderOutput("  ---------------------------------------", CHEAT_PREFIX);
 
-    // Array to store the largest 10 chunks
-    int largestChunkSizes[OUTPUT_CHUNK_COUNT] = {0};
-    int largestChunkStart[OUTPUT_CHUNK_COUNT] = {0};
+    // Store all chunks
+    Chunk* chunks = malloc(sizeof(Chunk) * cacheSize);
+    int chunkCount = 0;
+    int currentType = cache[0].value != UNSET_VALUE;
+    int chunkStart = 0;
+    int chunkSize = 1;
 
-    for (int i = 1; i < CACHE_SIZE; i++) {
-        int currentType = cache[i] != UNSET_VALUE;
-        if (currentType == chunkType) {
+    // Iterate through the cache to identify chunks
+    for (int i = 1; i < (int64_t)cacheSize; i++) {
+        if ((cache[i].value != UNSET_VALUE) == currentType) { 
             chunkSize++;
         } else {
-            if (chunkSize > largestChunkSizes[9]) {
-                // Update the largest chunks array
-                for (int j = 9; j >= 0; j--) {
-                    if (chunkSize > largestChunkSizes[j]) {
-                        if (j < 9) {
-                            largestChunkSizes[j + 1] = largestChunkSizes[j];
-                            largestChunkStart[j + 1] = largestChunkStart[j];
-                        }
-                        largestChunkSizes[j] = chunkSize;
-                        largestChunkStart[j] = chunkStart;
-                    } else {
-                        break;
-                    }
-                }
-            }
+            chunks[chunkCount].type = currentType;
+            chunks[chunkCount].start = chunkStart;
+            chunks[chunkCount].size = chunkSize;
             chunkCount++;
-            chunkType = currentType;
+
+            currentType = cache[i].value != UNSET_VALUE;
             chunkStart = i;
             chunkSize = 1;
         }
     }
 
-    // Print the largest 10 chunks
+    // Add the last chunk
+    chunks[chunkCount].type = currentType;
+    chunks[chunkCount].start = chunkStart;
+    chunks[chunkCount].size = chunkSize;
+    chunkCount++;
+
+    // Sort the chunks by size in descending order
+    qsort(chunks, chunkCount, sizeof(Chunk), compareChunks);
+
+    // Print the largest OUTPUT_CHUNK_COUNT chunks
     for (int i = 0; i < OUTPUT_CHUNK_COUNT && i < chunkCount; i++) {
-        sprintf(message, "  %s | %10d | %10d", largestChunkSizes[i] ? "Set  " : "Unset", largestChunkStart[i], largestChunkSizes[i]);
+        sprintf(message, "     %s   | %10d  | %10d", chunks[i].type ? "Set  " : "Unset", chunks[i].start, chunks[i].size);
         renderOutput(message, CHEAT_PREFIX);
     }
 
+    renderOutput("  ---------------------------------------", CHEAT_PREFIX);
 
-    sprintf(message, "  Overwrites: %d", chunkCount);
+    free(chunks);
+
+    sprintf(message, "  Overwrites: %lld", overwrites);
     renderOutput(message, CHEAT_PREFIX);
-    sprintf(message, "  Invalid reads: %d", chunkCount);
+    sprintf(message, "  Invalid reads: %lld", invalidReads);
     renderOutput(message, CHEAT_PREFIX);
-    sprintf(message, "  Hits: %d", chunkCount);
+    sprintf(message, "  Hits: %lld", hits);
     renderOutput(message, CHEAT_PREFIX);
 
     hits = 0;

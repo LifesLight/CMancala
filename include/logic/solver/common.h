@@ -49,6 +49,7 @@
     context->lastSolved = solved;
 
 // Macro for the function body with a placeholder for the negamax function call
+// TODO: this is kinda cooked for solve indicator with different kind of solvers
 #define NEGAMAX_ROOT_BODY(board, depth, distribution, negamaxCall) \
     renderOutput("Thinking...", CHEAT_PREFIX); \
     const int8_t start = (board->color == 1) ? HBOUND_P1 : HBOUND_P2; \

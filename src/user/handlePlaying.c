@@ -175,6 +175,7 @@ void stepGame(bool* requestedMenu, Context* context) {
 
     if (move == -1) {
         renderOutput("No move", PLAY_PREFIX);
+        *requestedMenu = true;
         return;
     }
 

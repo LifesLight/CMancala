@@ -159,7 +159,7 @@ int QUICK_negamaxWithMove(Board *board, int *bestMove, int alpha, const int beta
 */
 void QUICK_negamaxAspirationRoot(Context* context) {
     INITIALIZE_VARS;
-    bool solved = true;
+    bool solved;
     ITERATIVE_DEEPENING_LOOP(
         QUICK_negamaxWithMove(context->board, &bestMove, alpha, beta, currentDepth, &solved),
         if (solved && score >= cutoff) break;

@@ -348,9 +348,8 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
             renderOutput(message, CHEAT_PREFIX);
         }
 
-        int cachedNodes = getCachedNodeCount();
-        if (cachedNodes > 0) {
-            renderCacheDistribution();
+        if (getCacheSize() > 0) {
+            renderCacheStats();
         }
 
         return;

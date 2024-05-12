@@ -5,18 +5,19 @@
 #include "logic/solver/local.h"
 
 
-int LOCAL_negamax(Board *board, int alpha, const int beta, const int depth, bool* solvedSubtree) {
+int LOCAL_negamax(Board *board, int alpha, const int beta, const int depth, bool* solved) {
     // Terminally check
     // The order of the checks is important here
     // Otherwise we could have a empty side, without adding up the opponents pieces to his score
     if (processBoardTerminal(board)) {
+        *solved = true;
         return board->color * getBoardEvaluation(board);
     }
 
     // Check if depth limit is reached
     if (depth == 0) {
         // If we ever get depth limited in a non-terminal state, the game is not solved
-        *solvedSubtree = false;
+        *solved = false;
         return board->color * getBoardEvaluation(board);
     }
 
@@ -25,6 +26,8 @@ int LOCAL_negamax(Board *board, int alpha, const int beta, const int depth, bool
     // Check if board is cached
     int cachedValue = getCachedValue(board, windowId);
     if (cachedValue != INT32_MIN) {
+        // We only cache solved nodes so this must be solved
+        *solved = true;
         return cachedValue;
     }
 
@@ -36,6 +39,8 @@ int LOCAL_negamax(Board *board, int alpha, const int beta, const int depth, bool
     // Will be needed in every iteration
     Board boardCopy;
     int score;
+    bool solvedTemp;
+    *solved = true;
 
     // Iterate over all possible moves
     const int8_t start = (board->color == 1)  ? HBOUND_P1 : HBOUND_P2;
@@ -51,13 +56,19 @@ int LOCAL_negamax(Board *board, int alpha, const int beta, const int depth, bool
         copyBoard(board, &boardCopy);
         makeMoveFunction(&boardCopy, i);
 
+        solvedTemp = false;
+
         // Branch to check if this player is still playing
         if (board->color == boardCopy.color) {
             // If yes, call negamax with current parameters and no inversion
-            score = LOCAL_negamax(&boardCopy, alpha, beta, depth - 1, solvedSubtree);
+            score = LOCAL_negamax(&boardCopy, alpha, beta, depth - 1, &solvedTemp);
         } else {
             // If no, call negamax with inverted parameters for the other player
-            score = -LOCAL_negamax(&boardCopy, -beta, -alpha, depth - 1, solvedSubtree);
+            score = -LOCAL_negamax(&boardCopy, -beta, -alpha, depth - 1, &solvedTemp);
+        }
+
+        if (!solvedTemp) {
+            *solved = false;
         }
 
         // Update parameters
@@ -71,29 +82,42 @@ int LOCAL_negamax(Board *board, int alpha, const int beta, const int depth, bool
     }
 
     // If subtree is solved, cache it
-    if (*solvedSubtree) {
+    if (*solved) {
         cacheNode(board, reference, windowId);
     }
 
     return reference;
 }
 
-int LOCAL_negamaxWithMove(Board *board, int *bestMove, int alpha, const int beta, const int depth, bool* solvedSubtree) {
+int LOCAL_negamaxWithMove(Board *board, int *bestMove, int alpha, const int beta, const int depth, bool* solved) {
     if (processBoardTerminal(board)) {
         *bestMove = -1;
+        *solved = true;
         return board->color * getBoardEvaluation(board);
     }
 
     if (depth == 0) {
-        *solvedSubtree = false;
+        *solved = false;
         *bestMove = -1;
         return board->color * getBoardEvaluation(board);
+    }
+
+    const int windowId = alpha + 1;
+
+    // Check if board is cached
+    int cachedValue = getCachedValue(board, windowId);
+    if (cachedValue != INT32_MIN) {
+        // We only cache solved nodes so this must be solved
+        *solved = true;
+        return cachedValue;
     }
 
     nodeCount++;
 
     int reference = INT32_MIN;
     int score;
+    bool solvedTemp;
+    *solved = true;
 
     const int8_t start = (board->color == 1)  ? HBOUND_P1 : HBOUND_P2;
     const int8_t end = (board->color == 1)    ? LBOUND_P1 : LBOUND_P2;
@@ -107,10 +131,16 @@ int LOCAL_negamaxWithMove(Board *board, int *bestMove, int alpha, const int beta
         copyBoard(board, &boardCopy);
         makeMoveFunction(&boardCopy, i);
 
+        solvedTemp = false;
+
         if (board->color == boardCopy.color) {
-            score = LOCAL_negamax(&boardCopy, alpha, beta, depth - 1, solvedSubtree);
+            score = LOCAL_negamax(&boardCopy, alpha, beta, depth - 1, &solvedTemp);
         } else {
-            score = -LOCAL_negamax(&boardCopy, -beta, -alpha, depth - 1, solvedSubtree);
+            score = -LOCAL_negamax(&boardCopy, -beta, -alpha, depth - 1, &solvedTemp);
+        }
+
+        if (!solvedTemp) {
+            *solved = false;
         }
 
         if (score > reference) {
@@ -124,7 +154,10 @@ int LOCAL_negamaxWithMove(Board *board, int *bestMove, int alpha, const int beta
         }
     }
 
-    // TODO: Do something if node is solved
+    // If solved, cache it
+    if (*solved) {
+        cacheNode(board, reference, windowId);
+    }
 
     return reference;
 }
@@ -133,8 +166,14 @@ int LOCAL_negamaxWithMove(Board *board, int *bestMove, int alpha, const int beta
  * Negamax with iterative deepening and aspiration window search
 */
 void LOCAL_negamaxAspirationRoot(Context* context) {
+    if (getCacheSize() == 0) {
+        renderOutput("Error: LOCAL solver needs a cache size > 0, use \"cache recommended\" in config", PLAY_PREFIX);
+        context->lastMove = -1;
+        return;
+    }
+
     INITIALIZE_VARS;
-    bool solved = true;
+    bool solved;
     ITERATIVE_DEEPENING_LOOP(
         LOCAL_negamaxWithMove(context->board, &bestMove, alpha, beta, currentDepth, &solved),
         if (solved) break;
@@ -146,5 +185,10 @@ void LOCAL_negamaxAspirationRoot(Context* context) {
  * Full search without any optimizations
 */
 void LOCAL_negamaxRootWithDistribution(Board *board, int depth, int32_t* distribution, bool* solved) {
+    if (getCacheSize() == 0) {
+        renderOutput("Error: LOCAL solver needs a cache size > 0, use \"cache recommended\" in config", CHEAT_PREFIX);
+        return;
+    }
+
     NEGAMAX_ROOT_BODY(board, depth, distribution, LOCAL_negamax(&boardCopy, alpha, beta, depth - 1, solved));
 }
