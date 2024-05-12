@@ -104,7 +104,3 @@ void updateCell(Board* board, int player, int idx, int value) {
     board->cells[cellIndex] = value;
     return;
 }
-
-int fastHash(uint64_t value) {
-    return value % CACHE_SIZE;
-}

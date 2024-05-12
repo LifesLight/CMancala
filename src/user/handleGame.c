@@ -335,12 +335,6 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
             }
             renderOutput(message, CHEAT_PREFIX);
 
-            int cachedNodes = getCachedNodeCount();
-            if (cachedNodes > 0) {
-                snprintf(message, sizeof(message), "  Cached nodes: %d", cachedNodes);
-                renderOutput(message, CHEAT_PREFIX);
-            }
-
             int64_t totalNodes = context->lastNodes;
             sprintf(message, "  Total nodes: %f million", (double)totalNodes / 1000000);
             renderOutput(message, CHEAT_PREFIX);
@@ -352,6 +346,11 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
             double nodesPerSecond = totalNodes / totalTime;
             snprintf(message, sizeof(message), "  Throughput: %f million nodes/s", nodesPerSecond / 1000000);
             renderOutput(message, CHEAT_PREFIX);
+        }
+
+        int cachedNodes = getCachedNodeCount();
+        if (cachedNodes > 0) {
+            renderCacheDistribution();
         }
 
         return;

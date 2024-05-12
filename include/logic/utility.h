@@ -29,5 +29,3 @@ void getInput(char* input, const char* prefix);
 void initializeBoardFromConfig(Board* board, Config* config);
 void quitGame();
 void updateCell(Board* board, int player, int idx, int value);
-
-int fastHash(uint64_t value);

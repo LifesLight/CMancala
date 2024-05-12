@@ -28,9 +28,17 @@
 */
 
 #include <stdint.h>
+#include <math.h>
 
 #include "config.h"
 #include "logic/board.h"
+#include "user/render.h"
+
+#define CACHE_SIZE 100003
+#define UNSET_VALUE INT32_MIN
+#define INVALID_HASH UINT64_MAX
+
+#define OUTPUT_CHUNK_COUNT 10
 
 /**
  * Starts the cache.
@@ -51,3 +59,5 @@ int getCachedValue(Board* board, int8_t window);
  * Gets the number of cached nodes.
 */
 int getCachedNodeCount();
+
+void renderCacheDistribution();
