@@ -22,7 +22,7 @@ int LOCAL_negamax(Board *board, int alpha, const int beta, const int depth, bool
     }
 
     // Check if board is cached
-    int cachedValue = getCachedValue(board, alpha, beta);
+    int cachedValue = getCachedValue(board);
     if (cachedValue != NOT_CACHED_VALUE) {
         if (cachedValue >= beta) {
             *solved = true;
@@ -85,7 +85,7 @@ int LOCAL_negamax(Board *board, int alpha, const int beta, const int depth, bool
 
     // If subtree is solved, cache it
     if (*solved) {
-        cacheNode(board, reference, alpha, beta);
+        cacheNode(board, reference);
     }
 
     return reference;
@@ -105,7 +105,7 @@ int LOCAL_negamaxWithMove(Board *board, int *bestMove, int alpha, const int beta
     }
 
     // Check if board is cached
-    int cachedValue = getCachedValue(board, alpha, beta);
+    int cachedValue = getCachedValue(board);
     if (cachedValue != NOT_CACHED_VALUE) {
         if (cachedValue >= beta) {
             *solved = true;
@@ -160,7 +160,7 @@ int LOCAL_negamaxWithMove(Board *board, int *bestMove, int alpha, const int beta
 
     // If solved, cache it
     if (*solved) {
-        cacheNode(board, reference, alpha, beta);
+        cacheNode(board, reference);
     }
 
     return reference;
@@ -171,9 +171,8 @@ int LOCAL_negamaxWithMove(Board *board, int *bestMove, int alpha, const int beta
 */
 void LOCAL_negamaxAspirationRoot(Context* context) {
     if (getCacheSize() == 0) {
-        renderOutput("Error: LOCAL solver needs a cache size > 0, use \"cache recommended\" in config", PLAY_PREFIX);
-        context->lastMove = -1;
-        return;
+        renderOutput("Cache automatically enabled with \"normal\" preset", PLAY_PREFIX);
+        startCache(NORMAL_CACHE_SIZE);
     }
 
     INITIALIZE_VARS;
@@ -190,15 +189,14 @@ void LOCAL_negamaxAspirationRoot(Context* context) {
 */
 void LOCAL_negamaxRootWithDistribution(Board *board, int depth, int32_t* distribution, bool* solved) {
     if (getCacheSize() == 0) {
-        renderOutput("Error: LOCAL solver needs a cache size > 0, use \"cache recommended\" in config", CHEAT_PREFIX);
-        return;
+        renderOutput("Cache automatically enabled with \"normal\" preset", CHEAT_PREFIX);
+        startCache(NORMAL_CACHE_SIZE);
     }
-
-    printf("!WARNING!: LOCAL solver is only designed for null window searches, this is COMPLETELY invalidated\n");
 
     NEGAMAX_ROOT_BODY(board, depth, distribution, LOCAL_negamax(&boardCopy, alpha, beta, depth - 1, solved));
 }
 
 /**
  * We can prob save the player bit by normalizing the layout :D
+ * This should also give better performance
 */

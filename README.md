@@ -1,16 +1,18 @@
 # CMancala
 
 ## Overview
-CMancala is a computer implementation of the classic board game Mancala. This version supports both standard Mancala rules and an **Avalanche** mode, providing an engaging challenge with a sophisticated AI opponent.
+CMancala is a powerful Mancala solver and analyzer.<br>
+While it's not the project primary focus it is very much possible to play against (effectively unbeatable) AI agents.
 
 ## Rules
-The game adheres to basic Mancala rules. In addition, an **Avalanche** mode is available, offering a different style of gameplay.
+The game adheres to basic Mancala rules. In addition, an **Avalanche** mode is available.
 
 ## Interface
 CMancala starts in **config** mode, where you can set up the game hyperparameters.<br>
 When starting the game you will enter one of two modes, between which you can switch at all times:
-- **Menu:** Perform operations on the current game.
-- **Playing:** Play the current game.
+- **Config:** Adjust application / game hyperparameters.
+- **Menu:** Perform analytical operations on the current game.
+- **Playing:** Play the game.
 
 More information is provided via "help" which provides all legal commands in every mode.
 
@@ -27,13 +29,13 @@ These benchmarks are approximate and might slightly differ across various CPUs.<
 Observations were made on an M2 Pro, but similar performance is expected on modern processors due to the exponential nature of the problem.<br>
 
 ## Algorithm
-CMancala employs a Negamax algorithm with Alpha-Beta pruning, tailored to accommodate double moves. Key features include:
+All CMancala solvers employs a Negamax algorithm with Alpha-Beta pruning, tailored to accommodate double moves. Common features include:
 - **Double Move Handling**: The algorithm adjusts search parameters based on whether the player's turn continues or switches to the opponent.
 - **Aspiration Windows with Iterative Deepening**: This technique allows for time-limited searches while enhancing performance.
 
 ### Solvers
 - **GLOBAL:**<br>The reference solver. Is only satisfied once the complete game tree is exhaustively searched for the best possible move at the current node.
-- **LOCAL:** *EXPERIMENTAL*<br>Similar to GLOBAL but with knowledge of every nodes subtree solve status. This allows for *experimental* optimizations like solved node caching.
+- **LOCAL:**<br>Similar to GLOBAL but with knowledge of every nodes subtree solve status. This allows for optimizations like solved node caching. Hash collisions are always caught, but I can still not confidently say that the output is always correct.
 - **QUICK**<br>The fastest solver. Is not required to find the best move at every node, only one which satisfies a provided cutoff evaluation. This allows for significantly faster solves (or searches in general) at the expense of only finding **a** winning move instead of the **most** winning move.
 
 ## Restrictions

@@ -24,9 +24,9 @@
  * Score cells don't get encoded
  * 
  * Current player gets 1 bit
- * Playing cells get 4 bits each
- * Alpha beta bounds get 7 bits each
- * Last bit is reserved for the validity of the hash
+ * Playing cells get 5 bits each
+ * 1 bit is reserved for valid hash
+ * Remaining 2 bits are not used
 */
 
 #include <stdint.h>
@@ -41,7 +41,9 @@
 #define INVALID_HASH UINT64_MAX
 #define NOT_CACHED_VALUE INT32_MIN
 
-#define RECOMMENDED_CACHE_SIZE 10007
+#define SMALL_CACHE_SIZE    100003
+#define NORMAL_CACHE_SIZE   1000003
+#define LARGE_CACHE_SIZE    10000019
 #define OUTPUT_CHUNK_COUNT 25
 
 /**
@@ -52,12 +54,12 @@ void startCache(uint32_t cacheSize);
 /**
  * Caches a node.
 */
-void cacheNode(Board* board, int evaluation, int alpha, int beta);
+void cacheNode(Board* board, int evaluation);
 
 /**
  * Gets a cached value.
 */
-int getCachedValue(Board* board, int alpha, int beta);
+int getCachedValue(Board* board);
 
 /**
  * Gets the number of cached nodes.

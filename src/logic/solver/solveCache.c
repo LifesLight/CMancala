@@ -25,12 +25,8 @@ uint32_t getCacheSize() {
     return cacheSize;
 }
 
-uint64_t translateBoard(Board* board, int alpha, int beta) {
+uint64_t translateBoard(Board* board) {
     // Check if window can be stored
-    if (alpha > 63 || alpha < -64 || beta > 63 || beta < -64) {
-        return INVALID_HASH;
-    }
-
     uint64_t hash = 0;
 
     // Make first bit the current player
@@ -39,33 +35,26 @@ uint64_t translateBoard(Board* board, int alpha, int beta) {
     int offset = 1;
     uint8_t value;
 
-    // 4 bits per cell
+    // 5 bits per cell
     for (int i = 0; i < 6; i++) {
         value = board->cells[i];
-        if (value > 15) {
+        if (value > 31) {
             return INVALID_HASH;
         }
-        hash |= ((uint64_t)(value & 0x0F)) << offset;
-        offset += 4;
+        hash |= ((uint64_t)(value & 0x1F)) << offset;
+        offset += 5;
     }
 
     for (int i = 7; i < 13; i++) {
         value = board->cells[i];
-        if (value > 15) {
+        if (value > 31) {
             return INVALID_HASH;
         }
-        hash |= ((uint64_t)(value & 0x0F)) << offset;
-        offset += 4;
+        hash |= ((uint64_t)(value & 0x1F)) << offset;
+        offset += 5;
     }
 
-    // Next 7 bits are the alpha window
-    hash |= ((uint64_t)((alpha + 64) & 0x7F)) << offset;
-    offset += 7;
-
-    // Next 7 bits are the beta window
-    hash |= ((uint64_t)((beta + 64) & 0x7F)) << offset;
-
-    // Last bit can only be 1 if the hash is invalid
+    // at least 1 bit needs to be free to check if the hash is invalid
     return hash;
 }
 
@@ -88,8 +77,8 @@ void startCache(uint32_t size) {
     hits = 0;
 }
 
-void cacheNode(Board* board, int evaluation, int alpha, int beta) {
-    uint64_t hashValue = translateBoard(board, alpha, beta);
+void cacheNode(Board* board, int evaluation) {
+    uint64_t hashValue = translateBoard(board);
 
     if (hashValue == INVALID_HASH) {
         return;
@@ -128,8 +117,8 @@ void cacheNode(Board* board, int evaluation, int alpha, int beta) {
     cache[index].key = hashValue;
 }
 
-int getCachedValue(Board* board, int alpha, int beta) {
-    uint64_t hashValue = translateBoard(board, alpha, beta);
+int getCachedValue(Board* board) {
+    uint64_t hashValue = translateBoard(board);
 
     // Not hashable
     if (hashValue == INVALID_HASH) {
@@ -179,10 +168,29 @@ int compareChunksStart(const void *a, const void *b) {
 
 void renderCacheStats() {
     char message[100];
-    sprintf(message, "  Cache size: %d", cacheSize);
+
+    uint64_t setEntries = 0;
+
+    for (int i = 0; i < (int64_t)cacheSize; i++) {
+        if (cache[i].value != UNSET_VALUE) {
+            setEntries++;
+        }
+    }
+
+    double fillPercentage = (double)setEntries / (double)cacheSize;
+    sprintf(message, "  Cache size: %d (%.2f", cacheSize, fillPercentage * 100);
+    strcat(message, "%)");
     renderOutput(message, CHEAT_PREFIX);
-    sprintf(message, "  Top %d cache chunks:", OUTPUT_CHUNK_COUNT);
+
+    sprintf(message, "  Overwrites: %lld", overwrites);
     renderOutput(message, CHEAT_PREFIX);
+    sprintf(message, "  Collisions: %lld", invalidReads);
+    renderOutput(message, CHEAT_PREFIX);
+    sprintf(message, "  Hits:       %lld", hits);
+    renderOutput(message, CHEAT_PREFIX);
+    sprintf(message, "  Upgrades:   %lld", upgrades);
+    renderOutput(message, CHEAT_PREFIX);
+
     renderOutput("  Chunk Type | Start Index | Chunk Size", CHEAT_PREFIX);
     renderOutput("  ---------------------------------------", CHEAT_PREFIX);
 
@@ -235,19 +243,12 @@ void renderCacheStats() {
         renderOutput(message, CHEAT_PREFIX);
     }
 
-    renderOutput("  ---------------------------------------", CHEAT_PREFIX);
+    if (chunkCount > OUTPUT_CHUNK_COUNT) {
+        renderOutput("  ...", CHEAT_PREFIX);
+    }
 
     free(chunks);
     free(topChunks);
-
-    sprintf(message, "  Overwrites: %lld", overwrites);
-    renderOutput(message, CHEAT_PREFIX);
-    sprintf(message, "  Upgrades: %lld", upgrades);
-    renderOutput(message, CHEAT_PREFIX);
-    sprintf(message, "  Caught: %lld", invalidReads);
-    renderOutput(message, CHEAT_PREFIX);
-    sprintf(message, "  Hits: %lld", hits);
-    renderOutput(message, CHEAT_PREFIX);
 
     hits = 0;
     invalidReads = 0;
