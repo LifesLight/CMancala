@@ -7,22 +7,57 @@
 typedef struct {
     int8_t value;
     uint64_t key;
-#ifdef DYNAMIC_PERCENTAGE
-    uint16_t accessCount;
+#ifdef CACHE_GUARD
+    uint8_t protector;
 #endif
 } Entry;
 
 Entry* cache;
 
-#ifdef DYNAMIC_PERCENTAGE
-uint64_t storedAccesses;
-uint32_t setCells;
-#endif
-
 uint32_t cacheSize = 0;
 uint64_t overwrites;
+uint64_t lastOverwrites;
 uint64_t invalidReads;
+uint64_t lastInvalidReads;
 uint64_t hits;
+uint64_t lastHits;
+
+
+#ifdef CACHE_GUARD
+/**
+ * A entry can be overwritten if it has "lifetime 0", which is indicated by the first 7 bits being 0.
+ * The last bit is used to indicate if the entry was accessed this iteration,
+ * this doesn't affect the protection status this iteration.
+*/
+// Assuming CACHE_GUARD is defined elsewhere in the code
+const uint8_t freshLifetime = ((uint16_t)CACHE_GUARD + 1) & 0xFE;
+
+// Protect the entry for the next iteration
+void protectIndex(uint32_t index) {
+    cache[index].protector |= 0x80;
+}
+
+void removeProtection(uint32_t index) {
+    cache[index].protector &= 0x7F;
+}
+
+// Check if the entry was protected this iteration
+bool isProtected(uint32_t index) {
+    return (cache[index].protector & 0x80) != 0;
+}
+
+// Get how many iterations the entry is still protected
+uint8_t getLifetime(uint32_t index) {
+    return cache[index].protector & 0x7F; // Mask out the protected bit
+}
+
+// Set the lifetime
+void setLifetime(uint8_t lifetime, uint32_t index) {
+    cache[index].protector = (cache[index].protector & 0x80) | (lifetime & 0x7F);
+}
+
+uint32_t countPerAge[CACHE_GUARD + 1];
+#endif
 
 uint32_t getCacheSize() {
     return cacheSize;
@@ -73,18 +108,23 @@ void startCache(uint32_t size) {
     for (int i = 0; i < (int64_t)cacheSize; i++) {
         cache[i].value = UNSET_VALUE;
         cache[i].key = 0;
-#ifdef DYNAMIC_PERCENTAGE
-        cache[i].accessCount = 0;
+#ifdef CACHE_GUARD
+        cache[i].protector = 0;
 #endif
     }
+
+#ifdef CACHE_GUARD
+    lastOverwrites = 0;
+    lastInvalidReads = 0;
+#endif
 
     overwrites = 0;
     invalidReads = 0;
     hits = 0;
-#ifdef DYNAMIC_PERCENTAGE
-    storedAccesses = 0;
-    setCells = 0;
-#endif
+
+    lastOverwrites = 0;
+    lastInvalidReads = 0;
+    lastHits = 0;
 }
 
 void cacheNode(Board* board, int evaluation) {
@@ -93,6 +133,16 @@ void cacheNode(Board* board, int evaluation) {
     if (hashValue == INVALID_HASH) {
         return;
     }
+
+    // Get the primary hash
+    const uint32_t index = indexHash(hashValue);
+
+#ifdef CACHE_GUARD
+    // Check if the entry is protected
+    if (getLifetime(index) > 0) {
+        return;
+    }
+#endif
 
     // Compute evaluation without score cells
     int scoreDelta = board->cells[SCORE_P1] - board->cells[SCORE_P2];
@@ -105,9 +155,6 @@ void cacheNode(Board* board, int evaluation) {
 
     const int8_t entryValue = evaluation;
 
-    // Get the primary hash
-    const uint32_t index = indexHash(hashValue);
-
     // Check if exists already
     // This completely validates the entry
     if (cache[index].key == hashValue) {
@@ -117,7 +164,6 @@ void cacheNode(Board* board, int evaluation) {
         return;
     }
 
-#ifndef DYNAMIC_PERCENTAGE
     // Check if we need to overwrite
     if (cache[index].value != UNSET_VALUE) {
         overwrites++;
@@ -125,28 +171,10 @@ void cacheNode(Board* board, int evaluation) {
 
     cache[index].key = hashValue;
     cache[index].value = entryValue;
-    return;
-#else
-    // Check if the entry is unset
-    if (cache[index].value == UNSET_VALUE) {
-        cache[index].key = hashValue;
-        cache[index].value = entryValue;
-        cache[index].accessCount = 0;
-        setCells++;
-        return;
-    }
-
-    // Decide if we should overwrite
-    // If it falls in the "irrelevant" category, overwrite
-    if (cache[index].accessCount <= (DYNAMIC_PERCENTAGE * storedAccesses) / setCells) {
-        cache[index].key = hashValue;
-        cache[index].value = entryValue;
-        storedAccesses -= cache[index].accessCount;
-        cache[index].accessCount = 0;
-        overwrites++;
-        return;
-    }
+#ifdef CACHE_GUARD
+    cache[index].protector = 0;
 #endif
+    return;
 }
 
 int getCachedValue(Board* board) {
@@ -173,14 +201,13 @@ int getCachedValue(Board* board) {
 
     // We have a hit
     hits++;
-    int value = cache[index].value;
 
-#ifdef DYNAMIC_PERCENTAGE
-    if (cache[index].accessCount < UINT16_MAX) {
-        cache[index].accessCount++;
-        storedAccesses++;
-    }
+#ifdef CACHE_GUARD
+    // Protect the entry
+    protectIndex(index);
 #endif
+
+    int value = cache[index].value;
 
     // Adjust for score cells
     int scoreDelta = board->cells[SCORE_P1] - board->cells[SCORE_P2];
@@ -221,14 +248,24 @@ void renderCacheStats() {
     strcat(message, "%)");
     renderOutput(message, CHEAT_PREFIX);
 
-    sprintf(message, "  Overwrites: %lld", overwrites);
+    sprintf(message, "  Overwrites: %lld", lastOverwrites);
     renderOutput(message, CHEAT_PREFIX);
-    sprintf(message, "  Collisions: %lld", invalidReads);
+    sprintf(message, "  Collisions: %lld", lastInvalidReads);
     renderOutput(message, CHEAT_PREFIX);
-    sprintf(message, "  Hits:       %lld", hits);
+    sprintf(message, "  Hits:       %lld", lastHits);
     renderOutput(message, CHEAT_PREFIX);
 
+#ifdef CACHE_GUARD
+    renderOutput("  Guard durations", CHEAT_PREFIX);
+    renderOutput("  ---------------------------------------", CHEAT_PREFIX);
+    for (int i = 0; i <= CACHE_GUARD; i++) {
+        sprintf(message, "  %d: %d", i, countPerAge[i]);
+        renderOutput(message, CHEAT_PREFIX);
+    }
+    renderOutput("  ---------------------------------------", CHEAT_PREFIX);
+#endif
 
+    renderOutput("  Fragmentation", CHEAT_PREFIX);
     renderOutput("  Chunk Type | Start Index | Chunk Size", CHEAT_PREFIX);
     renderOutput("  ---------------------------------------", CHEAT_PREFIX);
 
@@ -290,42 +327,40 @@ void renderCacheStats() {
 
     free(chunks);
     free(topChunks);
+}
 
-#ifdef DYNAMIC_PERCENTAGE
-    // Access distribution
-    uint16_t smallestAccess = UINT16_MAX;
-    uint16_t largestAccess = 0;
-    uint64_t totalAccesses = 0;
-    double mean = (double)storedAccesses / (double)setEntries;
-    double std = 0;
+
+void stepCache() {
+    lastOverwrites = overwrites;
+    lastInvalidReads = invalidReads;
+    lastHits = hits;
+
+    overwrites = 0;
+    invalidReads = 0;
+    hits = 0;
+
+#ifdef CACHE_GUARD
+    // Track how many have what age
+    memset(countPerAge, 0, sizeof(countPerAge));
 
     for (int i = 0; i < (int64_t)cacheSize; i++) {
         if (cache[i].value == UNSET_VALUE) {
             continue;
         }
 
-        if (cache[i].accessCount < smallestAccess) {
-            smallestAccess = cache[i].accessCount;
+        if (isProtected(i)) {
+            uint8_t remaining = getLifetime(i);
+            if (remaining > 0) {
+                remaining--;
+                setLifetime(remaining, i);
+            }
+        } else {
+            setLifetime(CACHE_GUARD, i);
         }
 
-        if (cache[i].accessCount > largestAccess) {
-            largestAccess = cache[i].accessCount;
-        }
+        countPerAge[getLifetime(i)]++;
 
-        totalAccesses += cache[i].accessCount;
-        std += pow(cache[i].accessCount - mean, 2);
+        removeProtection(i);
     }
-
-    if (totalAccesses != storedAccesses) {
-        renderOutput("  Warning: Access count mismatch detected, fixing...", CHEAT_PREFIX);
-        storedAccesses = totalAccesses;
-    }
-
-    sprintf(message, "  Access distribution: %d - %d", smallestAccess, largestAccess);
-    renderOutput(message, CHEAT_PREFIX);
-    sprintf(message, "  Mean: %.2f", mean);
-    renderOutput(message, CHEAT_PREFIX);
-    sprintf(message, "  Std: %.2f", sqrt(std / (double)cacheSize));
-    renderOutput(message, CHEAT_PREFIX);
 #endif
 }

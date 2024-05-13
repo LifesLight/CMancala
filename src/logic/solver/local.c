@@ -181,6 +181,8 @@ void LOCAL_negamaxAspirationRoot(Context* context) {
         LOCAL_negamaxWithMove(context->board, &bestMove, alpha, beta, currentDepth, &solved),
         if (solved) break;
     );
+
+    stepCache();
 }
 
 /**
@@ -194,6 +196,8 @@ void LOCAL_negamaxRootWithDistribution(Board *board, int depth, int32_t* distrib
     }
 
     NEGAMAX_ROOT_BODY(board, depth, distribution, LOCAL_negamax(&boardCopy, alpha, beta, depth - 1, solved));
+
+    stepCache();
 }
 
 /**

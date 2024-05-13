@@ -14,7 +14,7 @@
  * We do need to store the highest eval, it is NOT always the same with same input parameters since we are
  * ignoring score cells which can effect the alpha beta pruning.
  * 
- * Compute sum of playing cells 
+ * Compute sum of playing cells
 */
 
 /**
@@ -47,10 +47,10 @@
 #define OUTPUT_CHUNK_COUNT 25
 
 /**
- * The higher the easier rarely used nodes get kicked out.
- * If not defined relevance tracking is disabled.
+ * Specify how many compute iterations must pass before a cache entry is allowed to be overwritten.
+ * If this is undefined this feature is disabled.
 */
-// #define DYNAMIC_PERCENTAGE 0.5
+// #define CACHE_GUARD 2
 
 /**
  * Starts the cache.
@@ -76,5 +76,7 @@ int getCachedNodeCount();
  * Gets overviews of the cache stats.
 */
 void renderCacheStats();
+
+void stepCache();
 
 uint32_t getCacheSize();
