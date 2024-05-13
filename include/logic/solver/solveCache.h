@@ -36,6 +36,7 @@
 
 #define UNSET_VALUE INT8_MIN
 #define INVALID_HASH UINT64_MAX
+#define NOT_CACHED_VALUE INT32_MIN
 
 #define RECOMMENDED_CACHE_SIZE 10007
 #define OUTPUT_CHUNK_COUNT 10
@@ -48,12 +49,12 @@ void startCache(uint32_t cacheSize);
 /**
  * Caches a node.
 */
-void cacheNode(Board* board, int evaluation, int8_t window);
+void cacheNode(Board* board, int evaluation, int alpha, int beta);
 
 /**
  * Gets a cached value.
 */
-int getCachedValue(Board* board, int8_t window);
+int getCachedValue(Board* board, int alpha, int beta);
 
 /**
  * Gets the number of cached nodes.

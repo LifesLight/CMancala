@@ -162,10 +162,15 @@ void handleConfigInput(bool* requestedStart, Config* config) {
         // Update cache
         startCache(cacheSize);
 
-        char message[256];
-        snprintf(message, sizeof(message), "Updated cache size to %d", cacheSize);
-        renderOutput(message, CONFIG_PREFIX);
-        return;
+        if (cacheSize == 0) {
+            renderOutput("Disabled cache", CONFIG_PREFIX);
+            return;
+        } else {
+            char message[256];
+            snprintf(message, sizeof(message), "Updated cache size to %d", cacheSize);
+            renderOutput(message, CONFIG_PREFIX);
+            return;
+        }
     }
 
     // Check for solver

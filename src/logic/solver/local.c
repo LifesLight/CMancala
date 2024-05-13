@@ -21,11 +21,9 @@ int LOCAL_negamax(Board *board, int alpha, const int beta, const int depth, bool
         return board->color * getBoardEvaluation(board);
     }
 
-    const int windowId = alpha + 1;
-
     // Check if board is cached
-    int cachedValue = getCachedValue(board, windowId);
-    if (cachedValue != INT32_MIN) {
+    int cachedValue = getCachedValue(board, alpha, beta);
+    if (cachedValue != NOT_CACHED_VALUE) {
         // We only cache solved nodes so this must be solved
         *solved = true;
         return cachedValue;
@@ -83,7 +81,7 @@ int LOCAL_negamax(Board *board, int alpha, const int beta, const int depth, bool
 
     // If subtree is solved, cache it
     if (*solved) {
-        cacheNode(board, reference, windowId);
+        cacheNode(board, reference, alpha, beta);
     }
 
     return reference;
@@ -102,11 +100,9 @@ int LOCAL_negamaxWithMove(Board *board, int *bestMove, int alpha, const int beta
         return board->color * getBoardEvaluation(board);
     }
 
-    const int windowId = alpha + 1;
-
     // Check if board is cached
-    int cachedValue = getCachedValue(board, windowId);
-    if (cachedValue != INT32_MIN) {
+    int cachedValue = getCachedValue(board, alpha, beta);
+    if (cachedValue != NOT_CACHED_VALUE) {
         // We only cache solved nodes so this must be solved
         *solved = true;
         return cachedValue;
@@ -156,7 +152,7 @@ int LOCAL_negamaxWithMove(Board *board, int *bestMove, int alpha, const int beta
 
     // If solved, cache it
     if (*solved) {
-        cacheNode(board, reference, windowId);
+        cacheNode(board, reference, alpha, beta);
     }
 
     return reference;
@@ -199,6 +195,9 @@ void LOCAL_negamaxRootWithDistribution(Board *board, int depth, int32_t* distrib
  * DEBUGGING
 */
 
+bool firstError;
+uint64_t errorCount;
+
 /**
  * This is just the normal LOCAL negamax but we never write the cache instead we check if this clean value matches it.
 */
@@ -218,7 +217,6 @@ int VALIDATE_negamax(Board *board, int alpha, const int beta, const int depth, b
         return board->color * getBoardEvaluation(board);
     }
 
-    const int windowId = alpha + 1;
     nodeCount++;
 
     // Keeping track of best score
@@ -271,12 +269,24 @@ int VALIDATE_negamax(Board *board, int alpha, const int beta, const int depth, b
 
     // VALIDATE CACHE
     if (*solved) {
-        int cachedValue = getCachedValue(board, windowId);
+        int cachedValue = getCachedValue(board, alpha, beta);
 
         // if not in cache cant be wrong
-        if (cachedValue != INT32_MIN) {
+        if (cachedValue != NOT_CACHED_VALUE) {
             if (cachedValue != reference) {
-                printf("Cache mismatch: %d != %d\n", cachedValue, reference);
+                if (!firstError) {
+                    errorCount++;
+                } else {
+                    printf("Cache mismatch: C%d != R%d @solvedIn: %d @window: %d/%d\n", cachedValue, reference, depth, alpha, beta);
+                    Config placeholder;
+                    int showCells[14];
+                    for (int i = 0; i < 14; i++) {
+                        showCells[i] = board->cells[i];
+                    }
+
+                    renderCustomBoard(showCells, board->color, "", &placeholder);
+                    firstError = false;
+                }
             }
         }
     }
@@ -294,10 +304,23 @@ void validateCache(Context* context) {
         return;
     }
 
+    printf("Validating to depth %d\n", context->config->depth);
+    firstError = true;
+    errorCount = 0;
     INITIALIZE_VARS;
     bool solved;
     ITERATIVE_DEEPENING_LOOP(
         VALIDATE_negamax(context->board, alpha, beta, currentDepth, &solved),
         if (solved) break;
     );
+
+    if (errorCount == 0) {
+        printf("Cache is valid\n");
+    } else {
+        printf("Cache is invalid, %lld errors found\n", errorCount);
+    }
 }
+
+/**
+ * We can prob save the player bit by normalizing the layout :D
+*/

@@ -24,17 +24,23 @@ uint32_t getCacheSize() {
     return cacheSize;
 }
 
-uint64_t translateBoard(Board* board, int8_t window) {
+
+uint64_t translateBoard(Board* board, int alpha, int beta) {
+    // Check if window can be stored
+    if (alpha > 63 || alpha < -64 || beta > 63 || beta < -64) {
+        return INVALID_HASH;
+    }
+
     uint64_t hash = 0;
 
     // Make first bit the current player
-    hash |= ((uint64_t)(board->color == 1 ? 1 : 0));
+    hash |= ((uint64_t)((board->color == 1) ? 1 : 0));
 
     int offset = 1;
     uint8_t value;
 
-    // First 2 get 4 bits
-    for (int i = 0; i < 2; i++) {
+    // 4 bits per cell
+    for (int i = 0; i < 6; i++) {
         value = board->cells[i];
         if (value > 15) {
             return INVALID_HASH;
@@ -43,18 +49,7 @@ uint64_t translateBoard(Board* board, int8_t window) {
         offset += 4;
     }
 
-    // Next 4 get 5 bits
-    for (int i = 2; i < 6; i++) {
-        value = board->cells[i];
-        if (value > 31) {
-            return INVALID_HASH;
-        }
-        hash |= ((uint64_t)(value & 0x1F)) << offset;
-        offset += 5;
-    }
-
-    // Other player first 2 get 4 bits
-    for (int i = 7; i < 9; i++) {
+    for (int i = 7; i < 13; i++) {
         value = board->cells[i];
         if (value > 15) {
             return INVALID_HASH;
@@ -63,19 +58,14 @@ uint64_t translateBoard(Board* board, int8_t window) {
         offset += 4;
     }
 
-    // Other player next 4 get 5 bits
-    for (int i = 9; i < 13; i++) {
-        value = board->cells[i];
-        if (value > 31) {
-            return INVALID_HASH;
-        }
-        hash |= ((uint64_t)(value & 0x1F)) << offset;
-        offset += 5;
-    }
+    // Next 7 bits are the alpha window
+    hash |= ((uint64_t)((alpha + 64) & 0x7F)) << offset;
+    offset += 7;
 
-    // Last 8 bits are window id
-    hash |= ((uint64_t)window) << offset;
+    // Next 7 bits are the beta window
+    hash |= ((uint64_t)((beta + 64) & 0x7F)) << offset;
 
+    // Last bit can only be 1 if the hash is invalid
     return hash;
 }
 
@@ -98,8 +88,8 @@ void startCache(uint32_t size) {
     hits = 0;
 }
 
-void cacheNode(Board* board, int evaluation, int8_t window) {
-    uint64_t hashValue = translateBoard(board, window);
+void cacheNode(Board* board, int evaluation, int alpha, int beta) {
+    uint64_t hashValue = translateBoard(board, alpha, beta);
 
     if (hashValue == INVALID_HASH) {
         return;
@@ -127,8 +117,8 @@ void cacheNode(Board* board, int evaluation, int8_t window) {
 
     // Check if the entry is empty
     if (cache[index].value == UNSET_VALUE) {
-        Entry entry = {entryValue, hashValue};
-        cache[index] = entry;
+        cache[index].value = entryValue;
+        cache[index].key = hashValue;
         return;
     }
 
@@ -139,12 +129,12 @@ void cacheNode(Board* board, int evaluation, int8_t window) {
     cache[index].key = hashValue;
 }
 
-int getCachedValue(Board* board, int8_t window) {
-    uint64_t hashValue = translateBoard(board, window);
+int getCachedValue(Board* board, int alpha, int beta) {
+    uint64_t hashValue = translateBoard(board, alpha, beta);
 
     // Not hashable
     if (hashValue == INVALID_HASH) {
-        return INT32_MIN;
+        return NOT_CACHED_VALUE;
     }
 
     // Get the primary hash
@@ -152,13 +142,13 @@ int getCachedValue(Board* board, int8_t window) {
 
     // Check if the entry is unset
     if (cache[index].value == UNSET_VALUE) {
-        return INT32_MIN;
+        return NOT_CACHED_VALUE;
     }
 
     // Check if the key matches
     if (cache[index].key != hashValue) {
         invalidReads++;
-        return INT32_MIN;
+        return NOT_CACHED_VALUE;
     }
 
     // We have a hit
@@ -180,8 +170,12 @@ typedef struct {
     int type;
 } Chunk;
 
-int compareChunks(const void *a, const void *b) {
+int compareChunksSize(const void *a, const void *b) {
     return ((Chunk*)b)->size - ((Chunk*)a)->size;
+}
+
+int compareChunksStart(const void *a, const void *b) {
+    return ((Chunk*)a)->start - ((Chunk*)b)->start;
 }
 
 void renderCacheStats() {
@@ -223,11 +217,20 @@ void renderCacheStats() {
     chunkCount++;
 
     // Sort the chunks by size in descending order
-    qsort(chunks, chunkCount, sizeof(Chunk), compareChunks);
+    qsort(chunks, chunkCount, sizeof(Chunk), compareChunksSize);
+
+    // Store top chunks separately
+    Chunk* topChunks = malloc(sizeof(Chunk) * OUTPUT_CHUNK_COUNT);
+    for (int i = 0; i < OUTPUT_CHUNK_COUNT && i < chunkCount; i++) {
+        topChunks[i] = chunks[i];
+    }
+
+    // Sort top chunks by start index in descending order
+    qsort(topChunks, OUTPUT_CHUNK_COUNT, sizeof(Chunk), compareChunksStart);
 
     // Print the largest OUTPUT_CHUNK_COUNT chunks
     for (int i = 0; i < OUTPUT_CHUNK_COUNT && i < chunkCount; i++) {
-        sprintf(message, "     %s   | %10d  | %10d", chunks[i].type ? "Set  " : "Unset", chunks[i].start, chunks[i].size);
+        sprintf(message, "     %s   | %10d  | %10d", topChunks[i].type ? "Set  " : "Unset", topChunks[i].start, topChunks[i].size);
         renderOutput(message, CHEAT_PREFIX);
     }
 
@@ -237,7 +240,7 @@ void renderCacheStats() {
 
     sprintf(message, "  Overwrites: %lld", overwrites);
     renderOutput(message, CHEAT_PREFIX);
-    sprintf(message, "  Unsuccessful: %lld", invalidReads);
+    sprintf(message, "  Caught: %lld", invalidReads);
     renderOutput(message, CHEAT_PREFIX);
     sprintf(message, "  Hits: %lld", hits);
     renderOutput(message, CHEAT_PREFIX);
