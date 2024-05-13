@@ -47,6 +47,29 @@
 #define OUTPUT_CHUNK_COUNT 25
 
 /**
+ * How many bits are used as validation for the cache.
+ * 32 is very good, 64 is guaranteed no undetected.
+ * If worried about specific performances compile with GUARANTEE_VALIDATION,
+ * this will output how many undetected collisions occurred.
+*/
+#define VALIDATION_SIZE 32
+// #define GUARANTEE_VALIDATION
+
+#if VALIDATION_SIZE == 8
+#define VALIDATION_TYPE uint8_t
+#define VALMAX UINT8_MAX
+#elif VALIDATION_SIZE == 16
+#define VALIDATION_TYPE uint16_t
+#define VALMAX UINT16_MAX
+#elif VALIDATION_SIZE == 32
+#define VALIDATION_TYPE uint32_t
+#define VALMAX UINT32_MAX
+#elif VALIDATION_SIZE == 64
+#define VALIDATION_TYPE uint64_t
+#define VALMAX UINT64_MAX 
+#endif
+
+/**
  * Specify how many compute iterations must pass before a cache entry is allowed to be overwritten.
  * If this is undefined this feature is disabled.
 */

@@ -6,9 +6,14 @@
 
 typedef struct {
     int8_t value;
-    uint64_t key;
+    VALIDATION_TYPE validation;
+
 #ifdef CACHE_GUARD
     uint8_t protector;
+#endif
+
+#ifdef GUARANTEE_VALIDATION
+    uint64_t key;
 #endif
 } Entry;
 
@@ -21,6 +26,11 @@ uint64_t invalidReads;
 uint64_t lastInvalidReads;
 uint64_t hits;
 uint64_t lastHits;
+
+#ifdef GUARANTEE_VALIDATION
+uint64_t caughtInvalidations;
+uint64_t lastCaughtInvalidations;
+#endif
 
 
 #ifdef CACHE_GUARD
@@ -58,6 +68,13 @@ void setLifetime(uint8_t lifetime, uint32_t index) {
 
 uint32_t countPerAge[CACHE_GUARD + 1];
 #endif
+
+/**
+ * Compute the validation hash
+*/
+VALIDATION_TYPE computeValidation(uint64_t hash) {
+    return hash % VALMAX;
+}
 
 uint32_t getCacheSize() {
     return cacheSize;
@@ -107,7 +124,12 @@ void startCache(uint32_t size) {
     cache = malloc(sizeof(Entry) * cacheSize);
     for (int i = 0; i < (int64_t)cacheSize; i++) {
         cache[i].value = UNSET_VALUE;
+        cache[i].validation = 0;
+
+#ifdef GUARANTEE_VALIDATION
         cache[i].key = 0;
+#endif
+
 #ifdef CACHE_GUARD
         cache[i].protector = 0;
 #endif
@@ -116,6 +138,11 @@ void startCache(uint32_t size) {
 #ifdef CACHE_GUARD
     lastOverwrites = 0;
     lastInvalidReads = 0;
+#endif
+
+#ifdef GUARANTEE_VALIDATION
+    caughtInvalidations = 0;
+    lastCaughtInvalidations = 0;
 #endif
 
     overwrites = 0;
@@ -134,16 +161,6 @@ void cacheNode(Board* board, int evaluation) {
         return;
     }
 
-    // Get the primary hash
-    const uint32_t index = indexHash(hashValue);
-
-#ifdef CACHE_GUARD
-    // Check if the entry is protected
-    if (getLifetime(index) > 0) {
-        return;
-    }
-#endif
-
     // Compute evaluation without score cells
     int scoreDelta = board->cells[SCORE_P1] - board->cells[SCORE_P2];
     scoreDelta *= board->color;
@@ -153,11 +170,26 @@ void cacheNode(Board* board, int evaluation) {
         return;
     }
 
+    // Get the primary hash
+    const uint32_t index = indexHash(hashValue);
+    const VALIDATION_TYPE validation = computeValidation(hashValue);
+
+#ifdef CACHE_GUARD
+    // Check if the entry is protected
+    if (getLifetime(index) > 0) {
+        return;
+    }
+#endif
+
     const int8_t entryValue = evaluation;
 
     // Check if exists already
     // This completely validates the entry
-    if (cache[index].key == hashValue) {
+    if (cache[index].validation == validation
+#ifdef GUARANTEE_VALIDATION
+        && cache[index].key == hashValue
+#endif
+    ) {
         if (cache[index].value < entryValue) {
             cache[index].value = entryValue;
         }
@@ -169,11 +201,17 @@ void cacheNode(Board* board, int evaluation) {
         overwrites++;
     }
 
-    cache[index].key = hashValue;
+    cache[index].validation = validation;
     cache[index].value = entryValue;
+
+#ifdef GUARANTEE_VALIDATION
+    cache[index].key = hashValue;
+#endif
+
 #ifdef CACHE_GUARD
     cache[index].protector = 0;
 #endif
+
     return;
 }
 
@@ -187,6 +225,7 @@ int getCachedValue(Board* board) {
 
     // Get the primary hash
     const int index = indexHash(hashValue);
+    const VALIDATION_TYPE validation = computeValidation(hashValue);
 
     // Check if the entry is unset
     if (cache[index].value == UNSET_VALUE) {
@@ -194,10 +233,17 @@ int getCachedValue(Board* board) {
     }
 
     // Check if the key matches
-    if (cache[index].key != hashValue) {
+    if (cache[index].validation != validation) {
         invalidReads++;
         return NOT_CACHED_VALUE;
     }
+
+#ifdef GUARANTEE_VALIDATION
+    if (cache[index].key != hashValue) {
+        caughtInvalidations++;
+        return NOT_CACHED_VALUE;
+    }
+#endif
 
     // We have a hit
     hits++;
@@ -252,6 +298,11 @@ void renderCacheStats() {
     renderOutput(message, CHEAT_PREFIX);
     sprintf(message, "  Collisions: %lld", lastInvalidReads);
     renderOutput(message, CHEAT_PREFIX);
+
+#ifdef GUARANTEE_VALIDATION
+    sprintf(message, "  Caught:     %lld", lastCaughtInvalidations);
+    renderOutput(message, CHEAT_PREFIX);
+#endif
     sprintf(message, "  Hits:       %lld", lastHits);
     renderOutput(message, CHEAT_PREFIX);
 
@@ -334,6 +385,11 @@ void stepCache() {
     lastOverwrites = overwrites;
     lastInvalidReads = invalidReads;
     lastHits = hits;
+
+#ifdef GUARANTEE_VALIDATION
+    lastCaughtInvalidations = caughtInvalidations;
+    caughtInvalidations = 0;
+#endif
 
     overwrites = 0;
     invalidReads = 0;
