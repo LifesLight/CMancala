@@ -14,7 +14,7 @@ void renderConfigHelp() {
     renderOutput("  time [number >= 0]               : Set time limit for AI in seconds, if 0 unlimited", CONFIG_PREFIX);
     renderOutput("  depth [number >= 0]              : Set depth limit for AI, if 0 unlimited", CONFIG_PREFIX);
     renderOutput("  solver [global|local|quick]      : Set default solver for AI", CONFIG_PREFIX);
-    renderOutput("  cache [small|normal|large]       : Set cache size for specific solvers. Can also be a custom value", CONFIG_PREFIX);
+    renderOutput("  cache [small|normal|large]       : Set cache size for specific solvers. Larger is slower but can sometimes be useful", CONFIG_PREFIX);
     renderOutput("  starting [1|2]                   : Configure starting player", CONFIG_PREFIX);
     renderOutput("  player [1|2] [human|random|ai]   : Configure player", CONFIG_PREFIX);
     renderOutput("  display                          : Display current configuration", CONFIG_PREFIX);
@@ -159,6 +159,10 @@ void handleConfigInput(bool* requestedStart, Config* config) {
         if (cacheSize < 0) {
             renderOutput("Invalid cache size", CONFIG_PREFIX);
             return;
+        }
+
+        if (cacheSize > SMALL_CACHE_SIZE) {
+            renderOutput("Warning: Cache sizes larger then small are in most cases significantly slower", CONFIG_PREFIX);
         }
 
         // Update cache

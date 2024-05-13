@@ -4,20 +4,23 @@
 
 #include "logic/solver/solveCache.h"
 
-/**
- * We are using 8 validation bits for the hash
-*/
-
 typedef struct {
     int8_t value;
     uint64_t key;
+#ifdef DYNAMIC_PERCENTAGE
+    uint16_t accessCount;
+#endif
 } Entry;
 
 Entry* cache;
 
+#ifdef DYNAMIC_PERCENTAGE
+uint64_t storedAccesses;
+uint32_t setCells;
+#endif
+
 uint32_t cacheSize = 0;
 uint64_t overwrites;
-uint64_t upgrades;
 uint64_t invalidReads;
 uint64_t hits;
 
@@ -70,11 +73,18 @@ void startCache(uint32_t size) {
     for (int i = 0; i < (int64_t)cacheSize; i++) {
         cache[i].value = UNSET_VALUE;
         cache[i].key = 0;
+#ifdef DYNAMIC_PERCENTAGE
+        cache[i].accessCount = 0;
+#endif
     }
 
     overwrites = 0;
     invalidReads = 0;
     hits = 0;
+#ifdef DYNAMIC_PERCENTAGE
+    storedAccesses = 0;
+    setCells = 0;
+#endif
 }
 
 void cacheNode(Board* board, int evaluation) {
@@ -102,19 +112,41 @@ void cacheNode(Board* board, int evaluation) {
     // This completely validates the entry
     if (cache[index].key == hashValue) {
         if (cache[index].value < entryValue) {
-            upgrades++;
             cache[index].value = entryValue;
         }
         return;
     }
 
-    // Check if the entry is empty
+#ifndef DYNAMIC_PERCENTAGE
+    // Check if we need to overwrite
     if (cache[index].value != UNSET_VALUE) {
         overwrites++;
     }
 
-    cache[index].value = entryValue;
     cache[index].key = hashValue;
+    cache[index].value = entryValue;
+    return;
+#else
+    // Check if the entry is unset
+    if (cache[index].value == UNSET_VALUE) {
+        cache[index].key = hashValue;
+        cache[index].value = entryValue;
+        cache[index].accessCount = 0;
+        setCells++;
+        return;
+    }
+
+    // Decide if we should overwrite
+    // If it falls in the "irrelevant" category, overwrite
+    if (cache[index].accessCount <= (DYNAMIC_PERCENTAGE * storedAccesses) / setCells) {
+        cache[index].key = hashValue;
+        cache[index].value = entryValue;
+        storedAccesses -= cache[index].accessCount;
+        cache[index].accessCount = 0;
+        overwrites++;
+        return;
+    }
+#endif
 }
 
 int getCachedValue(Board* board) {
@@ -142,6 +174,13 @@ int getCachedValue(Board* board) {
     // We have a hit
     hits++;
     int value = cache[index].value;
+
+#ifdef DYNAMIC_PERCENTAGE
+    if (cache[index].accessCount < UINT16_MAX) {
+        cache[index].accessCount++;
+        storedAccesses++;
+    }
+#endif
 
     // Adjust for score cells
     int scoreDelta = board->cells[SCORE_P1] - board->cells[SCORE_P2];
@@ -188,8 +227,7 @@ void renderCacheStats() {
     renderOutput(message, CHEAT_PREFIX);
     sprintf(message, "  Hits:       %lld", hits);
     renderOutput(message, CHEAT_PREFIX);
-    sprintf(message, "  Upgrades:   %lld", upgrades);
-    renderOutput(message, CHEAT_PREFIX);
+
 
     renderOutput("  Chunk Type | Start Index | Chunk Size", CHEAT_PREFIX);
     renderOutput("  ---------------------------------------", CHEAT_PREFIX);
@@ -247,11 +285,47 @@ void renderCacheStats() {
         renderOutput("  ...", CHEAT_PREFIX);
     }
 
+    renderOutput("  ---------------------------------------", CHEAT_PREFIX);
+
+
     free(chunks);
     free(topChunks);
 
-    hits = 0;
-    invalidReads = 0;
-    upgrades = 0;
-    overwrites = 0;
+#ifdef DYNAMIC_PERCENTAGE
+    // Access distribution
+    uint16_t smallestAccess = UINT16_MAX;
+    uint16_t largestAccess = 0;
+    uint64_t totalAccesses = 0;
+    double mean = (double)storedAccesses / (double)setEntries;
+    double std = 0;
+
+    for (int i = 0; i < (int64_t)cacheSize; i++) {
+        if (cache[i].value == UNSET_VALUE) {
+            continue;
+        }
+
+        if (cache[i].accessCount < smallestAccess) {
+            smallestAccess = cache[i].accessCount;
+        }
+
+        if (cache[i].accessCount > largestAccess) {
+            largestAccess = cache[i].accessCount;
+        }
+
+        totalAccesses += cache[i].accessCount;
+        std += pow(cache[i].accessCount - mean, 2);
+    }
+
+    if (totalAccesses != storedAccesses) {
+        renderOutput("  Warning: Access count mismatch detected, fixing...", CHEAT_PREFIX);
+        storedAccesses = totalAccesses;
+    }
+
+    sprintf(message, "  Access distribution: %d - %d", smallestAccess, largestAccess);
+    renderOutput(message, CHEAT_PREFIX);
+    sprintf(message, "  Mean: %.2f", mean);
+    renderOutput(message, CHEAT_PREFIX);
+    sprintf(message, "  Std: %.2f", sqrt(std / (double)cacheSize));
+    renderOutput(message, CHEAT_PREFIX);
+#endif
 }

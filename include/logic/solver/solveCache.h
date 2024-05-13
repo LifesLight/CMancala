@@ -41,10 +41,16 @@
 #define INVALID_HASH UINT64_MAX
 #define NOT_CACHED_VALUE INT32_MIN
 
-#define SMALL_CACHE_SIZE    100003
-#define NORMAL_CACHE_SIZE   1000003
-#define LARGE_CACHE_SIZE    10000019
+#define SMALL_CACHE_SIZE    50021
+#define NORMAL_CACHE_SIZE   100003
+#define LARGE_CACHE_SIZE    250007
 #define OUTPUT_CHUNK_COUNT 25
+
+/**
+ * The higher the easier rarely used nodes get kicked out.
+ * If not defined relevance tracking is disabled.
+*/
+// #define DYNAMIC_PERCENTAGE 0.5
 
 /**
  * Starts the cache.
