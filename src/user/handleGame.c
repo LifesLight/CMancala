@@ -32,20 +32,6 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
     char input[256];
     getInput(input, CHEAT_PREFIX);
 
-    /**
-     * DEBUG
-    */
-   if (strcmp(input, "valCache") == 0) {
-        int realDepth = context->config->depth;
-        double realTime = context->config->timeLimit;
-        context->config->depth = context->lastDepth;
-        context->config->timeLimit = 0;
-        validateCache(context);
-        context->config->depth = realDepth;
-        context->config->timeLimit = realTime;
-        return;
-    }
-
     // Check for request to step
     if (strcmp(input, "step") == 0) {
         *requestContinue = true;

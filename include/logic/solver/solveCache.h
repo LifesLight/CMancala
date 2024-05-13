@@ -11,6 +11,8 @@
  * they don't matter for the "goodness" of the playing board which is what we are caching.
  * This also allows for more reuse of the cache, since we can analyze the same board from different scores.
  * 
+ * We do need to store the highest eval, it is NOT always the same with same input parameters since we are
+ * ignoring score cells which can effect the alpha beta pruning.
  * 
  * Compute sum of playing cells 
 */
@@ -22,9 +24,9 @@
  * Score cells don't get encoded
  * 
  * Current player gets 1 bit
- * First 2 playing cells get 4 bits each
- * Other playing cells get 5 bits each
- * Remaining 8 bits go to window id
+ * Playing cells get 4 bits each
+ * Alpha beta bounds get 7 bits each
+ * Last bit is reserved for the validity of the hash
 */
 
 #include <stdint.h>
@@ -32,6 +34,7 @@
 
 #include "config.h"
 #include "logic/board.h"
+#include "logic/utility.h"
 #include "user/render.h"
 
 #define UNSET_VALUE INT8_MIN
@@ -39,7 +42,7 @@
 #define NOT_CACHED_VALUE INT32_MIN
 
 #define RECOMMENDED_CACHE_SIZE 10007
-#define OUTPUT_CHUNK_COUNT 10
+#define OUTPUT_CHUNK_COUNT 25
 
 /**
  * Starts the cache.

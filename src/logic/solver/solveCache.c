@@ -17,13 +17,13 @@ Entry* cache;
 
 uint32_t cacheSize = 0;
 uint64_t overwrites;
+uint64_t upgrades;
 uint64_t invalidReads;
 uint64_t hits;
 
 uint32_t getCacheSize() {
     return cacheSize;
 }
-
 
 uint64_t translateBoard(Board* board, int alpha, int beta) {
     // Check if window can be stored
@@ -112,19 +112,18 @@ void cacheNode(Board* board, int evaluation, int alpha, int beta) {
     // Check if exists already
     // This completely validates the entry
     if (cache[index].key == hashValue) {
+        if (cache[index].value < entryValue) {
+            upgrades++;
+            cache[index].value = entryValue;
+        }
         return;
     }
 
     // Check if the entry is empty
-    if (cache[index].value == UNSET_VALUE) {
-        cache[index].value = entryValue;
-        cache[index].key = hashValue;
-        return;
+    if (cache[index].value != UNSET_VALUE) {
+        overwrites++;
     }
 
-    // If we get here, that means the key is occupied by another entry, we always overwrite
-    // We hope that newer keys are more likely to be accessed
-    overwrites++;
     cache[index].value = entryValue;
     cache[index].key = hashValue;
 }
@@ -219,17 +218,19 @@ void renderCacheStats() {
     // Sort the chunks by size in descending order
     qsort(chunks, chunkCount, sizeof(Chunk), compareChunksSize);
 
+    // Allocate memory for top chunks
+    Chunk* topChunks = malloc(sizeof(Chunk) * min(chunkCount, OUTPUT_CHUNK_COUNT));
+
     // Store top chunks separately
-    Chunk* topChunks = malloc(sizeof(Chunk) * OUTPUT_CHUNK_COUNT);
-    for (int i = 0; i < OUTPUT_CHUNK_COUNT && i < chunkCount; i++) {
+    for (int i = 0; i < min(chunkCount, OUTPUT_CHUNK_COUNT); i++) {
         topChunks[i] = chunks[i];
     }
 
-    // Sort top chunks by start index in descending order
-    qsort(topChunks, OUTPUT_CHUNK_COUNT, sizeof(Chunk), compareChunksStart);
+    // Sort top chunks by start index in ascending order
+    qsort(topChunks, min(chunkCount, OUTPUT_CHUNK_COUNT), sizeof(Chunk), compareChunksStart);
 
     // Print the largest OUTPUT_CHUNK_COUNT chunks
-    for (int i = 0; i < OUTPUT_CHUNK_COUNT && i < chunkCount; i++) {
+    for (int i = 0; i < min(chunkCount, OUTPUT_CHUNK_COUNT); i++) {
         sprintf(message, "     %s   | %10d  | %10d", topChunks[i].type ? "Set  " : "Unset", topChunks[i].start, topChunks[i].size);
         renderOutput(message, CHEAT_PREFIX);
     }
@@ -237,8 +238,11 @@ void renderCacheStats() {
     renderOutput("  ---------------------------------------", CHEAT_PREFIX);
 
     free(chunks);
+    free(topChunks);
 
     sprintf(message, "  Overwrites: %lld", overwrites);
+    renderOutput(message, CHEAT_PREFIX);
+    sprintf(message, "  Upgrades: %lld", upgrades);
     renderOutput(message, CHEAT_PREFIX);
     sprintf(message, "  Caught: %lld", invalidReads);
     renderOutput(message, CHEAT_PREFIX);
@@ -247,5 +251,6 @@ void renderCacheStats() {
 
     hits = 0;
     invalidReads = 0;
+    upgrades = 0;
     overwrites = 0;
 }
