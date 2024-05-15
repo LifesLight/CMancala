@@ -45,6 +45,7 @@
 #define SMALL_CACHE_SIZE    50021
 #define NORMAL_CACHE_SIZE   100003
 #define LARGE_CACHE_SIZE    250007
+#define EXTREME_CACHE_SIZE  5000011
 #define OUTPUT_CHUNK_COUNT 25
 
 /**
@@ -90,7 +91,7 @@ void cacheNode(Board* board, int evaluation, int alpha);
  * Gets the value for the provided board from the cache.
  * Returns true if values where found
 */
-bool getFromCache(Board* board, int *evaluation, int *alpha);
+bool getCachedValue(Board* board, int *evaluation, int *alpha);
 
 /**
  * Gets the number of cached nodes.
