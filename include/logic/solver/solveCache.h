@@ -14,6 +14,8 @@
  * We do need to store the highest eval, it is NOT always the same with same input parameters since we are
  * ignoring score cells which can effect the alpha beta pruning.
  * 
+ * We also need to store the upper bound, since we could come from a node with "milder" bounds then last time we saw this board.
+ * 
  * Compute sum of playing cells
 */
 
@@ -23,10 +25,10 @@
  * The board gets encoded like:
  * Score cells don't get encoded
  * 
- * Current player gets 1 bit
- * Playing cells get 5 bits each
- * 1 bit is reserved for valid hash
- * Remaining 2 bits are not used
+ * Current player gets 1 bit                : 1
+ * 1 bit is reserved for valid hash         : 2
+ * Playing cells get: 5, 5, 5, 5, 4, 4 bits : 58
+ * Upper bound gets 6 bits                  : 64
 */
 
 #include <stdint.h>
@@ -39,7 +41,6 @@
 
 #define UNSET_VALUE INT8_MIN
 #define INVALID_HASH UINT64_MAX
-#define NOT_CACHED_VALUE INT32_MIN
 
 #define SMALL_CACHE_SIZE    50021
 #define NORMAL_CACHE_SIZE   100003
@@ -83,12 +84,13 @@ void startCache(uint32_t cacheSize);
 /**
  * Caches a node.
 */
-void cacheNode(Board* board, int evaluation);
+void cacheNode(Board* board, int evaluation, int alpha);
 
 /**
- * Gets a cached value.
+ * Gets the value for the provided board from the cache.
+ * Returns true if values where found
 */
-int getCachedValue(Board* board);
+bool getFromCache(Board* board, int *evaluation, int *alpha);
 
 /**
  * Gets the number of cached nodes.

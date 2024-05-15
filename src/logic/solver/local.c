@@ -22,14 +22,17 @@ int LOCAL_negamax(Board *board, int alpha, const int beta, const int depth, bool
     }
 
     // Check if board is cached
-    int cachedValue = getCachedValue(board);
-    if (cachedValue != NOT_CACHED_VALUE) {
-        if (cachedValue >= beta) {
-            *solved = true;
-            return cachedValue;
-        }
-        if (cachedValue > alpha) {
-            alpha = cachedValue;
+    int cachedValue;
+    int cachedBound;
+    if (getCachedValue(board, &cachedValue, &cachedBound)) {
+        if (cachedBound >= alpha) {
+            if (cachedValue >= beta) {
+                *solved = true;
+                return cachedValue;
+            }
+            if (cachedValue > alpha) {
+                alpha = cachedValue;
+            }
         }
     }
 
@@ -85,7 +88,7 @@ int LOCAL_negamax(Board *board, int alpha, const int beta, const int depth, bool
 
     // If subtree is solved, cache it
     if (*solved) {
-        cacheNode(board, reference);
+        cacheNode(board, reference, alpha);
     }
 
     return reference;
@@ -105,14 +108,17 @@ int LOCAL_negamaxWithMove(Board *board, int *bestMove, int alpha, const int beta
     }
 
     // Check if board is cached
-    int cachedValue = getCachedValue(board);
-    if (cachedValue != NOT_CACHED_VALUE) {
-        if (cachedValue >= beta) {
-            *solved = true;
-            return cachedValue;
-        }
-        if (cachedValue > alpha) {
-            alpha = cachedValue;
+    int cachedValue;
+    int cachedBound;
+    if (getCachedValue(board, &cachedValue, &cachedBound)) {
+        if (cachedBound >= alpha) {
+            if (cachedValue >= beta) {
+                *solved = true;
+                return cachedValue;
+            }
+            if (cachedValue > alpha) {
+                alpha = cachedValue;
+            }
         }
     }
 
@@ -160,7 +166,7 @@ int LOCAL_negamaxWithMove(Board *board, int *bestMove, int alpha, const int beta
 
     // If solved, cache it
     if (*solved) {
-        cacheNode(board, reference);
+        cacheNode(board, reference, alpha);
     }
 
     return reference;

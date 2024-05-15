@@ -6,6 +6,7 @@
 
 typedef struct {
     int8_t value;
+    int8_t bound;
     VALIDATION_TYPE validation;
 
 #ifdef CACHE_GUARD
@@ -125,6 +126,7 @@ void startCache(uint32_t size) {
     for (int i = 0; i < (int64_t)cacheSize; i++) {
         cache[i].value = UNSET_VALUE;
         cache[i].validation = 0;
+        cache[i].bound = 0;
 
 #ifdef GUARANTEE_VALIDATION
         cache[i].key = 0;
@@ -154,19 +156,34 @@ void startCache(uint32_t size) {
     lastHits = 0;
 }
 
-void cacheNode(Board* board, int evaluation) {
-    uint64_t hashValue = translateBoard(board);
-
-    if (hashValue == INVALID_HASH) {
-        return;
-    }
+void cacheNode(Board* board, int evaluation, int alpha) {
+    /**
+     * Can't even be stored checks
+    */
 
     // Compute evaluation without score cells
     int scoreDelta = board->cells[SCORE_P1] - board->cells[SCORE_P2];
     scoreDelta *= board->color;
+
+    alpha -= scoreDelta;
+
+    if (alpha > INT8_MAX || alpha < INT8_MIN) {
+        return;
+    }
+
     evaluation -= scoreDelta;
 
     if (evaluation > INT8_MAX || evaluation < INT8_MIN + 1) {
+        return;
+    }
+
+    /**
+     * Tranlatability check
+    */
+
+    uint64_t hashValue = translateBoard(board);
+
+    if (hashValue == INVALID_HASH) {
         return;
     }
 
@@ -190,9 +207,17 @@ void cacheNode(Board* board, int evaluation) {
         && cache[index].key == hashValue
 #endif
     ) {
-        if (cache[index].value < entryValue) {
-            cache[index].value = entryValue;
+        /**
+         * Check if our new entry is "more/as valid" aka higher bound
+        */
+        if (cache[index].bound <= alpha) {
+            cache[index].bound = alpha;
+
+            if (cache[index].value < entryValue) {
+                cache[index].value = entryValue;
+            }
         }
+
         return;
     }
 
@@ -203,6 +228,7 @@ void cacheNode(Board* board, int evaluation) {
 
     cache[index].validation = validation;
     cache[index].value = entryValue;
+    cache[index].bound = alpha;
 
 #ifdef GUARANTEE_VALIDATION
     cache[index].key = hashValue;
@@ -215,12 +241,12 @@ void cacheNode(Board* board, int evaluation) {
     return;
 }
 
-int getCachedValue(Board* board) {
+bool getCachedValue(Board* board, int *eval, int *bound) {
     uint64_t hashValue = translateBoard(board);
 
     // Not hashable
     if (hashValue == INVALID_HASH) {
-        return NOT_CACHED_VALUE;
+        return false;
     }
 
     // Get the primary hash
@@ -229,19 +255,19 @@ int getCachedValue(Board* board) {
 
     // Check if the entry is unset
     if (cache[index].value == UNSET_VALUE) {
-        return NOT_CACHED_VALUE;
+        return false;
     }
 
     // Check if the key matches
     if (cache[index].validation != validation) {
         invalidReads++;
-        return NOT_CACHED_VALUE;
+        return false;
     }
 
 #ifdef GUARANTEE_VALIDATION
     if (cache[index].key != hashValue) {
         caughtInvalidations++;
-        return NOT_CACHED_VALUE;
+        return false;
     }
 #endif
 
@@ -254,11 +280,15 @@ int getCachedValue(Board* board) {
 #endif
 
     int value = cache[index].value;
+    int alpha = cache[index].bound;
 
     // Adjust for score cells
     int scoreDelta = board->cells[SCORE_P1] - board->cells[SCORE_P2];
     scoreDelta *= board->color;
-    return value + scoreDelta;
+    *eval = value + scoreDelta;
+    *bound = value + alpha;
+
+    return true;
 }
 
 /**
