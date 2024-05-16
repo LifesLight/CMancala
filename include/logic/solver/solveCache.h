@@ -58,8 +58,8 @@
  * If worried about specific performances compile with GUARANTEE_VALIDATION,
  * this will output how many undetected collisions occurred.
 */
-#define VALIDATION_SIZE 32
-// #define GUARANTEE_VALIDATION
+#define VALIDATION_SIZE 64
+#define GUARANTEE_VALIDATION
 
 #if VALIDATION_SIZE == 8
 #define VALIDATION_TYPE uint8_t

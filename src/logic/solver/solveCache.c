@@ -29,8 +29,8 @@ uint64_t hits;
 uint64_t lastHits;
 
 #ifdef GUARANTEE_VALIDATION
-uint64_t caughtInvalidations;
-uint64_t lastCaughtInvalidations;
+uint64_t detectedInvalidations;
+uint64_t lastDetectedInvalidations;
 #endif
 
 
@@ -74,7 +74,11 @@ uint32_t countPerAge[CACHE_GUARD + 1];
  * Compute the validation hash
 */
 VALIDATION_TYPE computeValidation(uint64_t hash) {
+#if VALIDATION_SIZE == 64
+    return hash;
+#else
     return hash % VALMAX;
+#endif
 }
 
 uint32_t getCacheSize() {
@@ -143,8 +147,8 @@ void startCache(uint32_t size) {
 #endif
 
 #ifdef GUARANTEE_VALIDATION
-    caughtInvalidations = 0;
-    lastCaughtInvalidations = 0;
+    detectedInvalidations = 0;
+    lastDetectedInvalidations = 0;
 #endif
 
     overwrites = 0;
@@ -175,7 +179,7 @@ void cacheNode(Board* board, int evaluation, int boundType) {
 
     // Compute primary index and validation
     const uint32_t index = indexHash(hashValue);
-    const uint32_t validation = computeValidation(hashValue);
+    const VALIDATION_TYPE validation = computeValidation(hashValue);
 
 #ifdef CACHE_GUARD
     // Check if the entry is protected
@@ -187,11 +191,14 @@ void cacheNode(Board* board, int evaluation, int boundType) {
     const int8_t entryValue = (int8_t)evaluation;
 
     // Check if the entry already exists
-    if (cache[index].validation == validation
+    if (cache[index].validation == validation) {
+
 #ifdef GUARANTEE_VALIDATION
-        && cache[index].key == hashValue
+        if (cache[index].key != hashValue) {
+            detectedInvalidations++;
+        }
 #endif
-    ) {
+
         // Update the bound and value based on the bound type
         if (boundType == BOUND_EXACT) {
             cache[index].bound = BOUND_LOWER;
@@ -235,7 +242,7 @@ void cacheNode(Board* board, int evaluation, int boundType) {
     return;
 }
 
-bool getCachedValue(Board* board, int *eval, int *bound) {
+bool getCachedValue(Board* board, int *eval, int *boundType) {
     uint64_t hashValue = translateBoard(board);
 
     // Not hashable
@@ -260,7 +267,7 @@ bool getCachedValue(Board* board, int *eval, int *bound) {
 
 #ifdef GUARANTEE_VALIDATION
     if (cache[index].key != hashValue) {
-        caughtInvalidations++;
+        detectedInvalidations++;
         return false;
     }
 #endif
@@ -274,13 +281,12 @@ bool getCachedValue(Board* board, int *eval, int *bound) {
 #endif
 
     int value = cache[index].value;
-    int alpha = cache[index].bound;
 
     // Adjust for score cells
     int scoreDelta = board->cells[SCORE_P1] - board->cells[SCORE_P2];
     scoreDelta *= board->color;
     *eval = value + scoreDelta;
-    *bound = value + alpha;
+    *boundType = cache[index].bound;;
 
     return true;
 }
@@ -324,7 +330,7 @@ void renderCacheStats() {
     renderOutput(message, CHEAT_PREFIX);
 
 #ifdef GUARANTEE_VALIDATION
-    sprintf(message, "  Caught:     %lld", lastCaughtInvalidations);
+    sprintf(message, "  Detected:   %lld", lastDetectedInvalidations);
     renderOutput(message, CHEAT_PREFIX);
 #endif
     sprintf(message, "  Hits:       %lld", lastHits);
@@ -411,8 +417,8 @@ void stepCache() {
     lastHits = hits;
 
 #ifdef GUARANTEE_VALIDATION
-    lastCaughtInvalidations = caughtInvalidations;
-    caughtInvalidations = 0;
+    lastDetectedInvalidations = detectedInvalidations;
+    detectedInvalidations = 0;
 #endif
 
     overwrites = 0;
