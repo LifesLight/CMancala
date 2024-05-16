@@ -24,11 +24,6 @@ void renderCheatHelp() {
 }
 
 void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* context) {
-    // TODO:
-    // Hash gamestate
-    // Load hashed gamestate -> maybe in config?
-    // Reevaluate Evaluate gamestate
-
     char input[256];
     getInput(input, CHEAT_PREFIX);
 

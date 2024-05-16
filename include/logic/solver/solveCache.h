@@ -42,6 +42,10 @@
 #define UNSET_VALUE INT8_MIN
 #define INVALID_HASH UINT64_MAX
 
+#define BOUND_EXACT 0
+#define BOUND_LOWER 1
+#define BOUND_UPPER 2
+
 #define SMALL_CACHE_SIZE    50021
 #define NORMAL_CACHE_SIZE   100003
 #define LARGE_CACHE_SIZE    250007
@@ -85,13 +89,13 @@ void startCache(uint32_t cacheSize);
 /**
  * Caches a node.
 */
-void cacheNode(Board* board, int evaluation, int alpha);
+void cacheNode(Board* board, int evaluation, int boundType);
 
 /**
  * Gets the value for the provided board from the cache.
  * Returns true if values where found
 */
-bool getCachedValue(Board* board, int *evaluation, int *alpha);
+bool getCachedValue(Board* board, int *evaluation, int *boundType);
 
 /**
  * Gets the number of cached nodes.

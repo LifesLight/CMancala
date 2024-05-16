@@ -23,13 +23,13 @@
  * Negamax algorithm with alpha-beta pruning.
 */
 int LOCAL_negamax(
-    Board *board, int alpha, const int beta, const int depth, bool* solved);
+    Board *board, int alpha, int beta, const int depth, bool* solved);
 
 /**
  * Negamax algorithm with alpha-beta pruning and best move output.
 */
 int LOCAL_negamaxWithMove(
-    Board *board, int *bestMove, int alpha, const int beta, const int depth, bool* solved);
+    Board *board, int *bestMove, int alpha, int beta, const int depth, bool* solved);
 
 /**
  * Negamax with iterative deepening and aspiration window search.

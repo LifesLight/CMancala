@@ -6,7 +6,7 @@
 
 typedef struct {
     int8_t value;
-    int8_t bound;
+    uint8_t bound;
     VALIDATION_TYPE validation;
 
 #ifdef CACHE_GUARD
@@ -156,40 +156,26 @@ void startCache(uint32_t size) {
     lastHits = 0;
 }
 
-void cacheNode(Board* board, int evaluation, int alpha) {
-    /**
-     * Can't even be stored checks
-    */
-
+void cacheNode(Board* board, int evaluation, int boundType) {
     // Compute evaluation without score cells
     int scoreDelta = board->cells[SCORE_P1] - board->cells[SCORE_P2];
     scoreDelta *= board->color;
-
-    alpha -= scoreDelta;
-
-    if (alpha > INT8_MAX || alpha < INT8_MIN) {
-        return;
-    }
-
     evaluation -= scoreDelta;
 
     if (evaluation > INT8_MAX || evaluation < INT8_MIN + 1) {
         return;
     }
 
-    /**
-     * Tranlatability check
-    */
-
+    // Translate the board to a unique hash value
     uint64_t hashValue = translateBoard(board);
 
     if (hashValue == INVALID_HASH) {
         return;
     }
 
-    // Get the primary hash
+    // Compute primary index and validation
     const uint32_t index = indexHash(hashValue);
-    const VALIDATION_TYPE validation = computeValidation(hashValue);
+    const uint32_t validation = computeValidation(hashValue);
 
 #ifdef CACHE_GUARD
     // Check if the entry is protected
@@ -198,37 +184,45 @@ void cacheNode(Board* board, int evaluation, int alpha) {
     }
 #endif
 
-    const int8_t entryValue = evaluation;
+    const int8_t entryValue = (int8_t)evaluation;
 
-    // Check if exists already
-    // This completely validates the entry
+    // Check if the entry already exists
     if (cache[index].validation == validation
 #ifdef GUARANTEE_VALIDATION
         && cache[index].key == hashValue
 #endif
     ) {
-        /**
-         * Check if our new entry is "more/as valid" aka higher bound
-        */
-        if (cache[index].bound <= alpha) {
-            cache[index].bound = alpha;
-
-            if (cache[index].value < entryValue) {
+        // Update the bound and value based on the bound type
+        if (boundType == BOUND_EXACT) {
+            cache[index].bound = BOUND_LOWER;
+            cache[index].value = entryValue;
+        } else if (boundType == BOUND_LOWER) {
+            if (cache[index].bound != BOUND_EXACT && cache[index].bound != BOUND_LOWER) {
+                cache[index].bound = BOUND_LOWER;
+                cache[index].value = entryValue;
+            } else if (cache[index].bound == BOUND_LOWER && cache[index].value < entryValue) {
+                cache[index].value = entryValue;
+            }
+        } else if (boundType == BOUND_UPPER) {
+            if (cache[index].bound != BOUND_EXACT && cache[index].bound != BOUND_UPPER) {
+                cache[index].bound = BOUND_UPPER;
+                cache[index].value = entryValue;
+            } else if (cache[index].bound == BOUND_UPPER && cache[index].value > entryValue) {
                 cache[index].value = entryValue;
             }
         }
-
         return;
     }
 
-    // Check if we need to overwrite
+    // Handle overwrites
     if (cache[index].value != UNSET_VALUE) {
         overwrites++;
     }
 
+    // Update cache entry
     cache[index].validation = validation;
     cache[index].value = entryValue;
-    cache[index].bound = alpha;
+    cache[index].bound = boundType;
 
 #ifdef GUARANTEE_VALIDATION
     cache[index].key = hashValue;
