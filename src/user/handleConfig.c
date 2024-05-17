@@ -163,10 +163,6 @@ void handleConfigInput(bool* requestedStart, Config* config) {
             return;
         }
 
-        if (cacheSize > NORMAL_CACHE_SIZE) {
-            renderOutput("Warning: Cache sizes larger then normal are in most cases significantly slower", CONFIG_PREFIX);
-        }
-
         // Update cache
         startCache(cacheSize);
 

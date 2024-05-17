@@ -63,8 +63,6 @@ int GLOBAL_negamax(Board *board, int alpha, const int beta, const int depth) {
         }
     }
 
-    // TODO: Do something if node is solved
-
     return reference;
 }
 

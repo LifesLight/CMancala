@@ -19,6 +19,8 @@
 #include "logic/solver/solveCache.h"
 #include "config.h"
 
+#define DEBUG_CACHE
+
 /**
  * Negamax algorithm with alpha-beta pruning.
 */

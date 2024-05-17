@@ -14,9 +14,8 @@
  * We do need to store the highest eval, it is NOT always the same with same input parameters since we are
  * ignoring score cells which can effect the alpha beta pruning.
  * 
- * We also need to store the upper bound, since we could come from a node with "milder" bounds then last time we saw this board.
- * 
- * Compute sum of playing cells
+ * Transposition table logic is from the following source:
+ * https://en.wikipedia.org/wiki/Negamax
 */
 
 /**
@@ -27,8 +26,8 @@
  * 
  * Current player gets 1 bit                : 1
  * 1 bit is reserved for valid hash         : 2
- * Playing cells get: 5, 5, 5, 5, 4, 4 bits : 58
- * Upper bound gets 6 bits                  : 64
+ * Playing cells get: 5, 5, 5, 5, 5, 5 bits : 62
+ * Ignored: 2 bits                          : 64
 */
 
 #include <stdint.h>
@@ -47,6 +46,10 @@
 #define LARGE_CACHE_SIZE    250007
 #define EXTREME_CACHE_SIZE  5000011
 #define OUTPUT_CHUNK_COUNT 25
+
+#define EXACT_BOUND 0
+#define LOWER_BOUND 1
+#define UPPER_BOUND 2
 
 /**
  * How many bits are used as validation for the cache.
@@ -85,13 +88,13 @@ void startCache(uint32_t cacheSize);
 /**
  * Caches a node.
 */
-void cacheNode(Board* board, int evaluation, bool boundType);
+void cacheNode(Board* board, int evaluation, int boundType);
 
 /**
  * Gets the value for the provided board from the cache.
  * Returns true if values where found
 */
-bool getCachedValue(Board* board, int *evaluation, bool *boundType);
+bool getCachedValue(Board* board, int *evaluation, int *boundType);
 
 /**
  * Gets the number of cached nodes.

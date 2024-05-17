@@ -6,8 +6,8 @@
 
 typedef struct {
     int8_t value;
-    bool exact;
     VALIDATION_TYPE validation;
+    int8_t boundType;
 
 #ifdef CACHE_GUARD
     uint8_t protector;
@@ -27,8 +27,6 @@ uint64_t invalidReads;
 uint64_t lastInvalidReads;
 uint64_t hits;
 uint64_t lastHits;
-uint64_t lastUpgrades;
-uint64_t upgrades;
 
 #ifdef GUARANTEE_VALIDATION
 uint64_t detectedInvalidations;
@@ -131,8 +129,8 @@ void startCache(uint32_t size) {
     cache = malloc(sizeof(Entry) * cacheSize);
     for (int i = 0; i < (int64_t)cacheSize; i++) {
         cache[i].value = UNSET_VALUE;
-        cache[i].exact = false;
         cache[i].validation = 0;
+        cache[i].boundType = 0;
 
 #ifdef GUARANTEE_VALIDATION
         cache[i].key = 0;
@@ -156,15 +154,13 @@ void startCache(uint32_t size) {
     overwrites = 0;
     invalidReads = 0;
     hits = 0;
-    upgrades = 0;
 
     lastOverwrites = 0;
     lastInvalidReads = 0;
     lastHits = 0;
-    lastUpgrades = 0;
 }
 
-void cacheNode(Board* board, int evaluation, bool exact) {
+void cacheNode(Board* board, int evaluation, int boundType) {
     // Compute evaluation without score cells
     int scoreDelta = board->cells[SCORE_P1] - board->cells[SCORE_P2];
     scoreDelta *= board->color;
@@ -192,31 +188,13 @@ void cacheNode(Board* board, int evaluation, bool exact) {
     }
 #endif
 
-    const int8_t entryValue = (int8_t)evaluation;
-
-    // Check if the entry already exists
+    // Check if the entry already exists, no need to update
     if (cache[index].validation == validation) {
-
 #ifdef GUARANTEE_VALIDATION
         if (cache[index].key != hashValue) {
             detectedInvalidations++;
         }
 #endif
-
-        // If our entry is already exact, we don't need to update it
-        if (cache[index].exact) {
-            return;
-        }
-
-        // If old entry is not exact we just overwrite it if its of higher quality
-        // This will also automatically update to exact if the new one is exact
-        if (entryValue > cache[index].value || exact) {
-            upgrades++;
-            cache[index].value = entryValue;
-            cache[index].exact = exact;
-            return;
-        }
-
         return;
     }
 
@@ -226,9 +204,9 @@ void cacheNode(Board* board, int evaluation, bool exact) {
     }
 
     // Update cache entry
+    cache[index].boundType = boundType;
     cache[index].validation = validation;
-    cache[index].value = entryValue;
-    cache[index].exact = exact;
+    cache[index].value = evaluation;
 
 #ifdef GUARANTEE_VALIDATION
     cache[index].key = hashValue;
@@ -241,7 +219,7 @@ void cacheNode(Board* board, int evaluation, bool exact) {
     return;
 }
 
-bool getCachedValue(Board* board, int *eval, bool *exact) {
+bool getCachedValue(Board* board, int *eval, int *boundType) {
     uint64_t hashValue = translateBoard(board);
 
     // Not hashable
@@ -279,13 +257,11 @@ bool getCachedValue(Board* board, int *eval, bool *exact) {
     protectIndex(index);
 #endif
 
-    int value = cache[index].value;
-
     // Adjust for score cells
     int scoreDelta = board->cells[SCORE_P1] - board->cells[SCORE_P2];
     scoreDelta *= board->color;
-    *eval = value + scoreDelta;
-    *exact = cache[index].exact;
+    *eval = cache[index].value + scoreDelta;
+    *boundType = cache[index].boundType;
 
     return true;
 }
@@ -332,8 +308,6 @@ void renderCacheStats() {
     sprintf(message, "  Detected:   %lld", lastDetectedInvalidations);
     renderOutput(message, CHEAT_PREFIX);
 #endif
-    sprintf(message, "  Upgrades:   %lld", lastUpgrades);
-    renderOutput(message, CHEAT_PREFIX);
 
     sprintf(message, "  Hits:       %lld", lastHits);
     renderOutput(message, CHEAT_PREFIX);
@@ -417,7 +391,6 @@ void stepCache() {
     lastOverwrites = overwrites;
     lastInvalidReads = invalidReads;
     lastHits = hits;
-    lastUpgrades = upgrades;
 
 #ifdef GUARANTEE_VALIDATION
     lastDetectedInvalidations = detectedInvalidations;
@@ -427,7 +400,6 @@ void stepCache() {
     overwrites = 0;
     invalidReads = 0;
     hits = 0;
-    upgrades = 0;
 
 #ifdef CACHE_GUARD
     // Track how many have what age
