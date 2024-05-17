@@ -21,32 +21,26 @@ int LOCAL_negamax(Board *board, int alpha, int beta, const int depth, bool* solv
         return board->color * getBoardEvaluation(board);
     }
 
+    int reference = INT32_MIN;
+
     // Check if board is cached
     int cachedValue;
-    int boundType;
-    if (getCachedValue(board, &cachedValue, &boundType)) {
-        if (boundType == BOUND_EXACT) {
+    bool exact;
+    if (getCachedValue(board, &cachedValue, &exact)) {
+        if (exact) {
             *solved = true;
             return cachedValue;
-        } else if (boundType == BOUND_LOWER) {
-            if (cachedValue >= beta) {
-                *solved = true;
-                return cachedValue;
-            }
-            alpha = max(alpha, cachedValue);
-        } else if (boundType == BOUND_UPPER) {
-            if (cachedValue <= alpha) {
-                *solved = true;
-                return cachedValue;
-            }
-            beta = min(beta, cachedValue);
+        } else {
+            //reference = max(reference, cachedValue);
+            //if (reference > beta) {
+            //    *solved = true;
+            //    return reference;
+            //}
+            //alpha = max(alpha, reference);
         }
     }
 
     nodeCount++;
-
-    // Keeping track of best score
-    int reference = INT32_MIN;
 
     // Will be needed in every iteration
     Board boardCopy;
@@ -95,12 +89,12 @@ int LOCAL_negamax(Board *board, int alpha, int beta, const int depth, bool* solv
 
     // If subtree is solved, cache it
     if (*solved) {
-        if (reference <= alpha) {
-            cacheNode(board, reference, BOUND_UPPER);
-        } else if (reference >= beta) {
-            cacheNode(board, reference, BOUND_LOWER);
+        // We got exact value
+        if (reference > beta) {
+            cacheNode(board, reference, true);
+        // We got bounded so must not be exact
         } else {
-            cacheNode(board, reference, BOUND_EXACT);
+            cacheNode(board, reference, false);
         }
     }
 
@@ -122,23 +116,18 @@ int LOCAL_negamaxWithMove(Board *board, int *bestMove, int alpha, int beta, cons
 
     // Check if board is cached
     int cachedValue;
-    int boundType;
-    if (getCachedValue(board, &cachedValue, &boundType)) {
-        if (boundType == BOUND_EXACT) {
+    bool exact;
+    if (getCachedValue(board, &cachedValue, &exact)) {
+        if (exact) {
             *solved = true;
+            *bestMove = -1;
             return cachedValue;
-        } else if (boundType == BOUND_LOWER) {
-            if (cachedValue >= beta) {
+        } else {
+            if (cachedValue > beta) {
                 *solved = true;
+                *bestMove = -1;
                 return cachedValue;
             }
-            alpha = max(alpha, cachedValue);
-        } else if (boundType == BOUND_UPPER) {
-            if (cachedValue <= alpha) {
-                *solved = true;
-                return cachedValue;
-            }
-            beta = min(beta, cachedValue);
         }
     }
 
@@ -186,12 +175,10 @@ int LOCAL_negamaxWithMove(Board *board, int *bestMove, int alpha, int beta, cons
 
     // If solved, cache it
     if (*solved) {
-        if (reference <= alpha) {
-            cacheNode(board, reference, BOUND_UPPER);
-        } else if (reference >= beta) {
-            cacheNode(board, reference, BOUND_LOWER);
+        if (reference > beta) {
+            cacheNode(board, reference, true);
         } else {
-            cacheNode(board, reference, BOUND_EXACT);
+            cacheNode(board, reference, false);
         }
     }
 

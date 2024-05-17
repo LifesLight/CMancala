@@ -6,7 +6,7 @@
 
 typedef struct {
     int8_t value;
-    uint8_t bound;
+    bool exact;
     VALIDATION_TYPE validation;
 
 #ifdef CACHE_GUARD
@@ -27,6 +27,8 @@ uint64_t invalidReads;
 uint64_t lastInvalidReads;
 uint64_t hits;
 uint64_t lastHits;
+uint64_t lastUpgrades;
+uint64_t upgrades;
 
 #ifdef GUARANTEE_VALIDATION
 uint64_t detectedInvalidations;
@@ -129,8 +131,8 @@ void startCache(uint32_t size) {
     cache = malloc(sizeof(Entry) * cacheSize);
     for (int i = 0; i < (int64_t)cacheSize; i++) {
         cache[i].value = UNSET_VALUE;
+        cache[i].exact = false;
         cache[i].validation = 0;
-        cache[i].bound = 0;
 
 #ifdef GUARANTEE_VALIDATION
         cache[i].key = 0;
@@ -154,13 +156,15 @@ void startCache(uint32_t size) {
     overwrites = 0;
     invalidReads = 0;
     hits = 0;
+    upgrades = 0;
 
     lastOverwrites = 0;
     lastInvalidReads = 0;
     lastHits = 0;
+    lastUpgrades = 0;
 }
 
-void cacheNode(Board* board, int evaluation, int boundType) {
+void cacheNode(Board* board, int evaluation, bool exact) {
     // Compute evaluation without score cells
     int scoreDelta = board->cells[SCORE_P1] - board->cells[SCORE_P2];
     scoreDelta *= board->color;
@@ -199,25 +203,20 @@ void cacheNode(Board* board, int evaluation, int boundType) {
         }
 #endif
 
-        // Update the bound and value based on the bound type
-        if (boundType == BOUND_EXACT) {
-            cache[index].bound = BOUND_LOWER;
-            cache[index].value = entryValue;
-        } else if (boundType == BOUND_LOWER) {
-            if (cache[index].bound != BOUND_EXACT && cache[index].bound != BOUND_LOWER) {
-                cache[index].bound = BOUND_LOWER;
-                cache[index].value = entryValue;
-            } else if (cache[index].bound == BOUND_LOWER && cache[index].value < entryValue) {
-                cache[index].value = entryValue;
-            }
-        } else if (boundType == BOUND_UPPER) {
-            if (cache[index].bound != BOUND_EXACT && cache[index].bound != BOUND_UPPER) {
-                cache[index].bound = BOUND_UPPER;
-                cache[index].value = entryValue;
-            } else if (cache[index].bound == BOUND_UPPER && cache[index].value > entryValue) {
-                cache[index].value = entryValue;
-            }
+        // If our entry is already exact, we don't need to update it
+        if (cache[index].exact) {
+            return;
         }
+
+        // If old entry is not exact we just overwrite it if its of higher quality
+        // This will also automatically update to exact if the new one is exact
+        if (entryValue > cache[index].value || exact) {
+            upgrades++;
+            cache[index].value = entryValue;
+            cache[index].exact = exact;
+            return;
+        }
+
         return;
     }
 
@@ -229,7 +228,7 @@ void cacheNode(Board* board, int evaluation, int boundType) {
     // Update cache entry
     cache[index].validation = validation;
     cache[index].value = entryValue;
-    cache[index].bound = boundType;
+    cache[index].exact = exact;
 
 #ifdef GUARANTEE_VALIDATION
     cache[index].key = hashValue;
@@ -242,7 +241,7 @@ void cacheNode(Board* board, int evaluation, int boundType) {
     return;
 }
 
-bool getCachedValue(Board* board, int *eval, int *boundType) {
+bool getCachedValue(Board* board, int *eval, bool *exact) {
     uint64_t hashValue = translateBoard(board);
 
     // Not hashable
@@ -286,7 +285,7 @@ bool getCachedValue(Board* board, int *eval, int *boundType) {
     int scoreDelta = board->cells[SCORE_P1] - board->cells[SCORE_P2];
     scoreDelta *= board->color;
     *eval = value + scoreDelta;
-    *boundType = cache[index].bound;;
+    *exact = cache[index].exact;
 
     return true;
 }
@@ -333,6 +332,9 @@ void renderCacheStats() {
     sprintf(message, "  Detected:   %lld", lastDetectedInvalidations);
     renderOutput(message, CHEAT_PREFIX);
 #endif
+    sprintf(message, "  Upgrades:   %lld", lastUpgrades);
+    renderOutput(message, CHEAT_PREFIX);
+
     sprintf(message, "  Hits:       %lld", lastHits);
     renderOutput(message, CHEAT_PREFIX);
 
@@ -415,6 +417,7 @@ void stepCache() {
     lastOverwrites = overwrites;
     lastInvalidReads = invalidReads;
     lastHits = hits;
+    lastUpgrades = upgrades;
 
 #ifdef GUARANTEE_VALIDATION
     lastDetectedInvalidations = detectedInvalidations;
@@ -424,6 +427,7 @@ void stepCache() {
     overwrites = 0;
     invalidReads = 0;
     hits = 0;
+    upgrades = 0;
 
 #ifdef CACHE_GUARD
     // Track how many have what age
