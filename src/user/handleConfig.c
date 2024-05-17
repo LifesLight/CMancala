@@ -14,6 +14,7 @@ void renderConfigHelp() {
     renderOutput("  time [number >= 0]               : Set time limit for AI in seconds, if 0 unlimited", CONFIG_PREFIX);
     renderOutput("  depth [number >= 0]              : Set depth limit for AI, if 0 unlimited", CONFIG_PREFIX);
     renderOutput("  solver [global|local|quick]      : Set default solver for AI", CONFIG_PREFIX);
+    renderOutput("  clip [number >= 0]               : Set \"good enough\" evaluation for all solvers, 0 is clip disabled", CONFIG_PREFIX);
     renderOutput("  cache [small|normal|large]       : Set cache size. Larger results in slower computation but larger storage", CONFIG_PREFIX);
     renderOutput("  starting [1|2]                   : Configure starting player", CONFIG_PREFIX);
     renderOutput("  player [1|2] [human|random|ai]   : Configure player", CONFIG_PREFIX);
@@ -63,13 +64,17 @@ void printConfig(Config* config) {
         case GLOBAL_SOLVER:
             snprintf(message, sizeof(message), "  Solver: global");
             break;
-        case QUICK_SOLVER:
-            snprintf(message, sizeof(message), "  Solver: quick @%d", config->quickSolverCutoff);
-            break;
         case LOCAL_SOLVER:
             snprintf(message, sizeof(message), "  Solver: local");
             break;
     }
+
+    if (config->goodEnough > 0) {
+        char temp[256];
+        snprintf(temp, sizeof(temp), " clip: %d", config->goodEnough);
+        strcat(message, temp);
+    }
+
     renderOutput(message, CONFIG_PREFIX);
 
     if (getCacheSize() > 0) {
@@ -177,6 +182,29 @@ void handleConfigInput(bool* requestedStart, Config* config) {
         }
     }
 
+    // Check for clip
+    if (strncmp(input, "clip ", 5) == 0) {
+        // Check if valid number
+        int clip = atoi(input + 5);
+
+        if (clip < 0) {
+            renderOutput("Invalid clip value", CONFIG_PREFIX);
+            return;
+        }
+
+        // Update config
+        config->goodEnough = clip;
+
+        char message[256];
+        if (clip == 0) {
+            snprintf(message, sizeof(message), "Disabled clip");
+        } else {
+            snprintf(message, sizeof(message), "Updated clip to %d", clip);
+        }
+        renderOutput(message, CONFIG_PREFIX);
+        return;
+    }
+
     // Check for solver
     if (strncmp(input, "solver ", 7) == 0) {
         // Save original solver
@@ -191,28 +219,6 @@ void handleConfigInput(bool* requestedStart, Config* config) {
             }
 
             renderOutput("Updated solver to global", CONFIG_PREFIX);
-            return;
-        } else if (strncmp(input + 7, "quick", 5) == 0) {
-            config->solver = QUICK_SOLVER;
-            if (originalSolver == QUICK_SOLVER) {
-                renderOutput("Solver already set to quick", CONFIG_PREFIX);
-            } else {
-                renderOutput("Updated solver to quick", CONFIG_PREFIX);
-            }
-
-            // Check for cutoff
-            if (strlen(input) > 12) {
-                int cutoff = atoi(input + 12);
-                if (cutoff <= 0) {
-                    renderOutput("Invalid cutoff value", CONFIG_PREFIX);
-                    return;
-                }
-
-                config->quickSolverCutoff = cutoff;
-                char message[256];
-                snprintf(message, sizeof(message), "Updated cutoff to %d", cutoff);
-                renderOutput(message, CONFIG_PREFIX);
-            }
             return;
         } else if (strcmp(input + 7, "local") == 0) {
             config->solver = LOCAL_SOLVER;

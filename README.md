@@ -38,10 +38,6 @@ All CMancala solvers employs a Negamax algorithm with Alpha-Beta pruning, tailor
 - **LOCAL:**<br>Similar to GLOBAL but with knowledge of every nodes subtree solve status. This allows for optimizations like solved node caching.<br>
 The tradeoff between resistance to hash collisions and memory usage can be specified before compilation, by default it's set to guarantee no hash collisions since the memory usage is usually very low.<br>
 While I am very confident in the solvers final output, I can't ensure its correctness, for any critical applications **GLOBAL** is still recommended.
-- **QUICK**<br>The fastest solver. Is not required to find the best move at every node, only one which satisfies a provided cutoff evaluation. This allows for significantly faster solves (or searches in general) at the expense of only finding **a** winning move instead of the **most** winning move.<br>
-Be aware that this solvers evaluations are in no way comparable to other solvers, they can give a general idea but like previously mentioned this solver is at most qualified to determine if a position is winning or losing.
-- **QUICK-LOCAL:** *planned*<br>
-The quick solver but with all caching optimizations from **LOCAL**. Cache from **LOCAL** should even be usable inside **QUICK-LOCAL** but not the other way around.
 
 ## Restrictions
 - The game is designed to support a maximum of 224 stones on the board at any given time.

@@ -180,12 +180,17 @@ void LOCAL_negamaxAspirationRoot(Context* context) {
         startCache(NORMAL_CACHE_SIZE);
     }
 
-    INITIALIZE_VARS;
-    bool solved;
-    ITERATIVE_DEEPENING_LOOP(
-        LOCAL_negamaxWithMove(context->board, &bestMove, alpha, beta, currentDepth, &solved),
-        if (solved) break;
-    );
+    if (context->config->goodEnough > 0) {
+        CUTOFF_INITIALIZE_VARS(context->config->goodEnough);
+        bool solved;
+        CUTOFF_ITERATIVE_DEEPENING_LOOP(
+            LOCAL_negamaxWithMove(context->board, &bestMove, alpha, beta, currentDepth, &solved));
+    } else {
+        INITIALIZE_VARS;
+        bool solved;
+        ITERATIVE_DEEPENING_LOOP(
+            LOCAL_negamaxWithMove(context->board, &bestMove, alpha, beta, currentDepth, &solved));
+    }
 
     stepCache();
 }

@@ -2,7 +2,7 @@
  * Copyright (c) Alexander Kurtz 2023
  */
 
-#include "logic/solver/quick.h"
+#include "logic/solver/global.h"
 
 bool solved;
 
@@ -122,11 +122,15 @@ int GLOBAL_negamaxWithMove(Board *board, int *bestMove, int alpha, const int bet
  * Negamax with iterative deepening and aspiration window search
 */
 void GLOBAL_negamaxAspirationRoot(Context* context) {
-    INITIALIZE_VARS;
-    ITERATIVE_DEEPENING_LOOP(
-        GLOBAL_negamaxWithMove(context->board, &bestMove, alpha, beta, currentDepth),
-        if (solved) break;
-    );
+    if (context->config->goodEnough > 0) {
+        CUTOFF_INITIALIZE_VARS(context->config->goodEnough);
+        CUTOFF_ITERATIVE_DEEPENING_LOOP(
+            GLOBAL_negamaxWithMove(context->board, &bestMove, alpha, beta, currentDepth));
+    } else {
+        INITIALIZE_VARS;
+        ITERATIVE_DEEPENING_LOOP(
+            GLOBAL_negamaxWithMove(context->board, &bestMove, alpha, beta, currentDepth));
+    }
 }
 
 /**

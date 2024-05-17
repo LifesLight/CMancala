@@ -16,7 +16,6 @@
 #include "user/render.h"
 #include "config.h"
 #include "logic/solver/global.h"
-#include "logic/solver/quick.h"
 #include "logic/solver/local.h"
 
 /**

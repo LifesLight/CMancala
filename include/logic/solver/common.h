@@ -4,6 +4,41 @@
  * Copyright (c) Alexander Kurtz 2024
  */
 
+#define CUTOFF_INITIALIZE_VARS(cutoffValue) \
+    const int depthStep = 1; \
+    const int cutoff = cutoffValue; \
+    int score; \
+    int currentDepth = 1; \
+    int bestMove = -1; \
+    clock_t start = clock(); \
+    nodeCount = 0; \
+    renderOutput("Thinking...", PLAY_PREFIX); \
+
+// Macro for the iterative deepening loop
+// 'negamaxCall' is the function call, 'additionalBreak' is the custom break conditions
+#define CUTOFF_ITERATIVE_DEEPENING_LOOP(negamaxCall) \
+    while (true) { \
+        solved = true; \
+        int alpha = -cutoff; \
+        int beta = cutoff; \
+        score = negamaxCall; \
+        if (solved) { \
+            break; \
+        } else { \
+            currentDepth += depthStep; \
+            if (currentDepth > context->config->depth && context->config->depth > 0) break; \
+            if (((double)(clock() - start) / CLOCKS_PER_SEC) >= context->config->timeLimit && context->config->timeLimit > 0) break; \
+        } \
+    } \
+    double timeTaken = (double)(clock() - start) / CLOCKS_PER_SEC; \
+    context->lastTime = timeTaken; \
+    context->lastNodes = nodeCount; \
+    context->lastMove = bestMove; \
+    context->lastEvaluation = score; \
+    context->lastDepth = currentDepth; \
+    context->lastSolved = solved;
+
+
 // Macro to initialize variables and setup
 #define INITIALIZE_VARS \
     const int windowSize = 1; \
@@ -20,13 +55,13 @@
 
 // Macro for the iterative deepening loop
 // 'negamaxCall' is the function call, 'additionalBreak' is the custom break conditions
-#define ITERATIVE_DEEPENING_LOOP(negamaxCall, additionalBreak) \
+#define ITERATIVE_DEEPENING_LOOP(negamaxCall) \
     while (true) { \
         solved = true; \
         score = negamaxCall; \
         if (score > alpha && score < beta) { \
             currentDepth += depthStep; \
-            additionalBreak; \
+            if (solved) break; \
             if (currentDepth > context->config->depth && context->config->depth > 0) break; \
             if (((double)(clock() - start) / CLOCKS_PER_SEC) >= context->config->timeLimit && context->config->timeLimit > 0) break; \
         } else { \

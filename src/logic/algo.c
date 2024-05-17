@@ -10,10 +10,6 @@ void aspirationRoot(Context* context, Solver solver) {
         case GLOBAL_SOLVER:
             GLOBAL_negamaxAspirationRoot(context);
             break;
-        case QUICK_SOLVER:
-            QUICK_setCutoff(context->config->quickSolverCutoff);
-            QUICK_negamaxAspirationRoot(context);
-            break;
         case LOCAL_SOLVER:
             LOCAL_negamaxAspirationRoot(context);
             break;
@@ -25,9 +21,6 @@ void distributionRoot(Board *board, int depth, int32_t* distribution, bool *solv
     switch (solver) {
         case GLOBAL_SOLVER:
             GLOBAL_negamaxRootWithDistribution(board, depth, distribution, solved);
-            break;
-        case QUICK_SOLVER:
-            QUICK_negamaxRootWithDistribution(board, depth, distribution, solved);
             break;
         case LOCAL_SOLVER:
             LOCAL_negamaxRootWithDistribution(board, depth, distribution, solved);

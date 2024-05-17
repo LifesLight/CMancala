@@ -27,7 +27,6 @@ typedef enum {
 } MoveFunction;
 
 typedef enum {
-    QUICK_SOLVER,
     LOCAL_SOLVER,
     GLOBAL_SOLVER
 } Solver;
@@ -44,7 +43,7 @@ typedef struct {
     Agent player2;
     MoveFunction moveFunction;
     Solver solver;
-    int quickSolverCutoff;
+    uint32_t goodEnough;
 } Config;
 
 typedef struct {

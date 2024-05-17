@@ -57,7 +57,6 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
         // Default depth
         int depth = 14;
         Solver solver = context->config->solver;
-        int cutoff = context->config->quickSolverCutoff;
 
         // Find --solver and --depth in the input string
         char *solverPoint = strstr(internalInput, "--solver");
@@ -72,17 +71,6 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
             // Check for specific solvers and optionally parse the 'cutoff' value for quick
             if (strcmp(solverPoint, "global") == 0) {
                 solver = GLOBAL_SOLVER;
-            } else if (strncmp(solverPoint, "quick", 5) == 0) {
-                solver = QUICK_SOLVER;
-                char *cutoffValue = nextSpace ? nextSpace + 1 : NULL;
-                if (cutoffValue && *cutoffValue) {
-                    cutoff = atoi(cutoffValue);
-
-                    if (cutoff < 1) {
-                        renderOutput("Invalid/No cutoff specification", CHEAT_PREFIX);
-                        cutoff = context->config->quickSolverCutoff;
-                    }
-                }
             } else if (strcmp(solverPoint, "local") == 0) {
                 solver = LOCAL_SOLVER;
             } else {
@@ -107,11 +95,6 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
         int distribution[6];
         bool solved;
 
-        // TODO handle custom solver and quick cutoff
-
-        if (cutoff != -1) {
-            QUICK_setCutoff(cutoff);
-        }
         distributionRoot(context->board, depth, distribution, &solved, solver);
 
         int renderCells[14];
@@ -134,12 +117,6 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
             case GLOBAL_SOLVER:
                 renderOutput("Solver: Global", CHEAT_PREFIX);
                 break;
-            case QUICK_SOLVER: {
-                char message[256];
-                snprintf(message, sizeof(message), "Solver: Quick @%d", cutoff);
-                renderOutput(message, CHEAT_PREFIX);
-                break;
-            }
             case LOCAL_SOLVER:
                 renderOutput("Solver: Local", CHEAT_PREFIX);
                 break;

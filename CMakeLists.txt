@@ -18,7 +18,6 @@ set(SOURCE_FILES
     src/user/interface.c
     src/logic/solver/global.c
     src/logic/solver/local.c
-    src/logic/solver/quick.c
     src/logic/solver/troughput.c
     src/logic/solver/solveCache.c
 )

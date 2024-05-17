@@ -22,7 +22,7 @@ void startInterface() {
         .player2 = AI_AGENT,
         .moveFunction = CLASSIC_MOVE,
         .solver = GLOBAL_SOLVER,
-        .quickSolverCutoff = 1,
+        .goodEnough = 0
     };
 
     // Global loop
