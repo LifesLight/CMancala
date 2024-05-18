@@ -43,7 +43,7 @@
 /**
  * Renders the board to the console.
 */
-void renderBoard(const Board *board, const char* prefix, const Config* config);
-void renderCustomBoard(const int *cells, const int8_t color, const char* prefix, const Config* config);
+void renderBoard(const Board *board, const char* prefix, const GameSettings* settings);
+void renderCustomBoard(const int *cells, const int8_t color, const char* prefix, const GameSettings* settings);
 void renderWelcome();
 void renderOutput(const char* message, const char* prefix);

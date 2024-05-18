@@ -32,19 +32,36 @@ typedef enum {
 } Solver;
 
 typedef struct {
+    Solver solver;
+    int depth;
+    double timeLimit;
+    uint32_t goodEnough;
+} SolverConfig;
+
+typedef struct {
     int stones;
     Distribution distribution;
     int seed;
-    double timeLimit;
-    int depth;
     uint8_t startColor;
-    bool autoplay;
     Agent player1;
     Agent player2;
     MoveFunction moveFunction;
-    Solver solver;
-    uint32_t goodEnough;
+} GameSettings;
+
+typedef struct {
+    bool autoplay;
+    GameSettings gameSettings;
+    SolverConfig solverConfig;
 } Config;
+
+typedef struct {
+    int lastEvaluation;
+    int lastMove;
+    int lastDepth;
+    bool lastSolved;
+    double lastTime;
+    uint64_t lastNodes;
+} Metadata;
 
 typedef struct {
     uint8_t cells[ASIZE];
@@ -59,11 +76,6 @@ typedef struct {
 typedef struct {
     Board* board;
     Board* lastBoard;
-    Config* config;
-    int lastEvaluation;
-    int lastMove;
-    int lastDepth;
-    bool lastSolved;
-    double lastTime;
-    uint64_t lastNodes;
+    Config config;
+    Metadata metadata;
 } Context;

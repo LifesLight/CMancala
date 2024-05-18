@@ -71,12 +71,12 @@ void getInput(char *input, const char *prefix) {
 
 void initializeBoardFromConfig(Board* board, Config* config) {
     // Initialize board
-    if (config->distribution == UNIFORM_DIST) {
-        configBoard(board, config->stones);
+    if (config->gameSettings.distribution == UNIFORM_DIST) {
+        configBoard(board, config->gameSettings.stones);
     } else {
-        configBoardRand(board, config->stones);
+        configBoardRand(board, config->gameSettings.stones);
     }
-    board->color = config->startColor;
+    board->color = config->gameSettings.startColor;
 }
 
 void updateCell(Board* board, int player, int idx, int value) {

@@ -35,16 +35,16 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
 
     // Check for request to undo
     if (strcmp(input, "undo") == 0) {
-        if (context->lastMove == -1) {
+        if (context->metadata.lastMove == -1) {
             renderOutput("No move to undo", CHEAT_PREFIX);
             return;
         }
 
         copyBoard(context->lastBoard, context->board);
-        context->lastMove = -1;
-        context->lastEvaluation = INT32_MAX;
-        context->lastDepth = 0;
-        context->lastSolved = false;
+        context->metadata.lastMove = -1;
+        context->metadata.lastEvaluation = INT32_MAX;
+        context->metadata.lastDepth = 0;
+        context->metadata.lastSolved = false;
         renderOutput("Undid last move", CHEAT_PREFIX);
         return;
     }
@@ -55,12 +55,12 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
         snprintf(internalInput, sizeof(internalInput), "%s", input + 8);
 
         // Default depth
-        int depth = 14;
-        Solver solver = context->config->solver;
+        SolverConfig solveConfig = context->config.solverConfig;
 
         // Find --solver and --depth in the input string
         char *solverPoint = strstr(internalInput, "--solver");
         char *depthPoint = strstr(internalInput, "--depth");
+        char *clipPoint = strstr(internalInput, "--clip");
 
         // Parse and set the solver configuration
         if (solverPoint != NULL) {
@@ -70,13 +70,31 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
 
             // Check for specific solvers and optionally parse the 'cutoff' value for quick
             if (strcmp(solverPoint, "global") == 0) {
-                solver = GLOBAL_SOLVER;
+                solveConfig.solver = GLOBAL_SOLVER;
             } else if (strcmp(solverPoint, "local") == 0) {
-                solver = LOCAL_SOLVER;
+                solveConfig.solver = LOCAL_SOLVER;
             } else {
                 renderOutput("Invalid solver", CHEAT_PREFIX);
                 return;
             }
+        }
+
+        // Parse and set the clip configuration
+        if (clipPoint != NULL) {
+            clipPoint += 7;  // Move pointer past "--clip "
+            char *endPtr;
+            int parsedClip = strtol(clipPoint, &endPtr, 10);
+            if (clipPoint == endPtr) {
+                renderOutput("Invalid clip value", CHEAT_PREFIX);
+                return;
+            }
+
+            if (parsedClip < 0) {
+                renderOutput("Clip value must be positive", CHEAT_PREFIX);
+                return;
+            }
+
+            solveConfig.goodEnough = parsedClip;
         }
 
         // Parse and set the depth configuration
@@ -88,14 +106,18 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
                 renderOutput("Invalid depth value", CHEAT_PREFIX);
                 return;
             }
-            depth = parsedDepth;
+            solveConfig.depth = parsedDepth;
+        }
+
+        if (solveConfig.depth == 0) {
+            solveConfig.depth = 16;
         }
 
         // Manually
         int distribution[6];
         bool solved;
 
-        distributionRoot(context->board, depth, distribution, &solved, solver);
+        distributionRoot(context->board, distribution, &solved, &solveConfig);
 
         int renderCells[14];
         for (int i = 0; i < 14; i++) {
@@ -111,9 +133,9 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
             }
         }
 
-        renderCustomBoard(renderCells, context->board->color, CHEAT_PREFIX, context->config);
+        renderCustomBoard(renderCells, context->board->color, CHEAT_PREFIX, &context->config.gameSettings);
 
-        switch (solver) {
+        switch (solveConfig.solver) {
             case GLOBAL_SOLVER:
                 renderOutput("Solver: Global", CHEAT_PREFIX);
                 break;
@@ -126,8 +148,14 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
             renderOutput("Solved", CHEAT_PREFIX);
         }
 
+        if (solveConfig.goodEnough != 0) {
+            char message[256];
+            snprintf(message, sizeof(message), "Clip: %d", solveConfig.goodEnough);
+            renderOutput(message, CHEAT_PREFIX);
+        }
+
         char message[256];
-        snprintf(message, sizeof(message), "Depth: %d", depth);
+        snprintf(message, sizeof(message), "Depth: %d", solveConfig.depth);
         renderOutput(message, CHEAT_PREFIX);
 
         return;
@@ -164,7 +192,7 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
 
         // Save previous board
         copyBoard(context->board, context->lastBoard);
-        context->lastEvaluation = INT32_MAX;
+        context->metadata.lastEvaluation = INT32_MAX;
 
         // Load board
         bool success = decodeBoard(context->board, temp);
@@ -187,20 +215,20 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
 
     // Check for request to trace
     if (strcmp(input, "trace") == 0) {
-        if (context->lastMove == -1) {
+        if (context->metadata.lastMove == -1) {
             renderOutput("No move to trace", CHEAT_PREFIX);
             return;
         }
 
-        if (context->lastEvaluation == INT32_MAX) {
+        if (context->metadata.lastEvaluation == INT32_MAX) {
             renderOutput("No evaluation to trace", CHEAT_PREFIX);
             return;
         }
 
-        NegamaxTrace trace = traceRoot(context->lastBoard, context->lastEvaluation - 1, context->lastEvaluation + 1, context->lastDepth);
+        NegamaxTrace trace = traceRoot(context->lastBoard, context->metadata.lastEvaluation - 1, context->metadata.lastEvaluation + 1, context->metadata.lastDepth);
 
         int stepsToWin = 0;
-        for (int i = context->lastDepth - 1; i >= 0; i--) {
+        for (int i = context->metadata.lastDepth - 1; i >= 0; i--) {
             if (trace.moves[i] == -1) {
                 break;
             }
@@ -209,7 +237,7 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
         }
 
         int width = snprintf(NULL, 0, "%d", stepsToWin);
-        for (int i = context->lastDepth - 1; i >= 0; i--) {
+        for (int i = context->metadata.lastDepth - 1; i >= 0; i--) {
             char message[256];
 
             int move = trace.moves[i];
@@ -220,10 +248,10 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
 
             if (move > 5) {
                 move = 13 - move;
-                snprintf(message, sizeof(message), "[%*d|%s] >> %d", width, context->lastDepth - i, "Player 2", move);
+                snprintf(message, sizeof(message), "[%*d|%s] >> %d", width, context->metadata.lastDepth - i, "Player 2", move);
             } else {
                 move = move + 1;
-                snprintf(message, sizeof(message), "[%*d|%s] >> %d", width, context->lastDepth - i, "Player 1", move);
+                snprintf(message, sizeof(message), "[%*d|%s] >> %d", width, context->metadata.lastDepth - i, "Player 1", move);
             }
 
             renderOutput(message, CHEAT_PREFIX);
@@ -278,7 +306,7 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
 
     // Check for render
     if (strcmp(input, "render") == 0) {
-        renderBoard(context->board, CHEAT_PREFIX, context->config);
+        renderBoard(context->board, CHEAT_PREFIX, &context->config.gameSettings);
         return;
     }
 
@@ -288,30 +316,30 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
         snprintf(message, sizeof(message), "Metadata:");
         renderOutput(message, CHEAT_PREFIX);
 
-        if (context->lastMove != -1) {
-            snprintf(message, sizeof(message), "  Move: %d", context->lastMove > 5 ? 13 - context->lastMove : context->lastMove + 1);
+        if (context->metadata.lastMove != -1) {
+            snprintf(message, sizeof(message), "  Move: %d", context->metadata.lastMove > 5 ? 13 - context->metadata.lastMove : context->metadata.lastMove + 1);
             renderOutput(message, CHEAT_PREFIX);
         }
 
-        if (context->lastEvaluation != INT32_MAX) {
-            snprintf(message, sizeof(message), "  Depth: %d", context->lastDepth);
+        if (context->metadata.lastEvaluation != INT32_MAX) {
+            snprintf(message, sizeof(message), "  Depth: %d", context->metadata.lastDepth);
             renderOutput(message, CHEAT_PREFIX);
 
-            snprintf(message, sizeof(message), "  Evaluation: %d", context->lastEvaluation);
+            snprintf(message, sizeof(message), "  Evaluation: %d", context->metadata.lastEvaluation);
             renderOutput(message, CHEAT_PREFIX);
 
-            if (context->lastSolved) {
+            if (context->metadata.lastSolved) {
                 snprintf(message, sizeof(message), "  Solved: true");
             } else {
                 snprintf(message, sizeof(message), "  Solved: false");
             }
             renderOutput(message, CHEAT_PREFIX);
 
-            int64_t totalNodes = context->lastNodes;
+            int64_t totalNodes = context->metadata.lastNodes;
             sprintf(message, "  Total nodes: %f million", (double)totalNodes / 1000000);
             renderOutput(message, CHEAT_PREFIX);
 
-            double totalTime = context->lastTime;
+            double totalTime = context->metadata.lastTime;
             snprintf(message, sizeof(message), "  Total time: %f seconds", totalTime);
             renderOutput(message, CHEAT_PREFIX);
 
@@ -336,11 +364,11 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
     // Check for autoplay
     if (strncmp(input, "autoplay ", 9) == 0) {
         // Save original autoplay
-        bool originalAutoplay = context->config->autoplay;
+        bool originalAutoplay = context->config.autoplay;
 
         // Check if valid autoplay
         if (strcmp(input + 9, "true") == 0 || strcmp(input + 9, "1") == 0) {
-            context->config->autoplay = true;
+            context->config.autoplay = true;
             if (originalAutoplay) {
                 renderOutput("Autoplay already enabled", CHEAT_PREFIX);
                 return;
@@ -349,7 +377,7 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
             renderOutput("Enabled autoplay", CHEAT_PREFIX);
             return;
         } else if (strcmp(input + 9, "false") == 0 || strcmp(input + 9, "0") == 0) {
-            context->config->autoplay = false;
+            context->config.autoplay = false;
             if (!originalAutoplay) {
                 renderOutput("Autoplay already disabled", CHEAT_PREFIX);
                 return;
@@ -383,22 +411,28 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
     return;
 }
 
-void startGameHandling(Config* config) {
+void startGameHandling(Config *config) {
     // Initialize board
     Board board;
     initializeBoardFromConfig(&board, config);
 
-    setMoveFunction(config->moveFunction);
+    setMoveFunction(config->gameSettings.moveFunction);
+
+    Metadata metadata = {
+        .lastEvaluation = INT32_MAX,
+        .lastMove = -1,
+        .lastDepth = 0,
+        .lastSolved = false,
+        .lastTime = 0,
+        .lastNodes = 0,
+    };
 
     // Make game context
     Context context = {
         .board = &board,
         .lastBoard = malloc(sizeof(Board)),
-        .config = config,
-        .lastEvaluation = INT32_MAX,
-        .lastMove = -1,
-        .lastDepth = 0,
-        .lastSolved = false,
+        .config = *config,
+        .metadata = metadata,
     };
 
     // Start game loop
@@ -419,7 +453,7 @@ void startGameHandling(Config* config) {
             if (isBoardTerminal(context.board)) {
                 requestedContinue = false;
 
-                renderBoard(&board, PLAY_PREFIX, config);
+                renderBoard(&board, PLAY_PREFIX, &config->gameSettings);
 
                 int score1 = board.cells[SCORE_P1];
                 int score2 = board.cells[SCORE_P2];

@@ -5,31 +5,39 @@
 #include "user/render.h"
 
 
-void renderCustomBoard(const int32_t *cells, const int8_t color, const char* prefix, const Config* config) {
+void renderCustomBoard(const int32_t *cells, const int8_t color, const char* prefix, const GameSettings* settings) {
     char* playerDescriptor;
     if (color == 1) {
-        switch (config->player1) {
-            case HUMAN_AGENT:
-                playerDescriptor = "Player";
-                break;
-            case AI_AGENT:
-                playerDescriptor = "AI";
-                break;
-            case RANDOM_AGENT:
-                playerDescriptor = "Random";
-                break;
+        if (settings == NULL) {
+            playerDescriptor = "Player 1";
+        } else {
+            switch (settings->player1) {
+                case HUMAN_AGENT:
+                    playerDescriptor = "Player 1";
+                    break;
+                case AI_AGENT:
+                    playerDescriptor = "AI 1";
+                    break;
+                case RANDOM_AGENT:
+                    playerDescriptor = "Random 1";
+                    break;
+            }
         }
     } else {
-        switch (config->player2) {
-            case HUMAN_AGENT:
-                playerDescriptor = "Player";
-                break;
-            case AI_AGENT:
-                playerDescriptor = "AI";
-                break;
-            case RANDOM_AGENT:
-                playerDescriptor = "Random";
-                break;
+        if (settings == NULL) {
+            playerDescriptor = "Player 2";
+        } else {
+            switch (settings->player2) {
+                case HUMAN_AGENT:
+                    playerDescriptor = "Player 2";
+                    break;
+                case AI_AGENT:
+                    playerDescriptor = "AI 2";
+                    break;
+                case RANDOM_AGENT:
+                    playerDescriptor = "Random 2";
+                    break;
+            }
         }
     }
 
@@ -98,13 +106,13 @@ void renderCustomBoard(const int32_t *cells, const int8_t color, const char* pre
     printf("%s%s%s\n", HL, HL, BR);
 }
 
-void renderBoard(const Board *board, const char* prefix, const Config* config) {
+void renderBoard(const Board *board, const char* prefix, const GameSettings* settings) {
     int cells[14];
     for (int i = 0; i < 14; ++i) {
         cells[i] = board->cells[i];
     }
 
-    renderCustomBoard(cells, board->color, prefix, config);
+    renderCustomBoard(cells, board->color, prefix, settings);
 }
 
 void renderWelcome() {

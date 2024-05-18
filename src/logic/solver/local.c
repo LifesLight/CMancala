@@ -171,46 +171,113 @@ int LOCAL_negamaxWithMove(Board *board, int *bestMove, int alpha, int beta, cons
     return reference;
 }
 
-/**
- * Negamax with iterative deepening and aspiration window search
-*/
-void LOCAL_negamaxAspirationRoot(Context* context) {
+void LOCAL_distributionRoot(Board *board, int *distribution, bool *solved, SolverConfig *config) {
+    // Cache checking
     if (getCacheSize() == 0) {
-        renderOutput("Cache automatically enabled with \"normal\" preset", PLAY_PREFIX);
+        renderOutput("Cache is disabled, starting with \"normal\" preset!", CHEAT_PREFIX);
         startCache(NORMAL_CACHE_SIZE);
     }
 
-    if (context->config->goodEnough > 0) {
-        CUTOFF_INITIALIZE_VARS(context->config->goodEnough);
-        bool solved;
-        CUTOFF_ITERATIVE_DEEPENING_LOOP(
-            LOCAL_negamaxWithMove(context->board, &bestMove, alpha, beta, currentDepth, &solved));
-    } else {
-        INITIALIZE_VARS;
-        bool solved;
-        ITERATIVE_DEEPENING_LOOP(
-            LOCAL_negamaxWithMove(context->board, &bestMove, alpha, beta, currentDepth, &solved));
+    renderOutput("Thinking...", CHEAT_PREFIX);
+    const int8_t start = (board->color == 1) ? HBOUND_P1 : HBOUND_P2;
+    const int8_t end = (board->color == 1) ? LBOUND_P1 : LBOUND_P2;
+    int index = 5;
+    int score;
+    int alpha = INT32_MIN + 1;
+    int beta = INT32_MAX;
+
+    if (config->goodEnough != 0) {
+        beta = config->goodEnough;
+        alpha = -config->goodEnough;
     }
 
-    stepCache();
+    bool solvedTemp;
+    *solved = true;
+
+    for (int8_t i = start; i >= end; i--) {
+        if (board->cells[i] == 0) {
+            distribution[index] = INT32_MIN;
+            index--;
+            continue;
+        }
+        Board boardCopy;
+        copyBoard(board, &boardCopy);
+        makeMoveFunction(&boardCopy, i);
+
+        solvedTemp = false;
+
+        if (board->color == boardCopy.color) {
+            score = LOCAL_negamax(&boardCopy, alpha, beta, config->depth, &solvedTemp);
+        } else {
+            score = -LOCAL_negamax(&boardCopy, alpha, beta, config->depth, &solvedTemp);
+        }
+
+        if (config->goodEnough == 0) {
+            alpha = max(alpha, score);
+        }
+
+        if (!solvedTemp) {
+            *solved = false;
+        }
+
+        distribution[index] = score;
+        index--;
+    }
 }
 
-/**
- * Negamax root with distribution
- * Full search without any optimizations
-*/
-void LOCAL_negamaxRootWithDistribution(Board *board, int depth, int32_t* distribution, bool* solved) {
+void LOCAL_aspirationRoot(Context* context, SolverConfig *config) {
+    // Cache checking
     if (getCacheSize() == 0) {
-        renderOutput("Cache automatically enabled with \"normal\" preset", CHEAT_PREFIX);
+        renderOutput("Cache is disabled, starting with \"normal\" preset!", CHEAT_PREFIX);
         startCache(NORMAL_CACHE_SIZE);
     }
 
-    NEGAMAX_ROOT_BODY(board, depth, distribution, LOCAL_negamax(&boardCopy, alpha, beta, depth - 1, solved));
+    const int windowSize = 1;
+    const int depthStep = 1;
+    const int clip = config->goodEnough;
 
-    stepCache();
+    if (clip != 0) {
+        renderOutput("Clip is not yet supported in aspiration search!", PLAY_PREFIX);
+    }
+
+    int alpha = INT32_MIN + 1;
+    int beta = INT32_MAX;
+    int score;
+    int currentDepth = 1;
+    int bestMove = -1;
+    int windowMisses = 0;
+    clock_t start = clock();
+    nodeCount = 0;
+    bool solved;
+
+    renderOutput("Thinking...", PLAY_PREFIX);
+
+    while (true) {
+        solved = false;
+        score = LOCAL_negamaxWithMove(context->board, &bestMove, alpha, beta, currentDepth, &solved);
+        if (score > alpha && score < beta) {
+            currentDepth += depthStep;
+            if (solved) break;
+            if (currentDepth > config->depth && config->depth > 0) break;
+            if (((double)(clock() - start) / CLOCKS_PER_SEC) >= config->timeLimit && config->timeLimit > 0) break;
+        } else {
+            windowMisses++;
+            alpha = score - windowSize;
+            beta = score + windowSize;
+        }
+    }
+
+    double timeTaken = (double)(clock() - start) / CLOCKS_PER_SEC;
+    context->metadata.lastTime = timeTaken;
+    context->metadata.lastNodes = nodeCount;
+    if (windowMisses > currentDepth) {
+        char message[256];
+        snprintf(message, sizeof(message), "[WARNING]: High window misses! (You may increase \"windowSize\" in algo.c)");
+        renderOutput(message, PLAY_PREFIX);
+    }
+    context->metadata.lastMove = bestMove;
+    context->metadata.lastEvaluation = score;
+    context->metadata.lastDepth = currentDepth - 1;
+    context->metadata.lastSolved = solved;
 }
 
-/**
- * We can prob save the player bit by normalizing the layout :D
- * This should also give better performance
-*/

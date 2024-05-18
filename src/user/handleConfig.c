@@ -28,10 +28,10 @@ void printConfig(Config* config) {
     char message[256];
 
     renderOutput("Current configuration:", CONFIG_PREFIX);
-    snprintf(message, sizeof(message), "  Stones: %d", config->stones);
+    snprintf(message, sizeof(message), "  Stones: %d", config->gameSettings.stones);
     renderOutput(message, CONFIG_PREFIX);
 
-    switch (config->distribution) {
+    switch (config->gameSettings.distribution) {
         case UNIFORM_DIST:
             snprintf(message, sizeof(message), "  Distribution: uniform");
             break;
@@ -41,10 +41,10 @@ void printConfig(Config* config) {
     }
     renderOutput(message, CONFIG_PREFIX);
 
-    snprintf(message, sizeof(message), "  Seed: %d", config->seed);
+    snprintf(message, sizeof(message), "  Seed: %d", config->gameSettings.seed);
     renderOutput(message, CONFIG_PREFIX);
 
-    switch (config->moveFunction) {
+    switch (config->gameSettings.moveFunction) {
         case CLASSIC_MOVE:
             snprintf(message, sizeof(message), "  Mode: classic");
             break;
@@ -54,13 +54,13 @@ void printConfig(Config* config) {
     }
     renderOutput(message, CONFIG_PREFIX);
 
-    snprintf(message, sizeof(message), "  Time: %g%s", config->timeLimit, config->timeLimit == 0 ? " (unlimited)" : "");
+    snprintf(message, sizeof(message), "  Time: %g%s", config->solverConfig.timeLimit, config->solverConfig.timeLimit == 0 ? " (unlimited)" : "");
     renderOutput(message, CONFIG_PREFIX);
 
-    snprintf(message, sizeof(message), "  Depth: %d%s", config->depth, config->depth == 0 ? " (unlimited)" : "");
+    snprintf(message, sizeof(message), "  Depth: %d%s", config->solverConfig.depth, config->solverConfig.depth == 0 ? " (unlimited)" : "");
     renderOutput(message, CONFIG_PREFIX);
 
-    switch (config->solver) {
+    switch (config->solverConfig.solver) {
         case GLOBAL_SOLVER:
             snprintf(message, sizeof(message), "  Solver: global");
             break;
@@ -69,9 +69,9 @@ void printConfig(Config* config) {
             break;
     }
 
-    if (config->goodEnough > 0) {
+    if (config->solverConfig.goodEnough > 0) {
         char temp[256];
-        snprintf(temp, sizeof(temp), " clip: %d", config->goodEnough);
+        snprintf(temp, sizeof(temp), " clip: %d", config->solverConfig.goodEnough);
         strcat(message, temp);
     }
 
@@ -82,10 +82,10 @@ void printConfig(Config* config) {
         renderOutput(message, CONFIG_PREFIX);
     }
 
-    snprintf(message, sizeof(message), "  Starting: %d", config->startColor == 1 ? 1 : 2);
+    snprintf(message, sizeof(message), "  Starting: %d", config->gameSettings.startColor == 1 ? 1 : 2);
     renderOutput(message, CONFIG_PREFIX);
 
-    switch (config->player1) {
+    switch (config->gameSettings.player1) {
         case HUMAN_AGENT:
             snprintf(message, sizeof(message), "  Player 1: human");
             break;
@@ -98,7 +98,7 @@ void printConfig(Config* config) {
     }
     renderOutput(message, CONFIG_PREFIX);
 
-    switch (config->player2) {
+    switch (config->gameSettings.player2) {
         case HUMAN_AGENT:
             snprintf(message, sizeof(message), "  Player 2: human");
             break;
@@ -193,7 +193,7 @@ void handleConfigInput(bool* requestedStart, Config* config) {
         }
 
         // Update config
-        config->goodEnough = clip;
+        config->solverConfig.goodEnough = clip;
 
         char message[256];
         if (clip == 0) {
@@ -208,11 +208,11 @@ void handleConfigInput(bool* requestedStart, Config* config) {
     // Check for solver
     if (strncmp(input, "solver ", 7) == 0) {
         // Save original solver
-        Solver originalSolver = config->solver;
+        Solver originalSolver = config->solverConfig.solver;
 
         // Check if valid solver
         if (strcmp(input + 7, "global") == 0) {
-            config->solver = GLOBAL_SOLVER;
+            config->solverConfig.solver = GLOBAL_SOLVER;
             if (originalSolver == GLOBAL_SOLVER) {
                 renderOutput("Solver already set to global", CONFIG_PREFIX);
                 return;
@@ -221,7 +221,7 @@ void handleConfigInput(bool* requestedStart, Config* config) {
             renderOutput("Updated solver to global", CONFIG_PREFIX);
             return;
         } else if (strcmp(input + 7, "local") == 0) {
-            config->solver = LOCAL_SOLVER;
+            config->solverConfig.solver = LOCAL_SOLVER;
             if (originalSolver == LOCAL_SOLVER) {
                 renderOutput("Solver already set to local", CONFIG_PREFIX);
                 return;
@@ -240,11 +240,11 @@ void handleConfigInput(bool* requestedStart, Config* config) {
     // Check for mode
     if (strncmp(input, "mode ", 5) == 0) {
         // Save original mode
-        MoveFunction originalMode = config->moveFunction;
+        MoveFunction originalMode = config->gameSettings.moveFunction;
 
         // Check if valid mode
         if (strcmp(input + 5, "classic") == 0) {
-            config->moveFunction = CLASSIC_MOVE;
+            config->gameSettings.moveFunction = CLASSIC_MOVE;
             if (originalMode == CLASSIC_MOVE) {
                 renderOutput("Mode already set to classic", CONFIG_PREFIX);
                 return;
@@ -253,7 +253,7 @@ void handleConfigInput(bool* requestedStart, Config* config) {
             renderOutput("Updated mode to classic", CONFIG_PREFIX);
             return;
         } else if (strcmp(input + 5, "avalanche") == 0) {
-            config->moveFunction = AVALANCHE_MOVE;
+            config->gameSettings.moveFunction = AVALANCHE_MOVE;
             if (originalMode == AVALANCHE_MOVE) {
                 renderOutput("Mode already set to avalanche", CONFIG_PREFIX);
                 return;
@@ -288,7 +288,7 @@ void handleConfigInput(bool* requestedStart, Config* config) {
         }
 
         // Update config
-        config->stones = stones;
+        config->gameSettings.stones = stones;
 
         char message[256];
         snprintf(message, sizeof(message), "Updated stones to %d", stones);
@@ -334,7 +334,7 @@ void handleConfigInput(bool* requestedStart, Config* config) {
         int seed = atoi(input + 5);
 
         // Update config
-        config->seed = seed;
+        config->gameSettings.seed = seed;
 
         if (seed == 0) {
             renderOutput("Changed to device time based seed", CONFIG_PREFIX);
@@ -342,7 +342,7 @@ void handleConfigInput(bool* requestedStart, Config* config) {
 
         if (seed == 0) {
             seed = time(NULL);
-            config->seed = seed;
+            config->gameSettings.seed = seed;
         }
 
         char message[256];
@@ -362,7 +362,7 @@ void handleConfigInput(bool* requestedStart, Config* config) {
         }
 
         // Update config
-        config->timeLimit = time;
+        config->solverConfig.timeLimit = time;
 
         char message[256];
         if (time == 0) {
@@ -385,7 +385,7 @@ void handleConfigInput(bool* requestedStart, Config* config) {
         }
 
         // Update config
-        config->depth = depth;
+        config->solverConfig.depth = depth;
 
         char message[256];
         if (depth == 0) {
@@ -408,7 +408,7 @@ void handleConfigInput(bool* requestedStart, Config* config) {
         }
 
         // Update config
-        config->startColor = starting == 1 ? 1 : -1;
+        config->gameSettings.startColor = starting == 1 ? 1 : -1;
 
         char message[256];
         snprintf(message, sizeof(message), "Updated starting player to %d", starting);
@@ -429,9 +429,9 @@ void handleConfigInput(bool* requestedStart, Config* config) {
         // Check for agent
         if (strncmp(input + 9, "human", 5) == 0) {
             if (player == 1) {
-                config->player1 = HUMAN_AGENT;
+                config->gameSettings.player1 = HUMAN_AGENT;
             } else {
-                config->player2 = HUMAN_AGENT;
+                config->gameSettings.player2 = HUMAN_AGENT;
             }
             char message[256];
             snprintf(message, sizeof(message), "Updated player %d to human", player);
@@ -439,9 +439,9 @@ void handleConfigInput(bool* requestedStart, Config* config) {
             return;
         } else if (strncmp(input + 9, "random", 6) == 0) {
             if (player == 1) {
-                config->player1 = RANDOM_AGENT;
+                config->gameSettings.player1 = RANDOM_AGENT;
             } else {
-                config->player2 = RANDOM_AGENT;
+                config->gameSettings.player2 = RANDOM_AGENT;
             }
             char message[256];
             snprintf(message, sizeof(message), "Updated player %d to random", player);
@@ -449,9 +449,9 @@ void handleConfigInput(bool* requestedStart, Config* config) {
             return;
         } else if (strncmp(input + 9, "ai", 2) == 0) {
             if (player == 1) {
-                config->player1 = AI_AGENT;
+                config->gameSettings.player1 = AI_AGENT;
             } else {
-                config->player2 = AI_AGENT;
+                config->gameSettings.player2 = AI_AGENT;
             }
             char message[256];
             snprintf(message, sizeof(message), "Updated player %d to ai", player);
@@ -468,11 +468,11 @@ void handleConfigInput(bool* requestedStart, Config* config) {
     // Check for distribution
     if (strncmp(input, "distribution ", 13) == 0) {
         // Save original distribution
-        Distribution originalDistribution = config->distribution;
+        Distribution originalDistribution = config->gameSettings.distribution;
 
         // Check if valid distribution
         if (strcmp(input + 13, "uniform") == 0) {
-            config->distribution = UNIFORM_DIST;
+            config->gameSettings.distribution = UNIFORM_DIST;
             if (originalDistribution == UNIFORM_DIST) {
                 renderOutput("Distribution already set to uniform", CONFIG_PREFIX);
                 return;
@@ -481,7 +481,7 @@ void handleConfigInput(bool* requestedStart, Config* config) {
             renderOutput("Updated distribution to uniform", CONFIG_PREFIX);
             return;
         } else if (strcmp(input + 13, "random") == 0) {
-            config->distribution = RANDOM_DIST;
+            config->gameSettings.distribution = RANDOM_DIST;
             if (originalDistribution == RANDOM_DIST) {
                 renderOutput("Distribution already set to random", CONFIG_PREFIX);
                 return;

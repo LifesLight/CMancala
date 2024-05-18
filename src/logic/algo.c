@@ -5,25 +5,25 @@
 
 #include "logic/algo.h"
 
-void aspirationRoot(Context* context, Solver solver) {
-    switch (solver) {
+
+void aspirationRoot(Context* context, SolverConfig *config) {
+    switch (config->solver) {
         case GLOBAL_SOLVER:
-            GLOBAL_negamaxAspirationRoot(context);
+            GLOBAL_aspirationRoot(context, config);
             break;
         case LOCAL_SOLVER:
-            LOCAL_negamaxAspirationRoot(context);
+            LOCAL_aspirationRoot(context, config);
             break;
     }
 }
 
-void distributionRoot(Board *board, int depth, int32_t* distribution, bool *solved, Solver solver) {
-    *solved = true;
-    switch (solver) {
+void distributionRoot(Board *board, int32_t* distribution, bool *solved, SolverConfig *config) {
+    switch (config->solver) {
         case GLOBAL_SOLVER:
-            GLOBAL_negamaxRootWithDistribution(board, depth, distribution, solved);
+            GLOBAL_distributionRoot(board, distribution, solved, config);
             break;
         case LOCAL_SOLVER:
-            LOCAL_negamaxRootWithDistribution(board, depth, distribution, solved);
+            LOCAL_distributionRoot(board, distribution, solved, config);
             break;
     }
 }

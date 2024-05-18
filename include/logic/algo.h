@@ -30,6 +30,6 @@
 NegamaxTrace traceRoot(
     Board *board, int alpha, const int beta, const int depth);
 
-void aspirationRoot(Context* context, Solver solver);
+void aspirationRoot(Context* context, SolverConfig *solver);
 
-void distributionRoot(Board *board, int depth, int32_t* distribution, bool *solved, Solver solver);
+void distributionRoot(Board *board, int32_t* distribution, bool *solved, SolverConfig *config);

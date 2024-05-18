@@ -127,6 +127,7 @@ void startCache(uint32_t size) {
     cacheSize = size;
     free(cache);
     cache = malloc(sizeof(Entry) * cacheSize);
+
     for (int i = 0; i < (int64_t)cacheSize; i++) {
         cache[i].value = UNSET_VALUE;
         cache[i].validation = 0;

@@ -10,19 +10,27 @@ void startInterface() {
     renderWelcome();
 
     // Global config struct
-    Config config = {
+    SolverConfig solverConfig = {
+        .solver = GLOBAL_SOLVER,
+        .depth = 0,
+        .timeLimit = 5.0,
+        .goodEnough = 0
+    };
+
+    GameSettings gameSettings = {
         .stones = 4,
         .distribution = UNIFORM_DIST,
         .seed = time(NULL),
-        .timeLimit = 5.0,
-        .depth = 0,
         .startColor = 1,
-        .autoplay = true,
         .player1 = HUMAN_AGENT,
         .player2 = AI_AGENT,
-        .moveFunction = CLASSIC_MOVE,
-        .solver = GLOBAL_SOLVER,
-        .goodEnough = 0
+        .moveFunction = CLASSIC_MOVE
+    };
+
+    Config config = {
+        .autoplay = true,
+        .gameSettings = gameSettings,
+        .solverConfig = solverConfig
     };
 
     // Global loop
@@ -31,7 +39,7 @@ void startInterface() {
         handleConfigInput(&requestedStart, &config);
 
         if (requestedStart) {
-            srand(config.seed);
+            srand(config.gameSettings.seed);
             startGameHandling(&config);
         }
     }

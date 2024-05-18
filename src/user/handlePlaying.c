@@ -14,7 +14,7 @@ void renderPlayHelp() {
 }
 
 void getMoveAi(Context* context) {
-    aspirationRoot(context, context->config->solver);
+    aspirationRoot(context, &context->config.solverConfig);
 }
 
 void getMoveRandom(Context* context) {
@@ -35,7 +35,7 @@ void getMoveRandom(Context* context) {
     // Only proceed if there is at least one non-empty cell
     if (count > 0) {
         int randomIndex = rand() % count;
-        context->lastMove = nonEmptyCells[randomIndex];
+        context->metadata.lastMove = nonEmptyCells[randomIndex];
     } else {
         renderOutput("Random agent could not find valid move", PLAY_PREFIX);
         quitGame();
@@ -45,8 +45,8 @@ void getMoveRandom(Context* context) {
 }
 
 void tellContextNoComputation(Context* context) {
-    context->lastEvaluation = INT32_MAX;
-    context->lastSolved = false;
+    context->metadata.lastEvaluation = INT32_MAX;
+    context->metadata.lastSolved = false;
 }
 
 void getMoveHuman(bool* requestMenu, Context* context) {
@@ -92,7 +92,7 @@ void getMoveHuman(bool* requestMenu, Context* context) {
                 continue;;
             }
 
-            context->lastMove = idx;
+            context->metadata.lastMove = idx;
 
             break;
         }
@@ -113,7 +113,7 @@ void getMoveHuman(bool* requestMenu, Context* context) {
                 continue;
             }
 
-            context->lastMove = idx;
+            context->metadata.lastMove = idx;
             return;
         }
 
@@ -126,11 +126,11 @@ void getMoveHuman(bool* requestMenu, Context* context) {
 }
 
 void stepGame(bool* requestedMenu, Context* context) {
-    renderBoard(context->board, PLAY_PREFIX, context->config);
+    renderBoard(context->board, PLAY_PREFIX, &context->config.gameSettings);
 
     // Check turn
     if (context->board->color == 1) {
-        switch (context->config->player1) {
+        switch (context->config.gameSettings.player1) {
             case AI_AGENT:
                 getMoveAi(context);
                 *requestedMenu = false;
@@ -148,7 +148,7 @@ void stepGame(bool* requestedMenu, Context* context) {
                 break;
         }
     } else {
-        switch (context->config->player2) {
+        switch (context->config.gameSettings.player2) {
             case AI_AGENT:
                 getMoveAi(context);
                 *requestedMenu = false;
@@ -171,7 +171,7 @@ void stepGame(bool* requestedMenu, Context* context) {
         return;
     }
 
-    int move = context->lastMove;
+    int move = context->metadata.lastMove;
 
     if (move == -1) {
         renderOutput("No move", PLAY_PREFIX);
