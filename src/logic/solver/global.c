@@ -117,7 +117,6 @@ int GLOBAL_negamaxWithMove(Board *board, int *bestMove, int alpha, const int bet
 }
 
 void GLOBAL_distributionRoot(Board *board, int *distribution, bool *solvedOutput, SolverConfig *config) {
-    renderOutput("Thinking...", CHEAT_PREFIX);
     const int8_t start = (board->color == 1) ? HBOUND_P1 : HBOUND_P2;
     const int8_t end = (board->color == 1) ? LBOUND_P1 : LBOUND_P2;
     int index = 5;
@@ -176,8 +175,6 @@ void GLOBAL_aspirationRoot(Context* context, SolverConfig *config) {
     int windowMisses = 0;
     clock_t start = clock();
     nodeCount = 0;
-
-    renderOutput("Thinking...", PLAY_PREFIX);
 
     while (true) {
         solved = true;

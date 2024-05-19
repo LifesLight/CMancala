@@ -85,7 +85,10 @@ uint32_t getCacheSize() {
     return cacheSize;
 }
 
-uint64_t translateBoard(Board* board) {
+/**
+ * Returns false if cant be translated
+*/
+bool translateBoard(Board* board, uint64_t *code) {
     // Check if window can be stored
     uint64_t hash = 0;
 
@@ -99,7 +102,7 @@ uint64_t translateBoard(Board* board) {
     for (int i = 0; i < 6; i++) {
         value = board->cells[i];
         if (value > 31) {
-            return INVALID_HASH;
+            return false;
         }
         hash |= ((uint64_t)(value & 0x1F)) << offset;
         offset += 5;
@@ -108,14 +111,14 @@ uint64_t translateBoard(Board* board) {
     for (int i = 7; i < 13; i++) {
         value = board->cells[i];
         if (value > 31) {
-            return INVALID_HASH;
+            return false;
         }
         hash |= ((uint64_t)(value & 0x1F)) << offset;
         offset += 5;
     }
 
-    // at least 1 bit needs to be free to check if the hash is invalid
-    return hash;
+    *code = hash;
+    return true;
 }
 
 // Hash function to get into the array index
@@ -172,9 +175,8 @@ void cacheNode(Board* board, int evaluation, int boundType) {
     }
 
     // Translate the board to a unique hash value
-    uint64_t hashValue = translateBoard(board);
-
-    if (hashValue == INVALID_HASH) {
+    uint64_t hashValue;
+    if (!translateBoard(board, &hashValue)) {
         return;
     }
 
@@ -221,10 +223,8 @@ void cacheNode(Board* board, int evaluation, int boundType) {
 }
 
 bool getCachedValue(Board* board, int *eval, int *boundType) {
-    uint64_t hashValue = translateBoard(board);
-
-    // Not hashable
-    if (hashValue == INVALID_HASH) {
+    uint64_t hashValue;
+    if (!translateBoard(board, &hashValue)) {
         return false;
     }
 

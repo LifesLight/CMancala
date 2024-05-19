@@ -13,7 +13,7 @@ void renderCheatHelp() {
     renderOutput("  switch                           : Switch the next player", CHEAT_PREFIX);
     renderOutput("  edit [player] [idx] [value]      : Edit cell value", CHEAT_PREFIX);
     renderOutput("  render                           : Render the current board", CHEAT_PREFIX);
-    renderOutput("  analyze --solver --depth         : Run a full analysis on the board, solver and depth can be specified", CHEAT_PREFIX);
+    renderOutput("  analyze --solver --depth --clip  : Run analysis on the board, solver, depth and clip can be specified", CHEAT_PREFIX);
     renderOutput("  last                             : Fetch the last moves metadata", CHEAT_PREFIX);
     renderOutput("  cache                            : Fetch the cache stats", CHEAT_PREFIX);
     renderOutput("  trace                            : Compute move trace of the last move (requires cached evaluation)", CHEAT_PREFIX);

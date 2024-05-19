@@ -4,7 +4,6 @@ project(CMancala)
 set(CMAKE_C_STANDARD 23)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_C_COMPILER "gcc")
-set(CMAKE_CXX_COMPILER "g++")
 
 set(SOURCE_FILES
     src/main.c

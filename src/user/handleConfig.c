@@ -14,8 +14,8 @@ void renderConfigHelp() {
     renderOutput("  time [number >= 0]               : Set time limit for AI in seconds, if 0 unlimited", CONFIG_PREFIX);
     renderOutput("  depth [number >= 0]              : Set depth limit for AI, if 0 unlimited", CONFIG_PREFIX);
     renderOutput("  solver [global|local]            : Set default solver for AI", CONFIG_PREFIX);
-    renderOutput("  clip [number >= 0]               : Set \"good enough\" evaluation for all solvers, 0 is clip disabled", CONFIG_PREFIX);
-    renderOutput("  cache [small|normal|large]       : Set cache size. Larger results in slower computation but larger storage", CONFIG_PREFIX);
+    renderOutput("  clip [number >= 0]               : Clip \"how much\" the solvers attempt to win, 0 disables", CONFIG_PREFIX);
+    renderOutput("  cache [t|s|n|l|e|number]         : Set cache size. Can be a custom value or preset", CONFIG_PREFIX);
     renderOutput("  starting [1|2]                   : Configure starting player", CONFIG_PREFIX);
     renderOutput("  player [1|2] [human|random|ai]   : Configure player", CONFIG_PREFIX);
     renderOutput("  display                          : Display current configuration", CONFIG_PREFIX);
@@ -152,15 +152,25 @@ void handleConfigInput(bool* requestedStart, Config* config) {
 
         // Check if valid number
         cacheSize = atoi(input + 6);
+        bool preset = true;
 
-        if (strcmp(input + 6, "small") == 0) {
+        if (strcmp(input + 6, "t") == 0) {
+            cacheSize = TINY_CACHE_SIZE;
+            renderOutput("Updated cache size to tiny", CONFIG_PREFIX);
+        } else if (strcmp(input + 6, "s") == 0) {
             cacheSize = SMALL_CACHE_SIZE;
-        } else if (strcmp(input + 6, "normal") == 0) {
+            renderOutput("Updated cache size to small", CONFIG_PREFIX);
+        } else if (strcmp(input + 6, "n") == 0) {
             cacheSize = NORMAL_CACHE_SIZE;
-        } else if (strcmp(input + 6, "large") == 0) {
+            renderOutput("Updated cache size to normal", CONFIG_PREFIX);
+        } else if (strcmp(input + 6, "l") == 0) {
             cacheSize = LARGE_CACHE_SIZE;
-        } else if (strcmp(input + 6, "extreme") == 0) {
+            renderOutput("Updated cache size to large", CONFIG_PREFIX);
+        } else if (strcmp(input + 6, "e") == 0) {
             cacheSize = EXTREME_CACHE_SIZE;
+            renderOutput("Updated cache size to extreme", CONFIG_PREFIX);
+        } else {
+            preset = false;
         }
 
         if (cacheSize < 0) {
@@ -173,13 +183,13 @@ void handleConfigInput(bool* requestedStart, Config* config) {
 
         if (cacheSize == 0) {
             renderOutput("Disabled cache", CONFIG_PREFIX);
-            return;
-        } else {
+        } else if (!preset) {
             char message[256];
             snprintf(message, sizeof(message), "Updated cache size to %d", cacheSize);
             renderOutput(message, CONFIG_PREFIX);
-            return;
         }
+
+        return;
     }
 
     // Check for clip

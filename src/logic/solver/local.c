@@ -178,7 +178,6 @@ void LOCAL_distributionRoot(Board *board, int *distribution, bool *solved, Solve
         startCache(NORMAL_CACHE_SIZE);
     }
 
-    renderOutput("Thinking...", CHEAT_PREFIX);
     const int8_t start = (board->color == 1) ? HBOUND_P1 : HBOUND_P2;
     const int8_t end = (board->color == 1) ? LBOUND_P1 : LBOUND_P2;
     int index = 5;
@@ -252,8 +251,6 @@ void LOCAL_aspirationRoot(Context* context, SolverConfig *config) {
     nodeCount = 0;
     bool solved;
 
-    renderOutput("Thinking...", PLAY_PREFIX);
-
     while (true) {
         solved = false;
         score = LOCAL_negamaxWithMove(context->board, &bestMove, alpha, beta, currentDepth, &solved);
@@ -284,4 +281,3 @@ void LOCAL_aspirationRoot(Context* context, SolverConfig *config) {
 
     stepCache();
 }
-
