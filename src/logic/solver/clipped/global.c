@@ -6,7 +6,7 @@
 
 bool solved;
 
-int GLOBAL_CLIP_negamax(Board *board, int alpha, const int beta, const int depth) {
+int GLOBAL_CLIP_negamax(Board *board, const int bound, const int depth) {
     // Terminally check
     // The order of the checks is important here
     // Otherwise we could have a empty side, without adding up the opponents pieces to his score
@@ -47,17 +47,17 @@ int GLOBAL_CLIP_negamax(Board *board, int alpha, const int beta, const int depth
         // Branch to check if this player is still playing
         if (board->color == boardCopy.color) {
             // If yes, call negamax with current parameters and no inversion
-            score = GLOBAL_CLIP_negamax(&boardCopy, alpha, beta, depth - 1);
+            score = GLOBAL_CLIP_negamax(&boardCopy, bound, depth - 1);
         } else {
             // If no, call negamax with inverted parameters for the other player
-            score = -GLOBAL_CLIP_negamax(&boardCopy, -beta, -alpha, depth - 1);
+            score = -GLOBAL_CLIP_negamax(&boardCopy, bound, depth - 1);
         }
 
         // Update parameters
         reference = max(reference, score);
 
         // If this branch certainly worse than another, prune it
-        if (reference >= beta) {
+        if (reference >= bound) {
             break;
         }
     }
@@ -65,7 +65,7 @@ int GLOBAL_CLIP_negamax(Board *board, int alpha, const int beta, const int depth
     return reference;
 }
 
-int GLOBAL_CLIP_negamaxWithMove(Board *board, int *bestMove, int alpha, const int beta, const int depth) {
+int GLOBAL_CLIP_negamaxWithMove(Board *board, int *bestMove, const int bound, const int depth) {
     if (processBoardTerminal(board)) {
         *bestMove = -1;
         return board->color * getBoardEvaluation(board);
@@ -95,9 +95,9 @@ int GLOBAL_CLIP_negamaxWithMove(Board *board, int *bestMove, int alpha, const in
         makeMoveFunction(&boardCopy, i);
 
         if (board->color == boardCopy.color) {
-            score = GLOBAL_CLIP_negamax(&boardCopy, alpha, beta, depth - 1);
+            score = GLOBAL_CLIP_negamax(&boardCopy, bound, depth - 1);
         } else {
-            score = -GLOBAL_CLIP_negamax(&boardCopy, -beta, -alpha, depth - 1);
+            score = -GLOBAL_CLIP_negamax(&boardCopy, bound, depth - 1);
         }
 
         if (score > reference) {
@@ -105,7 +105,7 @@ int GLOBAL_CLIP_negamaxWithMove(Board *board, int *bestMove, int alpha, const in
             *bestMove = i;
         }
 
-        if (reference >= beta) {
+        if (reference >= bound) {
             break;
         }
     }
@@ -119,8 +119,7 @@ void GLOBAL_CLIP_distributionRoot(Board *board, int *distribution, bool *solvedO
     int index = 5;
     int score;
 
-    int beta = config->goodEnough;
-    int alpha = -config->goodEnough;
+    const int clip = config->goodEnough;
 
     solved = true;
 
@@ -135,9 +134,9 @@ void GLOBAL_CLIP_distributionRoot(Board *board, int *distribution, bool *solvedO
         makeMoveFunction(&boardCopy, i);
 
         if (board->color == boardCopy.color) {
-            score = GLOBAL_CLIP_negamax(&boardCopy, alpha, beta, config->depth);
+            score = GLOBAL_CLIP_negamax(&boardCopy, clip, config->depth);
         } else {
-            score = -GLOBAL_CLIP_negamax(&boardCopy, alpha, beta, config->depth);
+            score = -GLOBAL_CLIP_negamax(&boardCopy, clip, config->depth);
         }
 
         distribution[index] = score;
@@ -151,8 +150,6 @@ void GLOBAL_CLIP_aspirationRoot(Context* context, SolverConfig *config) {
     const int depthStep = 1;
     const int clip = config->goodEnough;
 
-    int alpha = -clip;
-    int beta = clip;
     int score;
     int currentDepth = 1;
     int bestMove = -1;
@@ -161,7 +158,7 @@ void GLOBAL_CLIP_aspirationRoot(Context* context, SolverConfig *config) {
 
     while (true) {
         solved = true;
-        score = GLOBAL_CLIP_negamaxWithMove(context->board, &bestMove, alpha, beta, currentDepth);
+        score = GLOBAL_CLIP_negamaxWithMove(context->board, &bestMove, clip, currentDepth);
         currentDepth += depthStep;
         if (solved) break;
         if (currentDepth > config->depth && config->depth > 0) break;
