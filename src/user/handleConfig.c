@@ -14,7 +14,7 @@ void renderConfigHelp() {
     renderOutput("  time [number >= 0]               : Set time limit for AI in seconds, if 0 unlimited", CONFIG_PREFIX);
     renderOutput("  depth [number >= 0]              : Set depth limit for AI, if 0 unlimited", CONFIG_PREFIX);
     renderOutput("  solver [global|local]            : Set default solver for AI", CONFIG_PREFIX);
-    renderOutput("  clip [number >= 0]               : Clip \"how much\" the solvers attempt to win, 0 disables", CONFIG_PREFIX);
+    renderOutput("  clip [true|false]                : Set clip on/off, clip only computes if a move is winning or losing", CONFIG_PREFIX);
     renderOutput("  cache [t|s|n|l|e|number]         : Set cache size. Can be a custom value or preset", CONFIG_PREFIX);
     renderOutput("  starting [1|2]                   : Configure starting player", CONFIG_PREFIX);
     renderOutput("  player [1|2] [human|random|ai]   : Configure player", CONFIG_PREFIX);
@@ -69,9 +69,9 @@ void printConfig(Config* config) {
             break;
     }
 
-    if (config->solverConfig.goodEnough > 0) {
+    if (config->solverConfig.clip) {
         char temp[256];
-        snprintf(temp, sizeof(temp), " clip: %d", config->solverConfig.goodEnough);
+        snprintf(temp, sizeof(temp), " clipped");
         strcat(message, temp);
     }
 
@@ -194,25 +194,34 @@ void handleConfigInput(bool* requestedStart, Config* config) {
 
     // Check for clip
     if (strncmp(input, "clip ", 5) == 0) {
-        // Check if valid number
-        int clip = atoi(input + 5);
+        // Save original clip
+        bool originalClip = config->solverConfig.clip;
 
-        if (clip < 0) {
-            renderOutput("Invalid clip value", CONFIG_PREFIX);
+        // Check if valid clip
+        if (strcmp(input + 5, "true") == 0 || strcmp(input + 5, "1") == 0) {
+            config->solverConfig.clip = true;
+            if (originalClip) {
+                renderOutput("Clip already enabled", CONFIG_PREFIX);
+                return;
+            }
+
+            renderOutput("Enabled clip", CONFIG_PREFIX);
+            return;
+        } else if (strcmp(input + 5, "false") == 0 || strcmp(input + 5, "0") == 0) {
+            config->solverConfig.clip = false;
+            if (!originalClip) {
+                renderOutput("Clip already disabled", CONFIG_PREFIX);
+                return;
+            }
+
+            renderOutput("Disabled clip", CONFIG_PREFIX);
+            return;
+        } else {
+            char message[256];
+            snprintf(message, sizeof(message), "Invalid clip \"%s\"", input + 5);
+            renderOutput(message, CONFIG_PREFIX);
             return;
         }
-
-        // Update config
-        config->solverConfig.goodEnough = clip;
-
-        char message[256];
-        if (clip == 0) {
-            snprintf(message, sizeof(message), "Disabled clip");
-        } else {
-            snprintf(message, sizeof(message), "Updated clip to %d", clip);
-        }
-        renderOutput(message, CONFIG_PREFIX);
-        return;
     }
 
     // Check for solver

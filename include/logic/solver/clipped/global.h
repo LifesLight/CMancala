@@ -21,7 +21,7 @@
  * Negamax algorithm with alpha-beta pruning and best move output.
 */
 int GLOBAL_CLIP_negamaxWithMove(
-    Board *board, int *bestMove, const int bound, const int depth);
+    Board *board, int *bestMove, const int depth);
 
 /**
  * Distribution root

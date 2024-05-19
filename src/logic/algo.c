@@ -7,7 +7,7 @@
 
 
 void aspirationRoot(Context* context, SolverConfig *config) {
-    if (config->goodEnough != 0) {
+    if (config->clip) {
         switch (config->solver) {
             case GLOBAL_SOLVER:
                 GLOBAL_CLIP_aspirationRoot(context, config);
@@ -29,7 +29,7 @@ void aspirationRoot(Context* context, SolverConfig *config) {
 }
 
 void distributionRoot(Board *board, int32_t* distribution, bool *solved, SolverConfig *config) {
-    if (config->goodEnough != 0) {
+    if (config->clip) {
         switch (config->solver) {
             case GLOBAL_SOLVER:
                 GLOBAL_CLIP_distributionRoot(board, distribution, solved, config);

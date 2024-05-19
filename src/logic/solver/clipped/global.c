@@ -6,7 +6,7 @@
 
 bool solved;
 
-int GLOBAL_CLIP_negamax(Board *board, const int bound, const int depth) {
+int GLOBAL_CLIP_negamax(Board *board, const int depth) {
     // Terminally check
     // The order of the checks is important here
     // Otherwise we could have a empty side, without adding up the opponents pieces to his score
@@ -47,17 +47,17 @@ int GLOBAL_CLIP_negamax(Board *board, const int bound, const int depth) {
         // Branch to check if this player is still playing
         if (board->color == boardCopy.color) {
             // If yes, call negamax with current parameters and no inversion
-            score = GLOBAL_CLIP_negamax(&boardCopy, bound, depth - 1);
+            score = GLOBAL_CLIP_negamax(&boardCopy, depth - 1);
         } else {
             // If no, call negamax with inverted parameters for the other player
-            score = -GLOBAL_CLIP_negamax(&boardCopy, bound, depth - 1);
+            score = -GLOBAL_CLIP_negamax(&boardCopy, depth - 1);
         }
 
         // Update parameters
         reference = max(reference, score);
 
         // If this branch certainly worse than another, prune it
-        if (reference >= bound) {
+        if (reference >= 1) {
             break;
         }
     }
@@ -65,7 +65,7 @@ int GLOBAL_CLIP_negamax(Board *board, const int bound, const int depth) {
     return reference;
 }
 
-int GLOBAL_CLIP_negamaxWithMove(Board *board, int *bestMove, const int bound, const int depth) {
+int GLOBAL_CLIP_negamaxWithMove(Board *board, int *bestMove, const int depth) {
     if (processBoardTerminal(board)) {
         *bestMove = -1;
         return board->color * getBoardEvaluation(board);
@@ -95,9 +95,9 @@ int GLOBAL_CLIP_negamaxWithMove(Board *board, int *bestMove, const int bound, co
         makeMoveFunction(&boardCopy, i);
 
         if (board->color == boardCopy.color) {
-            score = GLOBAL_CLIP_negamax(&boardCopy, bound, depth - 1);
+            score = GLOBAL_CLIP_negamax(&boardCopy, depth - 1);
         } else {
-            score = -GLOBAL_CLIP_negamax(&boardCopy, bound, depth - 1);
+            score = -GLOBAL_CLIP_negamax(&boardCopy, depth - 1);
         }
 
         if (score > reference) {
@@ -105,7 +105,7 @@ int GLOBAL_CLIP_negamaxWithMove(Board *board, int *bestMove, const int bound, co
             *bestMove = i;
         }
 
-        if (reference >= bound) {
+        if (reference >= 1) {
             break;
         }
     }
@@ -118,8 +118,6 @@ void GLOBAL_CLIP_distributionRoot(Board *board, int *distribution, bool *solvedO
     const int8_t end = (board->color == 1) ? LBOUND_P1 : LBOUND_P2;
     int index = 5;
     int score;
-
-    const int clip = config->goodEnough;
 
     solved = true;
 
@@ -134,9 +132,9 @@ void GLOBAL_CLIP_distributionRoot(Board *board, int *distribution, bool *solvedO
         makeMoveFunction(&boardCopy, i);
 
         if (board->color == boardCopy.color) {
-            score = GLOBAL_CLIP_negamax(&boardCopy, clip, config->depth);
+            score = GLOBAL_CLIP_negamax(&boardCopy, config->depth);
         } else {
-            score = -GLOBAL_CLIP_negamax(&boardCopy, clip, config->depth);
+            score = -GLOBAL_CLIP_negamax(&boardCopy, config->depth);
         }
 
         distribution[index] = score;
@@ -148,7 +146,6 @@ void GLOBAL_CLIP_distributionRoot(Board *board, int *distribution, bool *solvedO
 
 void GLOBAL_CLIP_aspirationRoot(Context* context, SolverConfig *config) {
     const int depthStep = 1;
-    const int clip = config->goodEnough;
 
     int score;
     int currentDepth = 1;
@@ -158,7 +155,7 @@ void GLOBAL_CLIP_aspirationRoot(Context* context, SolverConfig *config) {
 
     while (true) {
         solved = true;
-        score = GLOBAL_CLIP_negamaxWithMove(context->board, &bestMove, clip, currentDepth);
+        score = GLOBAL_CLIP_negamaxWithMove(context->board, &bestMove, currentDepth);
         currentDepth += depthStep;
         if (solved) break;
         if (currentDepth > config->depth && config->depth > 0) break;
@@ -172,4 +169,8 @@ void GLOBAL_CLIP_aspirationRoot(Context* context, SolverConfig *config) {
     context->metadata.lastEvaluation = score;
     context->metadata.lastDepth = currentDepth - 1;
     context->metadata.lastSolved = solved;
+
+    if (score < 0) {
+        renderOutput("[WARNING]: Clipped best move calculators should not be used in losing positions!", CHEAT_PREFIX);
+    }
 }

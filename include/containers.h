@@ -35,7 +35,7 @@ typedef struct {
     Solver solver;
     int depth;
     double timeLimit;
-    uint32_t goodEnough;
+    bool clip;
 } SolverConfig;
 
 typedef struct {

@@ -81,20 +81,7 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
 
         // Parse and set the clip configuration
         if (clipPoint != NULL) {
-            clipPoint += 7;  // Move pointer past "--clip "
-            char *endPtr;
-            int parsedClip = strtol(clipPoint, &endPtr, 10);
-            if (clipPoint == endPtr) {
-                renderOutput("Invalid clip value", CHEAT_PREFIX);
-                return;
-            }
-
-            if (parsedClip < 0) {
-                renderOutput("Clip value must be positive", CHEAT_PREFIX);
-                return;
-            }
-
-            solveConfig.goodEnough = parsedClip;
+            solveConfig.clip = true;
         }
 
         // Parse and set the depth configuration
@@ -137,33 +124,23 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
 
         switch (solveConfig.solver) {
             case GLOBAL_SOLVER:
-                if (solveConfig.goodEnough == 0) {
-                    renderOutput("Solver: Global", CHEAT_PREFIX);
+                if (solveConfig.clip) {
+                    renderOutput("Solver: Global Clipped", CHEAT_PREFIX);
                 } else {
-                    char message[256];
-                    snprintf(message, sizeof(message), "Solver: Global, Clip: %d", solveConfig.goodEnough);
-                    renderOutput(message, CHEAT_PREFIX);
+                    renderOutput("Solver: Global", CHEAT_PREFIX);
                 }
                 break;
             case LOCAL_SOLVER:
-                if (solveConfig.goodEnough == 0) {
-                    renderOutput("Solver: Local", CHEAT_PREFIX);
+                if (solveConfig.clip) {
+                    renderOutput("Solver: Local Clipped", CHEAT_PREFIX);
                 } else {
-                    char message[256];
-                    snprintf(message, sizeof(message), "Solver: Local, Clip: %d", solveConfig.goodEnough);
-                    renderOutput(message, CHEAT_PREFIX);
+                    renderOutput("Solver: Local", CHEAT_PREFIX);
                 }
                 break;
         }
 
         if (solved) {
             renderOutput("Solved", CHEAT_PREFIX);
-        }
-
-        if (solveConfig.goodEnough != 0) {
-            char message[256];
-            snprintf(message, sizeof(message), "Clip: %d", solveConfig.goodEnough);
-            renderOutput(message, CHEAT_PREFIX);
         }
 
         char message[256];

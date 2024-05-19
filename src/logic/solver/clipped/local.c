@@ -5,7 +5,7 @@
 #include "logic/solver/local.h"
 
 
-int LOCAL_CLIP_negamax(Board *board, const int bound, const int depth, bool* solved) {
+int LOCAL_CLIP_negamax(Board *board, const int depth, bool* solved) {
     // Terminally check
     // The order of the checks is important here
     // Otherwise we could have a empty side, without adding up the opponents pieces to his score
@@ -30,7 +30,7 @@ int LOCAL_CLIP_negamax(Board *board, const int bound, const int depth, bool* sol
             *solved = true;
             return cachedValue;
         } else if (boundType == LOWER_BOUND) {
-            if (cachedValue >= bound) {
+            if (cachedValue >= 1) {
                 *solved = true;
                 return cachedValue;
             }
@@ -64,10 +64,10 @@ int LOCAL_CLIP_negamax(Board *board, const int bound, const int depth, bool* sol
         // Branch to check if this player is still playing
         if (board->color == boardCopy.color) {
             // If yes, call negamax with current parameters and no inversion
-            score = LOCAL_CLIP_negamax(&boardCopy, bound, depth - 1, &solvedTemp);
+            score = LOCAL_CLIP_negamax(&boardCopy, depth - 1, &solvedTemp);
         } else {
             // If no, call negamax with inverted parameters for the other player
-            score = -LOCAL_CLIP_negamax(&boardCopy, bound, depth - 1, &solvedTemp);
+            score = -LOCAL_CLIP_negamax(&boardCopy, depth - 1, &solvedTemp);
         }
 
         if (!solvedTemp) {
@@ -78,16 +78,16 @@ int LOCAL_CLIP_negamax(Board *board, const int bound, const int depth, bool* sol
         reference = max(reference, score);
 
         // If this branch certainly worse than another, prune it
-        if (reference >= bound) {
+        if (reference >= 1) {
             break;
         }
     }
 
     // If subtree is solved, cache it
     if (*solved) {
-        if (reference <= bound) {
+        if (reference <= 1) {
             cacheNode(board, reference, UPPER_BOUND);
-        } else if (reference >= bound) {
+        } else if (reference >= 1) {
             cacheNode(board, reference, LOWER_BOUND);
         } else {
             cacheNode(board, reference, EXACT_BOUND);
@@ -97,7 +97,7 @@ int LOCAL_CLIP_negamax(Board *board, const int bound, const int depth, bool* sol
     return reference;
 }
 
-int LOCAL_CLIP_negamaxWithMove(Board *board, int *bestMove, const int bound, const int depth, bool* solved) {
+int LOCAL_CLIP_negamaxWithMove(Board *board, int *bestMove, const int depth, bool* solved) {
     if (processBoardTerminal(board)) {
         *bestMove = -1;
         *solved = true;
@@ -134,9 +134,9 @@ int LOCAL_CLIP_negamaxWithMove(Board *board, int *bestMove, const int bound, con
         solvedTemp = false;
 
         if (board->color == boardCopy.color) {
-            score = LOCAL_CLIP_negamax(&boardCopy, bound, depth - 1, &solvedTemp);
+            score = LOCAL_CLIP_negamax(&boardCopy, depth - 1, &solvedTemp);
         } else {
-            score = -LOCAL_CLIP_negamax(&boardCopy, bound, depth - 1, &solvedTemp);
+            score = -LOCAL_CLIP_negamax(&boardCopy, depth - 1, &solvedTemp);
         }
 
         if (!solvedTemp) {
@@ -148,7 +148,7 @@ int LOCAL_CLIP_negamaxWithMove(Board *board, int *bestMove, const int bound, con
             *bestMove = i;
         }
 
-        if (reference >= bound) {
+        if (reference >= 1) {
             break;
         }
     }
@@ -175,8 +175,6 @@ void LOCAL_CLIP_distributionRoot(Board *board, int *distribution, bool *solved, 
     int index = 5;
     int score;
 
-    const int bound = config->goodEnough;
-
     bool solvedTemp;
     *solved = true;
 
@@ -193,9 +191,9 @@ void LOCAL_CLIP_distributionRoot(Board *board, int *distribution, bool *solved, 
         solvedTemp = false;
 
         if (board->color == boardCopy.color) {
-            score = LOCAL_CLIP_negamax(&boardCopy, bound, config->depth, &solvedTemp);
+            score = LOCAL_CLIP_negamax(&boardCopy, config->depth, &solvedTemp);
         } else {
-            score = -LOCAL_CLIP_negamax(&boardCopy, bound, config->depth, &solvedTemp);
+            score = -LOCAL_CLIP_negamax(&boardCopy, config->depth, &solvedTemp);
         }
 
         if (!solvedTemp) {
@@ -217,7 +215,6 @@ void LOCAL_CLIP_aspirationRoot(Context* context, SolverConfig *config) {
     }
 
     const int depthStep = 1;
-    const int clip = config->goodEnough;
 
     int score;
     int currentDepth = 1;
@@ -228,7 +225,7 @@ void LOCAL_CLIP_aspirationRoot(Context* context, SolverConfig *config) {
 
     while (true) {
         solved = false;
-        score = LOCAL_CLIP_negamaxWithMove(context->board, &bestMove, clip, currentDepth, &solved);
+        score = LOCAL_CLIP_negamaxWithMove(context->board, &bestMove, currentDepth, &solved);
         currentDepth += depthStep;
         if (solved) break;
         if (currentDepth > config->depth && config->depth > 0) break;
@@ -242,6 +239,10 @@ void LOCAL_CLIP_aspirationRoot(Context* context, SolverConfig *config) {
     context->metadata.lastEvaluation = score;
     context->metadata.lastDepth = currentDepth - 1;
     context->metadata.lastSolved = solved;
+
+    if (score < 0) {
+        renderOutput("[WARNING]: Clipped best move calculators should not be used in losing positions!", CHEAT_PREFIX);
+    }
 
     stepCache();
 }

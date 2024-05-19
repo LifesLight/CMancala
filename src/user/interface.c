@@ -14,7 +14,7 @@ void startInterface() {
         .solver = GLOBAL_SOLVER,
         .depth = 0,
         .timeLimit = 5.0,
-        .goodEnough = 0
+        .clip = false
     };
 
     GameSettings gameSettings = {
