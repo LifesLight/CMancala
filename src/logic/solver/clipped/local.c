@@ -2,7 +2,7 @@
  * Copyright (c) Alexander Kurtz 2023
  */
 
-#include "logic/solver/local.h"
+#include "logic/solver/clipped/local.h"
 
 
 int LOCAL_CLIP_negamax(Board *board, const int depth, bool* solved) {

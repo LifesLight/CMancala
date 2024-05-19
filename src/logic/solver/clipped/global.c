@@ -2,7 +2,7 @@
  * Copyright (c) Alexander Kurtz 2023
  */
 
-#include "logic/solver/global.h"
+#include "logic/solver/clipped/global.h"
 
 bool solved;
 
