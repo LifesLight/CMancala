@@ -102,9 +102,9 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
 
         // Manually
         int distribution[6];
-        bool solved;
+        bool solvedAnalyze;
 
-        distributionRoot(context->board, distribution, &solved, &solveConfig);
+        distributionRoot(context->board, distribution, &solvedAnalyze, &solveConfig);
 
         int renderCells[14];
         for (int i = 0; i < 14; i++) {
@@ -139,7 +139,7 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
                 break;
         }
 
-        if (solved) {
+        if (solvedAnalyze) {
             renderOutput("Solved", CHEAT_PREFIX);
         }
 

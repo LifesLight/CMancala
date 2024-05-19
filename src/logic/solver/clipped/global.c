@@ -4,7 +4,7 @@
 
 #include "logic/solver/clipped/global.h"
 
-bool solved;
+bool solvedClipped;
 
 int GLOBAL_CLIP_negamax(Board *board, const int depth) {
     // Terminally check
@@ -17,7 +17,7 @@ int GLOBAL_CLIP_negamax(Board *board, const int depth) {
     // Check if depth limit is reached
     if (depth == 0) {
         // If we ever get depth limited in a non-terminal state, the game is not solved
-        solved = false;
+        solvedClipped = false;
         return board->color * getBoardEvaluation(board);
     }
 
@@ -72,7 +72,7 @@ int GLOBAL_CLIP_negamaxWithMove(Board *board, int *bestMove, const int depth) {
     }
 
     if (depth == 0) {
-        solved = false;
+        solvedClipped = false;
         *bestMove = -1;
         return board->color * getBoardEvaluation(board);
     }
@@ -119,7 +119,7 @@ void GLOBAL_CLIP_distributionRoot(Board *board, int *distribution, bool *solvedO
     int index = 5;
     int score;
 
-    solved = true;
+    solvedClipped = true;
 
     for (int8_t i = start; i >= end; i--) {
         if (board->cells[i] == 0) {
@@ -141,7 +141,7 @@ void GLOBAL_CLIP_distributionRoot(Board *board, int *distribution, bool *solvedO
         index--;
     }
 
-    *solvedOutput = solved;
+    *solvedOutput = solvedClipped;
 }
 
 void GLOBAL_CLIP_aspirationRoot(Context* context, SolverConfig *config) {
@@ -154,10 +154,10 @@ void GLOBAL_CLIP_aspirationRoot(Context* context, SolverConfig *config) {
     nodeCount = 0;
 
     while (true) {
-        solved = true;
+        solvedClipped = true;
         score = GLOBAL_CLIP_negamaxWithMove(context->board, &bestMove, currentDepth);
         currentDepth += depthStep;
-        if (solved) break;
+        if (solvedClipped) break;
         if (currentDepth > config->depth && config->depth > 0) break;
         if (((double)(clock() - start) / CLOCKS_PER_SEC) >= config->timeLimit && config->timeLimit > 0) break;
     }
@@ -168,7 +168,7 @@ void GLOBAL_CLIP_aspirationRoot(Context* context, SolverConfig *config) {
     context->metadata.lastMove = bestMove;
     context->metadata.lastEvaluation = score;
     context->metadata.lastDepth = currentDepth - 1;
-    context->metadata.lastSolved = solved;
+    context->metadata.lastSolved = solvedClipped;
 
     if (score < 0) {
         renderOutput("[WARNING]: Clipped best move calculators should not be used in losing positions!", CHEAT_PREFIX);
