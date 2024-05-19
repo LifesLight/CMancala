@@ -40,7 +40,7 @@ void startInterface() {
 
         if (requestedStart) {
             srand(config.gameSettings.seed);
-            startGameHandling(&config);
+            startGameHandling(config);
         }
     }
 }

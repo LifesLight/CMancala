@@ -137,10 +137,22 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
 
         switch (solveConfig.solver) {
             case GLOBAL_SOLVER:
-                renderOutput("Solver: Global", CHEAT_PREFIX);
+                if (solveConfig.goodEnough == 0) {
+                    renderOutput("Solver: Global", CHEAT_PREFIX);
+                } else {
+                    char message[256];
+                    snprintf(message, sizeof(message), "Solver: Global, Clip: %d", solveConfig.goodEnough);
+                    renderOutput(message, CHEAT_PREFIX);
+                }
                 break;
             case LOCAL_SOLVER:
-                renderOutput("Solver: Local", CHEAT_PREFIX);
+                if (solveConfig.goodEnough == 0) {
+                    renderOutput("Solver: Local", CHEAT_PREFIX);
+                } else {
+                    char message[256];
+                    snprintf(message, sizeof(message), "Solver: Local, Clip: %d", solveConfig.goodEnough);
+                    renderOutput(message, CHEAT_PREFIX);
+                }
                 break;
         }
 
@@ -411,12 +423,12 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
     return;
 }
 
-void startGameHandling(Config *config) {
+void startGameHandling(Config config) {
     // Initialize board
     Board board;
-    initializeBoardFromConfig(&board, config);
+    initializeBoardFromConfig(&board, &config);
 
-    setMoveFunction(config->gameSettings.moveFunction);
+    setMoveFunction(config.gameSettings.moveFunction);
 
     Metadata metadata = {
         .lastEvaluation = INT32_MAX,
@@ -431,13 +443,13 @@ void startGameHandling(Config *config) {
     Context context = {
         .board = &board,
         .lastBoard = malloc(sizeof(Board)),
-        .config = *config,
+        .config = config,
         .metadata = metadata,
     };
 
     // Start game loop
     bool requestedConfig = false;
-    bool requestedContinue = config->autoplay ? true : false;
+    bool requestedContinue = context.config.autoplay ? true : false;
 
     while(!requestedConfig) {
         if (isBoardTerminal(context.board)) {
@@ -453,27 +465,28 @@ void startGameHandling(Config *config) {
             if (isBoardTerminal(context.board)) {
                 requestedContinue = false;
 
-                renderBoard(&board, PLAY_PREFIX, &config->gameSettings);
+                renderBoard(&board, PLAY_PREFIX, &context.config.gameSettings);
 
                 int score1 = board.cells[SCORE_P1];
                 int score2 = board.cells[SCORE_P2];
 
                 char message[256];
+                char temp[256];
                 if (score1 > score2) {
-                    snprintf(message, sizeof(message), "Player 1 wins");
+                    snprintf(temp, sizeof(temp), "Player 1 wins");
                 } else if (score1 < score2) {
-                    snprintf(message, sizeof(message), "Player 2 wins");
+                    snprintf(temp, sizeof(temp), "Player 2 wins");
                 } else {
-                    snprintf(message, sizeof(message), "Draw");
+                    snprintf(temp, sizeof(temp), "Draw");
                 }
 
-                snprintf(message, sizeof(message), "%s, score: %d - %d", message, score1, score2);
+                snprintf(message, sizeof(message), "%s, score: %d - %d", temp, score1, score2);
                 renderOutput(message, PLAY_PREFIX);
 
                 break;
             }
 
-            if (!config->autoplay || requestedMenu) {
+            if (!context.config.autoplay || requestedMenu) {
                 requestedContinue = false;
                 break;
             }

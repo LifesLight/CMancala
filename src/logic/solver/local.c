@@ -185,11 +185,6 @@ void LOCAL_distributionRoot(Board *board, int *distribution, bool *solved, Solve
     int alpha = INT32_MIN + 1;
     int beta = INT32_MAX;
 
-    if (config->goodEnough != 0) {
-        beta = config->goodEnough;
-        alpha = -config->goodEnough;
-    }
-
     bool solvedTemp;
     *solved = true;
 
@@ -211,9 +206,7 @@ void LOCAL_distributionRoot(Board *board, int *distribution, bool *solved, Solve
             score = -LOCAL_negamax(&boardCopy, alpha, beta, config->depth, &solvedTemp);
         }
 
-        if (config->goodEnough == 0) {
-            alpha = max(alpha, score);
-        }
+        alpha = max(alpha, score);
 
         if (!solvedTemp) {
             *solved = false;
@@ -235,11 +228,6 @@ void LOCAL_aspirationRoot(Context* context, SolverConfig *config) {
 
     const int windowSize = 1;
     const int depthStep = 1;
-    const int clip = config->goodEnough;
-
-    if (clip != 0) {
-        renderOutput("Clip is not yet supported in aspiration search!", PLAY_PREFIX);
-    }
 
     int alpha = INT32_MIN + 1;
     int beta = INT32_MAX;

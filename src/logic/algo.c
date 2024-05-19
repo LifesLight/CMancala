@@ -7,24 +7,46 @@
 
 
 void aspirationRoot(Context* context, SolverConfig *config) {
-    switch (config->solver) {
-        case GLOBAL_SOLVER:
-            GLOBAL_aspirationRoot(context, config);
-            break;
-        case LOCAL_SOLVER:
-            LOCAL_aspirationRoot(context, config);
-            break;
+    if (config->goodEnough != 0) {
+        switch (config->solver) {
+            case GLOBAL_SOLVER:
+                GLOBAL_CLIP_aspirationRoot(context, config);
+                break;
+            case LOCAL_SOLVER:
+                LOCAL_CLIP_aspirationRoot(context, config);
+                break;
+        }
+    } else {
+        switch (config->solver) {
+            case GLOBAL_SOLVER:
+                GLOBAL_aspirationRoot(context, config);
+                break;
+            case LOCAL_SOLVER:
+                LOCAL_aspirationRoot(context, config);
+                break;
+        }
     }
 }
 
 void distributionRoot(Board *board, int32_t* distribution, bool *solved, SolverConfig *config) {
-    switch (config->solver) {
-        case GLOBAL_SOLVER:
-            GLOBAL_distributionRoot(board, distribution, solved, config);
-            break;
-        case LOCAL_SOLVER:
-            LOCAL_distributionRoot(board, distribution, solved, config);
-            break;
+    if (config->goodEnough != 0) {
+        switch (config->solver) {
+            case GLOBAL_SOLVER:
+                GLOBAL_CLIP_distributionRoot(board, distribution, solved, config);
+                break;
+            case LOCAL_SOLVER:
+                LOCAL_CLIP_distributionRoot(board, distribution, solved, config);
+                break;
+        }
+    } else {
+        switch (config->solver) {
+            case GLOBAL_SOLVER:
+                GLOBAL_distributionRoot(board, distribution, solved, config);
+                break;
+            case LOCAL_SOLVER:
+                LOCAL_distributionRoot(board, distribution, solved, config);
+                break;
+        }
     }
 }
 

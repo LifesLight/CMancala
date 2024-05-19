@@ -6,7 +6,7 @@
 
 bool solved;
 
-int GLOBAL_negamax(Board *board, int alpha, const int beta, const int depth) {
+int GLOBAL_CLIP_negamax(Board *board, int alpha, const int beta, const int depth) {
     // Terminally check
     // The order of the checks is important here
     // Otherwise we could have a empty side, without adding up the opponents pieces to his score
@@ -47,18 +47,17 @@ int GLOBAL_negamax(Board *board, int alpha, const int beta, const int depth) {
         // Branch to check if this player is still playing
         if (board->color == boardCopy.color) {
             // If yes, call negamax with current parameters and no inversion
-            score = GLOBAL_negamax(&boardCopy, alpha, beta, depth - 1);
+            score = GLOBAL_CLIP_negamax(&boardCopy, alpha, beta, depth - 1);
         } else {
             // If no, call negamax with inverted parameters for the other player
-            score = -GLOBAL_negamax(&boardCopy, -beta, -alpha, depth - 1);
+            score = -GLOBAL_CLIP_negamax(&boardCopy, -beta, -alpha, depth - 1);
         }
 
         // Update parameters
         reference = max(reference, score);
-        alpha = max(alpha, reference);
 
         // If this branch certainly worse than another, prune it
-        if (alpha >= beta) {
+        if (reference >= beta) {
             break;
         }
     }
@@ -66,7 +65,7 @@ int GLOBAL_negamax(Board *board, int alpha, const int beta, const int depth) {
     return reference;
 }
 
-int GLOBAL_negamaxWithMove(Board *board, int *bestMove, int alpha, const int beta, const int depth) {
+int GLOBAL_CLIP_negamaxWithMove(Board *board, int *bestMove, int alpha, const int beta, const int depth) {
     if (processBoardTerminal(board)) {
         *bestMove = -1;
         return board->color * getBoardEvaluation(board);
@@ -96,9 +95,9 @@ int GLOBAL_negamaxWithMove(Board *board, int *bestMove, int alpha, const int bet
         makeMoveFunction(&boardCopy, i);
 
         if (board->color == boardCopy.color) {
-            score = GLOBAL_negamax(&boardCopy, alpha, beta, depth - 1);
+            score = GLOBAL_CLIP_negamax(&boardCopy, alpha, beta, depth - 1);
         } else {
-            score = -GLOBAL_negamax(&boardCopy, -beta, -alpha, depth - 1);
+            score = -GLOBAL_CLIP_negamax(&boardCopy, -beta, -alpha, depth - 1);
         }
 
         if (score > reference) {
@@ -106,9 +105,7 @@ int GLOBAL_negamaxWithMove(Board *board, int *bestMove, int alpha, const int bet
             *bestMove = i;
         }
 
-        alpha = max(alpha, reference);
-
-        if (alpha >= beta) {
+        if (reference >= beta) {
             break;
         }
     }
@@ -116,13 +113,14 @@ int GLOBAL_negamaxWithMove(Board *board, int *bestMove, int alpha, const int bet
     return reference;
 }
 
-void GLOBAL_distributionRoot(Board *board, int *distribution, bool *solvedOutput, SolverConfig *config) {
+void GLOBAL_CLIP_distributionRoot(Board *board, int *distribution, bool *solvedOutput, SolverConfig *config) {
     const int8_t start = (board->color == 1) ? HBOUND_P1 : HBOUND_P2;
     const int8_t end = (board->color == 1) ? LBOUND_P1 : LBOUND_P2;
     int index = 5;
     int score;
-    int alpha = INT32_MIN + 1;
-    int beta = INT32_MAX;
+
+    int beta = config->goodEnough;
+    int alpha = -config->goodEnough;
 
     solved = true;
 
@@ -137,12 +135,10 @@ void GLOBAL_distributionRoot(Board *board, int *distribution, bool *solvedOutput
         makeMoveFunction(&boardCopy, i);
 
         if (board->color == boardCopy.color) {
-            score = GLOBAL_negamax(&boardCopy, alpha, beta, config->depth);
+            score = GLOBAL_CLIP_negamax(&boardCopy, alpha, beta, config->depth);
         } else {
-            score = -GLOBAL_negamax(&boardCopy, alpha, beta, config->depth);
+            score = -GLOBAL_CLIP_negamax(&boardCopy, alpha, beta, config->depth);
         }
-
-        alpha = max(alpha, score);
 
         distribution[index] = score;
         index--;
@@ -151,42 +147,30 @@ void GLOBAL_distributionRoot(Board *board, int *distribution, bool *solvedOutput
     *solvedOutput = solved;
 }
 
-void GLOBAL_aspirationRoot(Context* context, SolverConfig *config) {
-    const int windowSize = 1;
+void GLOBAL_CLIP_aspirationRoot(Context* context, SolverConfig *config) {
     const int depthStep = 1;
+    const int clip = config->goodEnough;
 
-    int alpha = INT32_MIN + 1;
-    int beta = INT32_MAX;
+    int alpha = -clip;
+    int beta = clip;
     int score;
     int currentDepth = 1;
     int bestMove = -1;
-    int windowMisses = 0;
     clock_t start = clock();
     nodeCount = 0;
 
     while (true) {
         solved = true;
-        score = GLOBAL_negamaxWithMove(context->board, &bestMove, alpha, beta, currentDepth);
-        if (score > alpha && score < beta) {
-            currentDepth += depthStep;
-            if (solved) break;
-            if (currentDepth > config->depth && config->depth > 0) break;
-            if (((double)(clock() - start) / CLOCKS_PER_SEC) >= config->timeLimit && config->timeLimit > 0) break;
-        } else {
-            windowMisses++;
-            alpha = score - windowSize;
-            beta = score + windowSize;
-        }
+        score = GLOBAL_CLIP_negamaxWithMove(context->board, &bestMove, alpha, beta, currentDepth);
+        currentDepth += depthStep;
+        if (solved) break;
+        if (currentDepth > config->depth && config->depth > 0) break;
+        if (((double)(clock() - start) / CLOCKS_PER_SEC) >= config->timeLimit && config->timeLimit > 0) break;
     }
 
     double timeTaken = (double)(clock() - start) / CLOCKS_PER_SEC;
     context->metadata.lastTime = timeTaken;
     context->metadata.lastNodes = nodeCount;
-    if (windowMisses > currentDepth) {
-        char message[256];
-        snprintf(message, sizeof(message), "[WARNING]: High window misses! (You may increase \"windowSize\" in algo.c)");
-        renderOutput(message, PLAY_PREFIX);
-    }
     context->metadata.lastMove = bestMove;
     context->metadata.lastEvaluation = score;
     context->metadata.lastDepth = currentDepth - 1;

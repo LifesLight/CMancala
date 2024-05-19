@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 3.20)
 project(CMancala)
 
 set(CMAKE_C_STANDARD 23)
-set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_C_COMPILER "gcc")
 
 set(SOURCE_FILES
@@ -17,6 +16,8 @@ set(SOURCE_FILES
     src/user/interface.c
     src/logic/solver/global.c
     src/logic/solver/local.c
+    src/logic/solver/clipped/local.c
+    src/logic/solver/clipped/global.c
     src/logic/solver/troughput.c
     src/logic/solver/solveCache.c
 )

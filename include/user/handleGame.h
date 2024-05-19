@@ -18,4 +18,4 @@
 #include "logic/utility.h"
 #include "user/handlePlaying.h"
 
-void startGameHandling(Config* config);
+void startGameHandling(Config config);

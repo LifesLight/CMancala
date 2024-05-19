@@ -16,7 +16,9 @@
 #include "user/render.h"
 #include "config.h"
 #include "logic/solver/global.h"
+#include "logic/solver/clipped/global.h"
 #include "logic/solver/local.h"
+#include "logic/solver/clipped/local.h"
 
 /**
  * Here are global algorithms, regardless the solver
