@@ -223,6 +223,8 @@ void LOCAL_distributionRoot(Board *board, int *distribution, bool *solved, Solve
         distribution[index] = score;
         index--;
     }
+
+    stepCache();
 }
 
 void LOCAL_aspirationRoot(Context* context, SolverConfig *config) {
@@ -279,5 +281,7 @@ void LOCAL_aspirationRoot(Context* context, SolverConfig *config) {
     context->metadata.lastEvaluation = score;
     context->metadata.lastDepth = currentDepth - 1;
     context->metadata.lastSolved = solved;
+
+    stepCache();
 }
 
