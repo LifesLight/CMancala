@@ -79,9 +79,17 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
             }
         }
 
-        // Parse and set the clip configuration
+        // Check clip true false
         if (clipPoint != NULL) {
-            solveConfig.clip = true;
+            clipPoint += 7;  // Move pointer past "--clip "
+            if (strcmp(clipPoint, "true") == 0) {
+                solveConfig.clip = true;
+            } else if (strcmp(clipPoint, "false") == 0) {
+                solveConfig.clip = false;
+            } else {
+                renderOutput("Invalid clip value", CHEAT_PREFIX);
+                return;
+            }
         }
 
         // Parse and set the depth configuration
@@ -102,9 +110,9 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
 
         // Manually
         int distribution[6];
-        bool solvedAnalyze;
+        bool solved;
 
-        distributionRoot(context->board, distribution, &solvedAnalyze, &solveConfig);
+        distributionRoot(context->board, distribution, &solved, &solveConfig);
 
         int renderCells[14];
         for (int i = 0; i < 14; i++) {
@@ -139,7 +147,7 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
                 break;
         }
 
-        if (solvedAnalyze) {
+        if (solved) {
             renderOutput("Solved", CHEAT_PREFIX);
         }
 
