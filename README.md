@@ -35,8 +35,8 @@ All CMancala solvers employs a Negamax algorithm with Alpha-Beta pruning, tailor
 - **Clip**: Clip changes the behavior of solvers to only compute if any move is winning or losing. This feature can be used for playing solvers ONLY if the AI is playing from a winning position, in losing positions it will treat every move as equally bad if it can't find a winning move, which will result in the agent most likely not returning to a winning position since it will always make the first IDX move.
 
 ### Solvers
-- **GLOBAL:**<br>The reference solver. Is only satisfied once the complete game tree is exhaustively searched for the best possible move at the current node.
-- **LOCAL:**<br>Similar to GLOBAL but with knowledge of every nodes subtree solve status. This allows for optimizations like solved node caching.<br>
+- **GLOBAL:**<br>Recommended for quickly analyzing a position or playing against a AI.<br>The reference solver. Is only satisfied once the complete game tree is exhaustively searched for the best possible move at the current node.
+- **LOCAL:**<br>Recommended for longer sessions, approximately half the speed of **GLOBAL** before the cache is warmed up.<br>Similar to GLOBAL but with knowledge of every nodes subtree solve status. This allows for optimizations like solved node caching.<br>
 The tradeoff between resistance to hash collisions and memory usage can be specified before compilation, by default it's set to guarantee no hash collisions since the memory usage is usually very low.<br>
 While I am very confident in the solvers final output, I can't ensure its correctness, for any critical applications **GLOBAL** is still recommended.
 
