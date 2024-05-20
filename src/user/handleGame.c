@@ -57,18 +57,17 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
         // Default depth
         SolverConfig solveConfig = context->config.solverConfig;
 
-        // Find --solver and --depth in the input string
+        // Find --solver, --depth, and --clip in the input string
         char *solverPoint = strstr(internalInput, "--solver");
         char *depthPoint = strstr(internalInput, "--depth");
         char *clipPoint = strstr(internalInput, "--clip");
 
         // Parse and set the solver configuration
         if (solverPoint != NULL) {
-            solverPoint += 9;  // Move pointer past "--solver "
-            char *nextSpace = strchr(solverPoint, ' ');  // Find next space after solver argument
-            if (nextSpace != NULL) *nextSpace = '\0';  // Null-terminate the solver argument
+            solverPoint += 9;
+            char *nextSpace = strchr(solverPoint, ' ');
+            if (nextSpace != NULL) *nextSpace = '\0';
 
-            // Check for specific solvers and optionally parse the 'cutoff' value for quick
             if (strcmp(solverPoint, "global") == 0) {
                 solveConfig.solver = GLOBAL_SOLVER;
             } else if (strcmp(solverPoint, "local") == 0) {
@@ -79,9 +78,27 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
             }
         }
 
+        // Parse and set the depth configuration
+        if (depthPoint != NULL) {
+            depthPoint += 8;
+            char *nextSpace = strchr(depthPoint, ' ');
+            if (nextSpace != NULL) *nextSpace = '\0';
+
+            char *endPtr;
+            int parsedDepth = strtol(depthPoint, &endPtr, 10);
+            if (depthPoint == endPtr) {
+                renderOutput("Invalid depth value", CHEAT_PREFIX);
+                return;
+            }
+            solveConfig.depth = parsedDepth;
+        }
+
         // Check clip true false
         if (clipPoint != NULL) {
-            clipPoint += 7;  // Move pointer past "--clip "
+            clipPoint += 7;
+            char *nextSpace = strchr(clipPoint, ' ');
+            if (nextSpace != NULL) *nextSpace = '\0';
+
             if (strcmp(clipPoint, "true") == 0) {
                 solveConfig.clip = true;
             } else if (strcmp(clipPoint, "false") == 0) {
@@ -90,18 +107,6 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
                 renderOutput("Invalid clip value", CHEAT_PREFIX);
                 return;
             }
-        }
-
-        // Parse and set the depth configuration
-        if (depthPoint != NULL) {
-            depthPoint += 8;  // Move pointer past "--depth "
-            char *endPtr;
-            int parsedDepth = strtol(depthPoint, &endPtr, 10);
-            if (depthPoint == endPtr) {
-                renderOutput("Invalid depth value", CHEAT_PREFIX);
-                return;
-            }
-            solveConfig.depth = parsedDepth;
         }
 
         if (solveConfig.depth == 0) {
