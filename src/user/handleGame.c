@@ -17,7 +17,7 @@ void renderCheatHelp() {
     renderOutput("  last                             : Fetch the last moves metadata", CHEAT_PREFIX);
     renderOutput("  cache                            : Fetch the cache stats", CHEAT_PREFIX);
     renderOutput("  trace                            : Compute move trace of the last move (requires cached evaluation)", CHEAT_PREFIX);
-    renderOutput("  autoplay [true|false]            : If enabled the game loop will automatically continue", CONFIG_PREFIX);
+    renderOutput("  autoplay [true|false]            : If enabled the game loop will automatically continue", CHEAT_PREFIX);
     renderOutput("  config                           : Return the config menu. Will discard the current game", CHEAT_PREFIX);
     renderOutput("  help                             : Print this help", CHEAT_PREFIX);
     renderOutput("  quit                             : Quit the application", CHEAT_PREFIX);
