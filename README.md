@@ -32,7 +32,7 @@ Observations were made on an M2 Pro, but similar performance is expected on mode
 All CMancala solvers employs a Negamax algorithm with Alpha-Beta pruning, tailored to accommodate double moves. Common features include:
 - **Double Move Handling**: The algorithm adjusts search parameters based on whether the player's turn continues or switches to the opponent.
 - **Aspiration Windows with Iterative Deepening**: This technique allows for time-limited searches while enhancing performance.
-- **Clip**: Clip changes the behavior of solvers to only compute if any move is winning or losing. This feature can be used for playing solvers ONLY if the AI is playing from a winning position, in losing positions it will treat every move as equally bad if it can't find a winning move, which will result in the agent most likely not returning to a winning position since it will always make the first IDX move.
+- **Clip**: **[!KNOWN BROKEN!]** Clip changes the behavior of solvers to only compute if any move is winning or losing. This feature can be used for playing solvers ONLY if the AI is playing from a winning position, in losing positions it will treat every move as equally bad if it can't find a winning move, which will result in the agent most likely not returning to a winning position since it will always make the first IDX move.
 
 ### Solvers
 - **GLOBAL:**<br>Recommended for quickly analyzing a position or playing against a AI.<br>The reference solver. Is only satisfied once the complete game tree is exhaustively searched for the best possible move at the current node.
@@ -63,7 +63,8 @@ To build and run CMancala:
     ```
 
 ## Discoveries
-On a uniform 3 stone per pit game the starting player wins by 2 points with perfect play.<br>Best start move is IDX: 5. (Depth reached was 108 which solved the position).
+- On search depth 50 in the standard 4 stones per pit losing position (Encoded: 008080a0a0a0a04000a0a000808)<br> the best (known) move is **5** with a **-8** evaluation.
+- On a uniform 3 stone per pit game the starting player wins by 2 points with perfect play.<br>Best start move is IDX: 5. (Depth reached was 108 which solved the position).
 
 ### License
 CMancala is released under the MIT License. See LICENSE file for more details.

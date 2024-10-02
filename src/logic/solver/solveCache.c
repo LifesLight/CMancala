@@ -40,7 +40,6 @@ uint64_t lastDetectedInvalidations;
  * The last bit is used to indicate if the entry was accessed this iteration,
  * this doesn't affect the protection status this iteration.
 */
-// Assuming CACHE_GUARD is defined elsewhere in the code
 const uint8_t freshLifetime = ((uint16_t)CACHE_GUARD + 1) & 0xFE;
 
 // Protect the entry for the next iteration
