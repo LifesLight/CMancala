@@ -299,9 +299,9 @@ void renderCacheStats() {
     strcat(message, "%)");
     renderOutput(message, CHEAT_PREFIX);
 
-    sprintf(message, "  Overwrites: %lld", lastOverwrites);
+    sprintf(message, "  Overwrites: %lu", lastOverwrites);
     renderOutput(message, CHEAT_PREFIX);
-    sprintf(message, "  Collisions: %lld", lastInvalidReads);
+    sprintf(message, "  Collisions: %lu", lastInvalidReads);
     renderOutput(message, CHEAT_PREFIX);
 
 #ifdef GUARANTEE_VALIDATION
@@ -309,7 +309,7 @@ void renderCacheStats() {
     renderOutput(message, CHEAT_PREFIX);
 #endif
 
-    sprintf(message, "  Hits:       %lld", lastHits);
+    sprintf(message, "  Hits:       %lu", lastHits);
     renderOutput(message, CHEAT_PREFIX);
 
 #ifdef CACHE_GUARD

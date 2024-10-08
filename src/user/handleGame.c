@@ -115,7 +115,7 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
 
         // Manually
         int distribution[6];
-        bool solved;
+        bool solved = false;
 
         distributionRoot(context->board, distribution, &solved, &solveConfig);
 

@@ -6,7 +6,7 @@
 
 
 void renderCustomBoard(const int32_t *cells, const int8_t color, const char* prefix, const GameSettings* settings) {
-    char* playerDescriptor;
+    char* playerDescriptor = "Unknown";
     if (color == 1) {
         if (settings == NULL) {
             playerDescriptor = "Player 1";

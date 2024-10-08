@@ -232,7 +232,7 @@ char* encodeBoard(const Board *board) {
 
     char message[256];
     // Format the hash as hexadecimal
-    snprintf(message, sizeof(message), "%016llx%016llx", high, low);
+    snprintf(message, sizeof(message), "%016lx%016lx", high, low);
 
     // Remove first 5 characters
     char temp[256];
@@ -247,7 +247,7 @@ char* encodeBoard(const Board *board) {
 
 bool decodeBoard(Board *board, const char* code) {
     uint64_t high = 0, low = 0;
-    int parsedCount = sscanf(code, "%16llx%16llx", &high, &low);
+    int parsedCount = sscanf(code, "%16lx%16lx", &high, &low);
 
     if (parsedCount != 2) {
         return false;
