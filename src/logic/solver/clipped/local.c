@@ -5,7 +5,7 @@
 #include "logic/solver/clipped/local.h"
 
 
-int LOCAL_CLIP_negamax(Board *board, const int depth, bool* solved) {
+int LOCAL_CLIP_negamax(Board *board, int alpha, int beta, const int depth, bool* solved) {
     // Terminally check
     // The order of the checks is important here
     // Otherwise we could have a empty side, without adding up the opponents pieces to his score
@@ -30,10 +30,14 @@ int LOCAL_CLIP_negamax(Board *board, const int depth, bool* solved) {
             *solved = true;
             return cachedValue;
         } else if (boundType == LOWER_BOUND) {
-            if (cachedValue >= 1) {
-                *solved = true;
-                return cachedValue;
-            }
+            alpha = max(alpha, cachedValue);
+        } else if (boundType == UPPER_BOUND) {
+            beta = min(beta, cachedValue);
+        }
+
+        if (alpha >= beta) {
+            *solved = true;
+            return cachedValue;
         }
     }
 
@@ -48,6 +52,8 @@ int LOCAL_CLIP_negamax(Board *board, const int depth, bool* solved) {
     // Iterate over all possible moves
     const int8_t start = (board->color == 1)  ? HBOUND_P1 : HBOUND_P2;
     const int8_t end = (board->color == 1)    ? LBOUND_P1 : LBOUND_P2;
+
+    const int alphaOriginal = alpha;
 
     for (int8_t i = start; i >= end; i--) {
         // Filter invalid moves
@@ -64,10 +70,10 @@ int LOCAL_CLIP_negamax(Board *board, const int depth, bool* solved) {
         // Branch to check if this player is still playing
         if (board->color == boardCopy.color) {
             // If yes, call negamax with current parameters and no inversion
-            score = LOCAL_CLIP_negamax(&boardCopy, depth - 1, &solvedTemp);
+            score = LOCAL_CLIP_negamax(&boardCopy, alpha, beta, depth - 1, &solvedTemp);
         } else {
             // If no, call negamax with inverted parameters for the other player
-            score = -LOCAL_CLIP_negamax(&boardCopy, depth - 1, &solvedTemp);
+            score = -LOCAL_CLIP_negamax(&boardCopy, -beta, -alpha, depth - 1, &solvedTemp);
         }
 
         if (!solvedTemp) {
@@ -76,18 +82,19 @@ int LOCAL_CLIP_negamax(Board *board, const int depth, bool* solved) {
 
         // Update parameters
         reference = max(reference, score);
+        alpha = max(alpha, reference);
 
-        // If this branch certainly worse than another, prune it
-        if (reference >= 1) {
+        // If we are somehow winning or alpha beta prune
+        if (alpha >= beta || alpha >= 1) {
             break;
         }
     }
 
     // If subtree is solved, cache it
     if (*solved) {
-        if (reference <= 1) {
+        if (reference <= alphaOriginal) {
             cacheNode(board, reference, UPPER_BOUND);
-        } else if (reference >= 1) {
+        } else if (reference >= beta) {
             cacheNode(board, reference, LOWER_BOUND);
         } else {
             cacheNode(board, reference, EXACT_BOUND);
@@ -124,6 +131,9 @@ int LOCAL_CLIP_negamaxWithMove(Board *board, int *bestMove, const int depth, boo
 
     Board boardCopy;
 
+    const int alpha = INT32_MIN + 1;
+    const int beta = INT32_MAX;
+
     for (int8_t i = start; i >= end; i--) {
         if (board->cells[i] == 0) {
             continue;
@@ -134,9 +144,9 @@ int LOCAL_CLIP_negamaxWithMove(Board *board, int *bestMove, const int depth, boo
         solvedTemp = false;
 
         if (board->color == boardCopy.color) {
-            score = LOCAL_CLIP_negamax(&boardCopy, depth - 1, &solvedTemp);
+            score = LOCAL_CLIP_negamax(&boardCopy, alpha, beta, depth - 1, &solvedTemp);
         } else {
-            score = -LOCAL_CLIP_negamax(&boardCopy, depth - 1, &solvedTemp);
+            score = -LOCAL_CLIP_negamax(&boardCopy, alpha, beta, depth - 1, &solvedTemp);
         }
 
         if (!solvedTemp) {
@@ -178,6 +188,9 @@ void LOCAL_CLIP_distributionRoot(Board *board, int *distribution, bool *solved, 
     bool solvedTemp;
     *solved = true;
 
+    const int alpha = INT32_MIN + 1;
+    const int beta = INT32_MAX;
+
     for (int8_t i = start; i >= end; i--) {
         if (board->cells[i] == 0) {
             distribution[index] = INT32_MIN;
@@ -191,9 +204,9 @@ void LOCAL_CLIP_distributionRoot(Board *board, int *distribution, bool *solved, 
         solvedTemp = false;
 
         if (board->color == boardCopy.color) {
-            score = LOCAL_CLIP_negamax(&boardCopy, config->depth, &solvedTemp);
+            score = LOCAL_CLIP_negamax(&boardCopy, alpha, beta, config->depth, &solvedTemp);
         } else {
-            score = -LOCAL_CLIP_negamax(&boardCopy, config->depth, &solvedTemp);
+            score = -LOCAL_CLIP_negamax(&boardCopy, alpha, beta, config->depth, &solvedTemp);
         }
 
         if (!solvedTemp) {
