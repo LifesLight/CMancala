@@ -6,7 +6,7 @@
 
 bool solvedClipped;
 
-int GLOBAL_CLIP_negamax(Board *board, const int depth) {
+int GLOBAL_CLIP_negamax(Board *board, int alpha, const int beta, const int depth) {
     // Terminally check
     // The order of the checks is important here
     // Otherwise we could have a empty side, without adding up the opponents pieces to his score
@@ -47,17 +47,18 @@ int GLOBAL_CLIP_negamax(Board *board, const int depth) {
         // Branch to check if this player is still playing
         if (board->color == boardCopy.color) {
             // If yes, call negamax with current parameters and no inversion
-            score = GLOBAL_CLIP_negamax(&boardCopy, depth - 1);
+            score = GLOBAL_CLIP_negamax(&boardCopy, alpha, beta, depth - 1);
         } else {
             // If no, call negamax with inverted parameters for the other player
-            score = -GLOBAL_CLIP_negamax(&boardCopy, depth - 1);
+            score = -GLOBAL_CLIP_negamax(&boardCopy, -beta, -alpha, depth - 1);
         }
 
         // Update parameters
         reference = max(reference, score);
+        alpha = max(alpha, reference);
 
-        // If this branch certainly worse than another, prune it
-        if (reference >= 1) {
+        // If this branch certainly winning somehow prune it
+        if (alpha >= beta || alpha >= 1) {
             break;
         }
     }
@@ -87,6 +88,9 @@ int GLOBAL_CLIP_negamaxWithMove(Board *board, int *bestMove, const int depth) {
 
     Board boardCopy;
 
+    const int alpha = INT32_MIN + 1;
+    const int beta = INT32_MAX;
+
     for (int8_t i = start; i >= end; i--) {
         if (board->cells[i] == 0) {
             continue;
@@ -95,9 +99,9 @@ int GLOBAL_CLIP_negamaxWithMove(Board *board, int *bestMove, const int depth) {
         makeMoveFunction(&boardCopy, i);
 
         if (board->color == boardCopy.color) {
-            score = GLOBAL_CLIP_negamax(&boardCopy, depth - 1);
+            score = GLOBAL_CLIP_negamax(&boardCopy, alpha, beta, depth - 1);
         } else {
-            score = -GLOBAL_CLIP_negamax(&boardCopy, depth - 1);
+            score = -GLOBAL_CLIP_negamax(&boardCopy, alpha, beta, depth - 1);
         }
 
         if (score > reference) {
@@ -119,6 +123,9 @@ void GLOBAL_CLIP_distributionRoot(Board *board, int *distribution, bool *solvedO
     int index = 5;
     int score;
 
+    const int alpha = INT32_MIN + 1;
+    const int beta = INT32_MAX;
+
     solvedClipped = true;
 
     for (int8_t i = start; i >= end; i--) {
@@ -132,9 +139,9 @@ void GLOBAL_CLIP_distributionRoot(Board *board, int *distribution, bool *solvedO
         makeMoveFunction(&boardCopy, i);
 
         if (board->color == boardCopy.color) {
-            score = GLOBAL_CLIP_negamax(&boardCopy, config->depth);
+            score = GLOBAL_CLIP_negamax(&boardCopy, alpha, beta, config->depth);
         } else {
-            score = -GLOBAL_CLIP_negamax(&boardCopy, config->depth);
+            score = -GLOBAL_CLIP_negamax(&boardCopy, alpha, beta, config->depth);
         }
 
         distribution[index] = score;
