@@ -121,8 +121,8 @@ void GLOBAL_distributionRoot(Board *board, int *distribution, bool *solvedOutput
     const int8_t end = (board->color == 1) ? LBOUND_P1 : LBOUND_P2;
     int index = 5;
     int score;
-    int alpha = INT32_MIN + 1;
-    int beta = INT32_MAX;
+    const int alpha = INT32_MIN + 1;
+    const int beta = INT32_MAX;
 
     solved = true;
 
@@ -141,8 +141,6 @@ void GLOBAL_distributionRoot(Board *board, int *distribution, bool *solvedOutput
         } else {
             score = -GLOBAL_negamax(&boardCopy, alpha, beta, config->depth);
         }
-
-        alpha = max(alpha, score);
 
         distribution[index] = score;
         index--;
