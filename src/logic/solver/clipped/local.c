@@ -25,7 +25,7 @@ int LOCAL_CLIP_negamax(Board *board, int alpha, int beta, const int depth, bool*
     // Check if board is cached
     int cachedValue;
     int boundType;
-    if (getCachedValue(board, &cachedValue, &boundType)) {
+    if (getCachedValue(board, &cachedValue, &boundType, 0)) {
         if (boundType == EXACT_BOUND) {
             *solved = true;
             return cachedValue;
@@ -93,11 +93,11 @@ int LOCAL_CLIP_negamax(Board *board, int alpha, int beta, const int depth, bool*
     // If subtree is solved, cache it
     if (*solved) {
         if (reference <= alphaOriginal) {
-            cacheNode(board, reference, UPPER_BOUND);
+            cacheNode(board, reference, UPPER_BOUND,0);
         } else if (reference >= beta) {
-            cacheNode(board, reference, LOWER_BOUND);
+            cacheNode(board, reference, LOWER_BOUND,0);
         } else {
-            cacheNode(board, reference, EXACT_BOUND);
+            cacheNode(board, reference, EXACT_BOUND,0);
         }
     }
 

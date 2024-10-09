@@ -8,6 +8,7 @@ typedef struct {
     int8_t value;
     VALIDATION_TYPE validation;
     int8_t boundType;
+    uint8_t depth;
 
 #ifdef CACHE_GUARD
     uint8_t protector;
@@ -134,6 +135,7 @@ void startCache(uint32_t size) {
         cache[i].value = UNSET_VALUE;
         cache[i].validation = 0;
         cache[i].boundType = 0;
+        cache[i].depth = 0;
 
 #ifdef GUARANTEE_VALIDATION
         cache[i].key = 0;
@@ -163,7 +165,7 @@ void startCache(uint32_t size) {
     lastHits = 0;
 }
 
-void cacheNode(Board* board, int evaluation, int boundType) {
+void cacheNode(Board* board, int evaluation, int boundType, int depth) {
     // Compute evaluation without score cells
     int scoreDelta = board->cells[SCORE_P1] - board->cells[SCORE_P2];
     scoreDelta *= board->color;
@@ -191,7 +193,7 @@ void cacheNode(Board* board, int evaluation, int boundType) {
 #endif
 
     // Check if the entry already exists, no need to update
-    if (cache[index].validation == validation) {
+    if (cache[index].validation == validation && cache[index].depth >= depth) {
 #ifdef GUARANTEE_VALIDATION
         if (cache[index].key != hashValue) {
             detectedInvalidations++;
@@ -209,6 +211,7 @@ void cacheNode(Board* board, int evaluation, int boundType) {
     cache[index].boundType = boundType;
     cache[index].validation = validation;
     cache[index].value = evaluation;
+    cache[index].depth = depth;
 
 #ifdef GUARANTEE_VALIDATION
     cache[index].key = hashValue;
@@ -221,7 +224,7 @@ void cacheNode(Board* board, int evaluation, int boundType) {
     return;
 }
 
-bool getCachedValue(Board* board, int *eval, int *boundType) {
+bool getCachedValue(Board* board, int *eval, int *boundType, int *depth) {
     uint64_t hashValue;
     if (!translateBoard(board, &hashValue)) {
         return false;
@@ -262,6 +265,7 @@ bool getCachedValue(Board* board, int *eval, int *boundType) {
     scoreDelta *= board->color;
     *eval = cache[index].value + scoreDelta;
     *boundType = cache[index].boundType;
+    *depth = cache[index].depth;
 
     return true;
 }
