@@ -299,17 +299,17 @@ void renderCacheStats() {
     strcat(message, "%)");
     renderOutput(message, CHEAT_PREFIX);
 
-    sprintf(message, "  Overwrites: %lu", lastOverwrites);
+    sprintf(message, "  Overwrites: %"PRIu64"", lastOverwrites);
     renderOutput(message, CHEAT_PREFIX);
-    sprintf(message, "  Collisions: %lu", lastInvalidReads);
+    sprintf(message, "  Collisions: %"PRIu64"", lastInvalidReads);
     renderOutput(message, CHEAT_PREFIX);
 
 #ifdef GUARANTEE_VALIDATION
-    sprintf(message, "  Detected:   %lld", lastDetectedInvalidations);
+    sprintf(message, "  Detected: %"PRIu64"", lastDetectedInvalidations);
     renderOutput(message, CHEAT_PREFIX);
 #endif
 
-    sprintf(message, "  Hits:       %lu", lastHits);
+    sprintf(message, "  Hits:       %"PRIu64"", lastHits);
     renderOutput(message, CHEAT_PREFIX);
 
 #ifdef CACHE_GUARD

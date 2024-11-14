@@ -31,6 +31,7 @@
 */
 
 #include <stdint.h>
+#include <inttypes.h>
 #include <math.h>
 
 #include "config.h"
