@@ -90,13 +90,14 @@ void startCache(uint32_t cacheSize);
 /**
  * Caches a node.
 */
-void cacheNode(Board* board, int evaluation, int boundType);
+void cacheNode(Board* board, int evaluation, int boundType, int depth);
 
 /**
  * Gets the value for the provided board from the cache.
  * Returns true if values where found
+ * Current depth is the depth of the node querrying the cache.
 */
-bool getCachedValue(Board* board, int *evaluation, int *boundType);
+bool getCachedValue(Board* board, int *evaluation, int *boundType, int *depth, int currentDepth);
 
 /**
  * Gets the number of cached nodes.

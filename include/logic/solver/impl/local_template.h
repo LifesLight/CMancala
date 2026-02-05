@@ -17,6 +17,20 @@ int FN(negamax)(Board *board, int alpha, int beta, const int depth) {
         return board->color * getBoardEvaluation(board);
     }
 
+    // Check if board is cached
+    int cachedValue;
+    int boundType;
+    int cachedDepth;
+    if (getCachedValue(board, &cachedValue, &boundType, &cachedDepth, depth)) {
+        if (boundType == EXACT_BOUND) {
+            return cachedValue;
+        } else if (boundType == LOWER_BOUND && cachedValue >= beta) {
+            return cachedValue;
+        } else if (boundType == UPPER_BOUND && cachedValue <= alpha) {
+            return cachedValue;
+        }
+    }
+
     // Check if depth limit is reached
     if (depth == 0) {
         // If we ever get depth limited in a non-terminal state, the game is not solved
@@ -24,22 +38,6 @@ int FN(negamax)(Board *board, int alpha, int beta, const int depth) {
     }
 
     int reference = INT32_MIN;
-    // Check if board is cached
-    int cachedValue;
-    int boundType;
-    if (getCachedValue(board, &cachedValue, &boundType)) {
-        if (boundType == EXACT_BOUND) {
-            return cachedValue;
-        } else if (boundType == LOWER_BOUND) {
-            alpha = max(alpha, cachedValue);
-        } else if (boundType == UPPER_BOUND) {
-            beta = min(beta, cachedValue);
-        }
-
-        if (alpha >= beta) {
-            return cachedValue;
-        }
-    }
 
     nodeCount++;
 
@@ -91,7 +89,14 @@ int FN(negamax)(Board *board, int alpha, int beta, const int depth) {
 
     }
 
-    // TODO: Attempt Cache
+    // Try caching
+    if (reference <= alphaOriginal) {
+        cacheNode(board, reference, UPPER_BOUND, depth);
+    } else if (reference >= beta) {
+        cacheNode(board, reference, LOWER_BOUND, depth);
+    } else {
+        cacheNode(board, reference, EXACT_BOUND, depth);
+    }
 
     return reference;
 }

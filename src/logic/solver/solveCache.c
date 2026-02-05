@@ -5,17 +5,19 @@
 #include "logic/solver/solveCache.h"
 
 typedef struct {
-    int8_t value;
+#ifdef GUARANTEE_VALIDATION
+    uint64_t key;
+#endif
+
     VALIDATION_TYPE validation;
-    int8_t boundType;
 
 #ifdef CACHE_GUARD
     uint8_t protector;
 #endif
 
-#ifdef GUARANTEE_VALIDATION
-    uint64_t key;
-#endif
+    int8_t value;
+    int8_t boundType;
+    uint8_t depth;
 } Entry;
 
 Entry* cache;
@@ -26,7 +28,9 @@ uint64_t lastOverwrites;
 uint64_t invalidReads;
 uint64_t lastInvalidReads;
 uint64_t hits;
+uint64_t hitsLegalDepth;
 uint64_t lastHits;
+uint64_t lastHitsLegalDepth;
 
 #ifdef GUARANTEE_VALIDATION
 uint64_t detectedInvalidations;
@@ -134,6 +138,8 @@ void startCache(uint32_t size) {
         cache[i].value = UNSET_VALUE;
         cache[i].validation = 0;
         cache[i].boundType = 0;
+        cache[i].depth = 0;
+
 
 #ifdef GUARANTEE_VALIDATION
         cache[i].key = 0;
@@ -157,13 +163,15 @@ void startCache(uint32_t size) {
     overwrites = 0;
     invalidReads = 0;
     hits = 0;
+    hitsLegalDepth = 0;
 
     lastOverwrites = 0;
     lastInvalidReads = 0;
     lastHits = 0;
+    lastHitsLegalDepth = 0;
 }
 
-void cacheNode(Board* board, int evaluation, int boundType) {
+void cacheNode(Board* board, int evaluation, int boundType, int depth) {
     // Compute evaluation without score cells
     int scoreDelta = board->cells[SCORE_P1] - board->cells[SCORE_P2];
     scoreDelta *= board->color;
@@ -190,14 +198,18 @@ void cacheNode(Board* board, int evaluation, int boundType) {
     }
 #endif
 
-    // Check if the entry already exists, no need to update
+    // Check if the entry already exists
     if (cache[index].validation == validation) {
 #ifdef GUARANTEE_VALIDATION
         if (cache[index].key != hashValue) {
             detectedInvalidations++;
         }
 #endif
-        return;
+
+        // No reason to store a lower depth cache
+        if (cache[index].depth > depth) {
+            return;
+        }
     }
 
     // Handle overwrites
@@ -209,6 +221,7 @@ void cacheNode(Board* board, int evaluation, int boundType) {
     cache[index].boundType = boundType;
     cache[index].validation = validation;
     cache[index].value = evaluation;
+    cache[index].depth = depth;
 
 #ifdef GUARANTEE_VALIDATION
     cache[index].key = hashValue;
@@ -221,7 +234,7 @@ void cacheNode(Board* board, int evaluation, int boundType) {
     return;
 }
 
-bool getCachedValue(Board* board, int *eval, int *boundType) {
+bool getCachedValue(Board* board, int *eval, int *boundType, int *depth, int currentDepth) {
     uint64_t hashValue;
     if (!translateBoard(board, &hashValue)) {
         return false;
@@ -252,6 +265,14 @@ bool getCachedValue(Board* board, int *eval, int *boundType) {
     // We have a hit
     hits++;
 
+
+    // Our cached entry needs to be at least as deep as our current depth.
+    if (cache[index].depth < currentDepth) {
+        return false;
+    }
+
+    hitsLegalDepth++;
+
 #ifdef CACHE_GUARD
     // Protect the entry
     protectIndex(index);
@@ -262,6 +283,7 @@ bool getCachedValue(Board* board, int *eval, int *boundType) {
     scoreDelta *= board->color;
     *eval = cache[index].value + scoreDelta;
     *boundType = cache[index].boundType;
+    *depth = cache[index].depth;
 
     return true;
 }
@@ -310,6 +332,9 @@ void renderCacheStats() {
 #endif
 
     sprintf(message, "  Hits:       %"PRIu64"", lastHits);
+    renderOutput(message, CHEAT_PREFIX);
+    
+    sprintf(message, "  Hits Legal: %"PRIu64"", lastHitsLegalDepth);
     renderOutput(message, CHEAT_PREFIX);
 
 #ifdef CACHE_GUARD
@@ -391,6 +416,7 @@ void stepCache() {
     lastOverwrites = overwrites;
     lastInvalidReads = invalidReads;
     lastHits = hits;
+    lastHitsLegalDepth = hitsLegalDepth;
 
 #ifdef GUARANTEE_VALIDATION
     lastDetectedInvalidations = detectedInvalidations;
@@ -400,6 +426,7 @@ void stepCache() {
     overwrites = 0;
     invalidReads = 0;
     hits = 0;
+    hitsLegalDepth = 0;
 
 #ifdef CACHE_GUARD
     // Track how many have what age
