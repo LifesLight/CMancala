@@ -2,24 +2,20 @@
  * Copyright (c) Alexander Kurtz 2026
  */
 
-#include "logic/solver/local.h"
+#include "logic/solver/full/global.h"
 
-#define PREFIX LOCAL
+bool solved;
+
+// Template Instantiation
+#define PREFIX GLOBAL
 #define IS_CLIPPED 0
-#include "logic/solver/impl/local_template.h"
+#include "logic/solver/impl/global_template.h"
 #undef PREFIX
 #undef IS_CLIPPED
 
-void LOCAL_aspirationRoot(Context* context, SolverConfig *config) {
-    // Cache checking
-    if (getCacheSize() == 0) {
-        renderOutput("Cache is disabled, starting with \"normal\" preset!", CHEAT_PREFIX);
-        startCache(NORMAL_CACHE_SIZE);
-    }
-
+void GLOBAL_aspirationRoot(Context* context, SolverConfig *config) {
     const int windowSize = 1;
     const int depthStep = 1;
-
     int alpha = INT32_MIN + 1;
     int beta = INT32_MAX;
     int score;
@@ -28,11 +24,9 @@ void LOCAL_aspirationRoot(Context* context, SolverConfig *config) {
     int windowMisses = 0;
     clock_t start = clock();
     nodeCount = 0;
-    bool solved;
-
     while (true) {
-        solved = false;
-        score = LOCAL_negamaxWithMove(context->board, &bestMove, alpha, beta, currentDepth, &solved);
+        solved = true;
+        score = GLOBAL_negamaxWithMove(context->board, &bestMove, alpha, beta, currentDepth);
         if (score > alpha && score < beta) {
             currentDepth += depthStep;
             if (solved) break;
@@ -44,7 +38,6 @@ void LOCAL_aspirationRoot(Context* context, SolverConfig *config) {
             beta = score + windowSize;
         }
     }
-
     double timeTaken = (double)(clock() - start) / CLOCKS_PER_SEC;
     context->metadata.lastTime = timeTaken;
     context->metadata.lastNodes = nodeCount;
@@ -57,6 +50,4 @@ void LOCAL_aspirationRoot(Context* context, SolverConfig *config) {
     context->metadata.lastEvaluation = score;
     context->metadata.lastDepth = currentDepth - 1;
     context->metadata.lastSolved = solved;
-
-    stepCache();
 }

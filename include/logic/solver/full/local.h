@@ -13,22 +13,25 @@
 #include "containers.h"
 #include "logic/board.h"
 #include "user/render.h"
-#include "logic/troughput.h"
+#include "logic/throughput.h"
 #include "logic/utility.h"
+#include "logic/solver/solveCache.h"
 #include "config.h"
+
+#define DEBUG_CACHE
 
 /**
  * Negamax algorithm with alpha-beta pruning and best move output.
 */
-int GLOBAL_negamaxWithMove(
-    Board *board, int *bestMove, int alpha, const int beta, const int depth);
+int LOCAL_negamaxWithMove(
+    Board *board, int *bestMove, int alpha, int beta, const int depth, bool* solved);
 
 /**
  * Distribution root
- */
-void GLOBAL_distributionRoot(Board *board, int *distribution, bool *solvedOutput, SolverConfig *config);
+*/
+void LOCAL_distributionRoot(Board *board, int *distribution, bool *solved, SolverConfig *config);
 
 /**
  * Aspiration root
- */
-void GLOBAL_aspirationRoot(Context* context, SolverConfig *config);
+*/
+void LOCAL_aspirationRoot(Context* context, SolverConfig *config);

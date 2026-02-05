@@ -14,7 +14,7 @@
 #include "config.h"
 #include "logic/board.h"
 #include "user/render.h"
-#include "logic/algo.h"
+#include "logic/solver/algo.h"
 #include "logic/utility.h"
 
 void stepGame(bool* requestedMenu, Context* context);

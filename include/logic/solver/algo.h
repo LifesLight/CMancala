@@ -15,9 +15,9 @@
 #include "logic/board.h"
 #include "user/render.h"
 #include "config.h"
-#include "logic/solver/global.h"
+#include "logic/solver/full/global.h"
 #include "logic/solver/clipped/global.h"
-#include "logic/solver/local.h"
+#include "logic/solver/full/local.h"
 #include "logic/solver/clipped/local.h"
 
 /**

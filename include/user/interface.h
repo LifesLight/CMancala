@@ -13,7 +13,7 @@
 #include "containers.h"
 #include "logic/board.h"
 #include "user/render.h"
-#include "logic/algo.h"
+#include "logic/solver/algo.h"
 #include "user/handleConfig.h"
 #include "user/handleGame.h"
 

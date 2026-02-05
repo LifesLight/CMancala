@@ -8,18 +8,18 @@ set(SOURCE_FILES
     src/main.c
     src/logic/utility.c
     src/logic/board.c
-    src/logic/algo.c
+    src/logic/solver/algo.c
     src/user/render.c
     src/user/handleConfig.c
     src/user/handleGame.c
     src/user/handlePlaying.c
     src/user/interface.c
-    src/logic/solver/global.c
-    src/logic/solver/local.c
+    src/logic/solver/full/global.c
+    src/logic/solver/full/local.c
     src/logic/solver/clipped/local.c
     src/logic/solver/clipped/global.c
-    src/logic/troughput.c
-    src/logic/solveCache.c
+    src/logic/throughput.c
+    src/logic/solver/solveCache.c
 )
 
 include_directories(include)
