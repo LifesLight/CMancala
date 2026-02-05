@@ -2,7 +2,7 @@
  * Copyright (c) Alexander Kurtz 2026
  */
 
-#include "logic/solveCache.h"
+#include "logic/solver/solveCache.h"
 
 typedef struct {
     int8_t value;

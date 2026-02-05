@@ -13,7 +13,7 @@
 #include "containers.h"
 #include "logic/board.h"
 #include "user/render.h"
-#include "logic/troughput.h"
+#include "logic/throughput.h"
 #include "logic/utility.h"
 #include "config.h"
 

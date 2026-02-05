@@ -13,9 +13,9 @@
 #include "containers.h"
 #include "logic/board.h"
 #include "user/render.h"
-#include "logic/troughput.h"
+#include "logic/throughput.h"
 #include "logic/utility.h"
-#include "logic/solveCache.h"
+#include "logic/solver/solveCache.h"
 #include "config.h"
 
 /**

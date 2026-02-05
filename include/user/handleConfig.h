@@ -16,6 +16,6 @@
 #include "containers.h"
 #include "user/render.h"
 #include "logic/utility.h"
-#include "logic/solveCache.h"
+#include "logic/solver/solveCache.h"
 
 void handleConfigInput(bool* requestedStart, Config* config);
