@@ -28,14 +28,11 @@ void LOCAL_aspirationRoot(Context* context, SolverConfig *config) {
     int windowMisses = 0;
     clock_t start = clock();
     nodeCount = 0;
-    bool solved;
 
     while (true) {
-        solved = false;
-        score = LOCAL_negamaxWithMove(context->board, &bestMove, alpha, beta, currentDepth, &solved);
+        score = LOCAL_negamaxWithMove(context->board, &bestMove, alpha, beta, currentDepth);
         if (score > alpha && score < beta) {
             currentDepth += depthStep;
-            if (solved) break;
             if (currentDepth > config->depth && config->depth > 0) break;
             if (((double)(clock() - start) / CLOCKS_PER_SEC) >= config->timeLimit && config->timeLimit > 0) break;
         } else {
@@ -56,7 +53,9 @@ void LOCAL_aspirationRoot(Context* context, SolverConfig *config) {
     context->metadata.lastMove = bestMove;
     context->metadata.lastEvaluation = score;
     context->metadata.lastDepth = currentDepth - 1;
-    context->metadata.lastSolved = solved;
+
+    // TODO: Reimplement Solved Detection.
+    context->metadata.lastSolved = false;
 
     stepCache();
 }

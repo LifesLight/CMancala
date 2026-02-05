@@ -18,18 +18,16 @@
 #include "logic/solveCache.h"
 #include "config.h"
 
-#define DEBUG_CACHE
-
 /**
  * Negamax algorithm with alpha-beta pruning and best move output.
 */
 int LOCAL_CLIP_negamaxWithMove(
-    Board *board, int *bestMove, const int depth, bool* solved);
+    Board *board, int *bestMove, const int depth);
 
 /**
  * Distribution root
 */
-void LOCAL_CLIP_distributionRoot(Board *board, int *distribution, bool *solved, SolverConfig *config);
+void LOCAL_CLIP_distributionRoot(Board *board, int *distribution, SolverConfig *config);
 
 /**
  * Aspiration root

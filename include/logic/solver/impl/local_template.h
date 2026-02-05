@@ -9,19 +9,17 @@
 
 #define FN(name) CAT(PREFIX, name)
 
-int FN(negamax)(Board *board, int alpha, int beta, const int depth, bool* solved) {
+int FN(negamax)(Board *board, int alpha, int beta, const int depth) {
     // Terminally check
     // The order of the checks is important here
     // Otherwise we could have a empty side, without adding up the opponents pieces to his score
     if (processBoardTerminal(board)) {
-        *solved = true;
         return board->color * getBoardEvaluation(board);
     }
 
     // Check if depth limit is reached
     if (depth == 0) {
         // If we ever get depth limited in a non-terminal state, the game is not solved
-        *solved = false;
         return board->color * getBoardEvaluation(board);
     }
 
@@ -31,7 +29,6 @@ int FN(negamax)(Board *board, int alpha, int beta, const int depth, bool* solved
     int boundType;
     if (getCachedValue(board, &cachedValue, &boundType)) {
         if (boundType == EXACT_BOUND) {
-            *solved = true;
             return cachedValue;
         } else if (boundType == LOWER_BOUND) {
             alpha = max(alpha, cachedValue);
@@ -40,7 +37,6 @@ int FN(negamax)(Board *board, int alpha, int beta, const int depth, bool* solved
         }
 
         if (alpha >= beta) {
-            *solved = true;
             return cachedValue;
         }
     }
@@ -50,8 +46,6 @@ int FN(negamax)(Board *board, int alpha, int beta, const int depth, bool* solved
     // Will be needed in every iteration
     Board boardCopy;
     int score;
-    bool solvedTemp;
-    *solved = true;
 
     // Iterate over all possible moves
     const int8_t start = (board->color == 1)  ? HBOUND_P1 : HBOUND_P2;
@@ -69,19 +63,14 @@ int FN(negamax)(Board *board, int alpha, int beta, const int depth, bool* solved
         copyBoard(board, &boardCopy);
         makeMoveFunction(&boardCopy, i);
 
-        solvedTemp = false;
 
         // Branch to check if this player is still playing
         if (board->color == boardCopy.color) {
             // If yes, call negamax with current parameters and no inversion
-            score = FN(negamax)(&boardCopy, alpha, beta, depth - 1, &solvedTemp);
+            score = FN(negamax)(&boardCopy, alpha, beta, depth - 1);
         } else {
             // If no, call negamax with inverted parameters for the other player
-            score = -FN(negamax)(&boardCopy, -beta, -alpha, depth - 1, &solvedTemp);
-        }
-
-        if (!solvedTemp) {
-            *solved = false;
+            score = -FN(negamax)(&boardCopy, -beta, -alpha, depth - 1);
         }
 
         // Update parameters
@@ -102,34 +91,23 @@ int FN(negamax)(Board *board, int alpha, int beta, const int depth, bool* solved
 
     }
 
-    // If subtree is solved, cache it
-    if (*solved) {
-        if (reference <= alphaOriginal) {
-            cacheNode(board, reference, UPPER_BOUND);
-        } else if (reference >= beta) {
-            cacheNode(board, reference, LOWER_BOUND);
-        } else {
-            cacheNode(board, reference, EXACT_BOUND);
-        }
-    }
+    // TODO: Attempt Cache
 
     return reference;
 }
 
 #if IS_CLIPPED
-int FN(negamaxWithMove)(Board *board, int *bestMove, const int depth, bool* solved) {
+int FN(negamaxWithMove)(Board *board, int *bestMove, const int depth) {
 #else
-int FN(negamaxWithMove)(Board *board, int *bestMove, int alpha, int beta, const int depth, bool* solved) {
+int FN(negamaxWithMove)(Board *board, int *bestMove, int alpha, int beta, const int depth) {
 #endif
 
     if (processBoardTerminal(board)) {
         *bestMove = -1;
-        *solved = true;
         return board->color * getBoardEvaluation(board);
     }
 
     if (depth == 0) {
-        *solved = false;
         *bestMove = -1;
         return board->color * getBoardEvaluation(board);
     }
@@ -140,8 +118,6 @@ int FN(negamaxWithMove)(Board *board, int *bestMove, int alpha, int beta, const 
 
     int reference = INT32_MIN;
     int score;
-    bool solvedTemp;
-    *solved = true;
 
     const int8_t start = (board->color == 1)  ? HBOUND_P1 : HBOUND_P2;
     const int8_t end = (board->color == 1)    ? LBOUND_P1 : LBOUND_P2;
@@ -160,22 +136,16 @@ int FN(negamaxWithMove)(Board *board, int *bestMove, int alpha, int beta, const 
         copyBoard(board, &boardCopy);
         makeMoveFunction(&boardCopy, i);
 
-        solvedTemp = false;
-
         if (board->color == boardCopy.color) {
-            score = FN(negamax)(&boardCopy, alpha, beta, depth - 1, &solvedTemp);
+            score = FN(negamax)(&boardCopy, alpha, beta, depth - 1);
         } else {
 
 #if IS_CLIPPED
-            score = -FN(negamax)(&boardCopy, alpha, beta, depth - 1, &solvedTemp);
+            score = -FN(negamax)(&boardCopy, alpha, beta, depth - 1);
 #else
-            score = -FN(negamax)(&boardCopy, -beta, -alpha, depth - 1, &solvedTemp);
+            score = -FN(negamax)(&boardCopy, -beta, -alpha, depth - 1);
 #endif
 
-        }
-
-        if (!solvedTemp) {
-            *solved = false;
         }
 
         if (score > reference) {
@@ -197,17 +167,10 @@ int FN(negamaxWithMove)(Board *board, int *bestMove, int alpha, int beta, const 
 
     }
 
-#ifndef DEBUG_CACHE
-    // If solved, cache it
-    if (*solved && alpha == reference) {
-        cacheNode(board, reference);
-    }
-#endif
-
     return reference;
 }
 
-void FN(distributionRoot)(Board *board, int *distribution, bool *solved, SolverConfig *config) {
+void FN(distributionRoot)(Board *board, int *distribution, SolverConfig *config) {
     // Cache checking
     if (getCacheSize() == 0) {
         renderOutput("Cache is disabled, starting with \"normal\" preset!", CHEAT_PREFIX);
@@ -218,9 +181,6 @@ void FN(distributionRoot)(Board *board, int *distribution, bool *solved, SolverC
     const int8_t end = (board->color == 1) ? LBOUND_P1 : LBOUND_P2;
     int index = 5;
     int score;
-
-    bool solvedTemp;
-    *solved = true;
 
     const int alpha = INT32_MIN + 1;
     const int beta = INT32_MAX;
@@ -235,16 +195,10 @@ void FN(distributionRoot)(Board *board, int *distribution, bool *solved, SolverC
         copyBoard(board, &boardCopy);
         makeMoveFunction(&boardCopy, i);
 
-        solvedTemp = false;
-
         if (board->color == boardCopy.color) {
-            score = FN(negamax)(&boardCopy, alpha, beta, config->depth, &solvedTemp);
+            score = FN(negamax)(&boardCopy, alpha, beta, config->depth);
         } else {
-            score = -FN(negamax)(&boardCopy, alpha, beta, config->depth, &solvedTemp);
-        }
-
-        if (!solvedTemp) {
-            *solved = false;
+            score = -FN(negamax)(&boardCopy, alpha, beta, config->depth);
         }
 
         distribution[index] = score;

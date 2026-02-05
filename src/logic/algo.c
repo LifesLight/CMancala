@@ -35,7 +35,9 @@ void distributionRoot(Board *board, int32_t* distribution, bool *solved, SolverC
                 GLOBAL_CLIP_distributionRoot(board, distribution, solved, config);
                 break;
             case LOCAL_SOLVER:
-                LOCAL_CLIP_distributionRoot(board, distribution, solved, config);
+                LOCAL_CLIP_distributionRoot(board, distribution, config);
+                // TODO: Reimplement solved
+                *solved = false;
                 break;
         }
     } else {
@@ -44,7 +46,9 @@ void distributionRoot(Board *board, int32_t* distribution, bool *solved, SolverC
                 GLOBAL_distributionRoot(board, distribution, solved, config);
                 break;
             case LOCAL_SOLVER:
-                LOCAL_distributionRoot(board, distribution, solved, config);
+                LOCAL_distributionRoot(board, distribution, config);
+               // TODO: Reimplement solved
+                *solved = false;
                 break;
         }
     }
