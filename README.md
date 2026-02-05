@@ -9,7 +9,7 @@ The game adheres to basic Mancala rules. In addition, an **Avalanche** mode is a
 
 ## Interface
 CMancala starts in **config** mode, where you can set up the game hyperparameters.<br>
-When starting the game, you will enter one of two modes, between which you can switch at all times:
+When starting the game, you will enter one of three modes, between which you can switch at all times:
 - **Config:** Adjust application / game hyperparameters.
 - **Menu:** Perform analytical operations on the current game.
 - **Playing:** Play the game.
@@ -35,10 +35,8 @@ All CMancala solvers employ a Negamax algorithm with Alpha-Beta pruning, tailore
 - **Clip [BETA]**: Clip changes the behavior of solvers to only compute if any move is winning or losing. This feature can be used for playing solvers ONLY if the AI is playing from a winning position; in losing positions, it will treat every move as equally bad if it can't find a winning move, which will result in the agent most likely not returning to a winning position since it will always make the first IDX move.
 
 ### Solvers
-- **GLOBAL:**<br>Recommended for quickly analyzing a position or playing against a AI.<br>The reference solver. Is only satisfied once the complete game tree is exhaustively searched for the best possible move at the current node.
-- **LOCAL:**<br>Recommended for longer sessions, approximately half the speed of **GLOBAL** before the cache is warmed up.<br>Similar to GLOBAL but with knowledge of every node’s subtree solve status. This allows for optimizations like solved node caching.<br>
-The tradeoff between resistance to hash collisions and memory usage can be specified before compilation; by default, it's set to guarantee no hash collisions since the memory usage is usually very low.<br>
-While I am very confident in the solver’s final output, I can't ensure its correctness; for any critical applications, **GLOBAL** is still recommended.
+- **GLOBAL:**<br>Recommended for quickly analyzing a position or playing against an AI.<br>The reference solver. Is only satisfied once the complete game tree is exhaustively searched for the best possible move at the current node.
+- **LOCAL:**<br>I have identified a flaw in this algorithm. While it still works well enough for most scenarios, it is technically incorrect, so I do not recommend using it. I may implement a correct Transposition Table in the future.
 
 ## Restrictions
 - The game is designed to support a maximum of 224 stones on the board at any given time.

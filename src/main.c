@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Alexander Kurtz 2023
+ * Copyright (c) Alexander Kurtz 2026
 */
 
 #include "user/interface.h"

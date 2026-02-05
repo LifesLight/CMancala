@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Alexander Kurtz 2023
+ * Copyright (c) Alexander Kurtz 2026
  */
 
 #include "user/render.h"
@@ -120,7 +120,7 @@ void renderWelcome() {
     printf("| %sWelcome to CMancala!                 |\n", OUTPUT_PREFIX);
     printf("| %sType 'help' for a list of commands   |\n", OUTPUT_PREFIX);
     printf("|                                         |\n");
-    printf("| (c) Alexander Kurtz 2024                |\n");
+    printf("| (c) Alexander Kurtz 2026                |\n");
     printf("+-----------------------------------------+\n");
     printf("\n");
 }

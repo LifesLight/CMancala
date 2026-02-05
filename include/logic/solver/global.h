@@ -1,7 +1,7 @@
 #pragma once
 
 /**
- * Copyright (c) Alexander Kurtz 2024
+ * Copyright (c) Alexander Kurtz 2026
  */
 
 
@@ -13,7 +13,7 @@
 #include "containers.h"
 #include "logic/board.h"
 #include "user/render.h"
-#include "logic/solver/troughput.h"
+#include "logic/troughput.h"
 #include "logic/utility.h"
 #include "config.h"
 

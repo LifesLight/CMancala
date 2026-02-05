@@ -1,7 +1,7 @@
 #pragma once
 
 /**
- * Copyright (c) Alexander Kurtz 2024
+ * Copyright (c) Alexander Kurtz 2026
  */
 
 

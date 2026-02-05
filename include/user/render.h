@@ -1,7 +1,7 @@
 #pragma once
 
 /**
- * Copyright (c) Alexander Kurtz 2023
+ * Copyright (c) Alexander Kurtz 2026
  */
 
 #include <stdio.h>

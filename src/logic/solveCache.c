@@ -1,8 +1,8 @@
 /**
- * Copyright (c) Alexander Kurtz 2024
+ * Copyright (c) Alexander Kurtz 2026
  */
 
-#include "logic/solver/solveCache.h"
+#include "logic/solveCache.h"
 
 typedef struct {
     int8_t value;
