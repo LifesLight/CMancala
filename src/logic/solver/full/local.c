@@ -31,17 +31,23 @@ void LOCAL_aspirationRoot(Context* context, SolverConfig *config) {
     clock_t start = clock();
     nodeCount = 0;
 
+    int window = windowSize;
+
     while (true) {
         score = LOCAL_negamaxWithMove(context->board, &bestMove, alpha, beta, currentDepth, &solved);
         if (score > alpha && score < beta) {
             currentDepth += depthStep;
+            window = windowSize;
+            if (solved) break;
             if (currentDepth > config->depth && config->depth > 0) break;
             if (((double)(clock() - start) / CLOCKS_PER_SEC) >= config->timeLimit && config->timeLimit > 0) break;
         } else {
             windowMisses++;
-            alpha = score - windowSize;
-            beta = score + windowSize;
+            window *= 2;
         }
+
+        alpha = score - window;
+        beta  = score + window;
     }
 
     double timeTaken = (double)(clock() - start) / CLOCKS_PER_SEC;

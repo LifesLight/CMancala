@@ -1,5 +1,4 @@
 ## CMancala
-
 ## Overview
 CMancala is a powerful Mancala solver and analyzer.<br>
 While it's not the project’s primary focus, it is very much possible to play against (effectively unbeatable) AI agents.
@@ -26,17 +25,34 @@ The AI operates on a single thread.<br> Its performance varies based on the game
 In most configurations, when the AI starts the game, it becomes almost unbeatable due to the nature of Mancala.<br>
 (In the classic 4 stone per cell configuration, the starting player has an evaluation advantage of 8 at depth 40.)<br>
 These benchmarks are approximate and might slightly differ across various CPUs.<br>
-Observations were made on an M2 Pro, but similar performance is expected on modern processors due to the exponential nature of the problem.<br>
+Observations were made on an M2 Pro, but similar performance is expected on modern processors due to the exponential nature of the problem.
 
 ## Algorithm
 All CMancala solvers employ a Negamax algorithm with Alpha-Beta pruning, tailored to accommodate double moves. Common features include:
 - **Double Move Handling**: The algorithm adjusts search parameters based on whether the player's turn continues or switches to the opponent.
 - **Aspiration Windows with Iterative Deepening**: This technique allows for time-limited searches while enhancing performance.
-- **Clip [BETA]**: Clip changes the behavior of solvers to only compute if any move is winning or losing. This feature can be used for playing solvers ONLY if the AI is playing from a winning position; in losing positions, it will treat every move as equally bad if it can't find a winning move, which will result in the agent most likely not returning to a winning position since it will always make the first IDX move.
+- **Clip (WIP)**: Clip changes the behavior of solvers to only compute if any move is winning or losing. This feature can be used for playing solvers ONLY if the AI is playing from a winning position; in losing positions, it will treat every move as equally bad if it can't find a winning move, which will result in the agent most likely not returning to a winning position since it will always make the first IDX move.  
+  Clip is not tested with the **LOCAL** solver. TODO: Implement early termination of states when: delta score > sum playing stones.
 
 ### Solvers
-- **GLOBAL:**<br>Recommended for quickly analyzing a position or playing against an AI.<br>The reference solver. Is only satisfied once the complete game tree is exhaustively searched for the best possible move at the current node.
-- **LOCAL:**<br>I have identified a flaw in this algorithm. While it still works well enough for most scenarios, it is technically incorrect, so I do not recommend using it. I may implement a correct Transposition Table in the future.
+- **GLOBAL:**<br>
+  Recommended for quickly analyzing a position or playing against an AI.<br>
+  The reference solver. Is only satisfied once the complete game tree is exhaustively searched for the best possible move at the current node.
+
+- **LOCAL:**<br>
+  Generally better than **GLOBAL** for basically all use cases.<br>
+  Uses a more complex algorithm with caching and should produce equal or better results at any given search depth.<br>
+  It is not the default solver because the code is more complex and therefore harder to validate, even though in theory it should always be at least as strong as GLOBAL.
+
+  **Cache validation:**  
+  The transposition cache uses a configurable number of validation bits to detect hash collisions.
+  - 64 bits blocks all possible undetected collisions.
+  - 32 bits is extremely unlikely to ever cause issues.
+  - 16 bits and lower are likely to result in undetected collisions.
+
+  By default, the solver is compiled with 64-bit validation.
+  If memory bandwidth is a concern, this can be lowered.
+  A compile-time option exists to track and report undetected collisions if you want to compare different validation accuracies.
 
 ## Restrictions
 - The game is designed to support a maximum of 224 stones on the board at any given time.
@@ -62,7 +78,8 @@ To build and run CMancala:
 
 ## Discoveries
 - On search depth 50 in the standard 4 stones per pit losing position (Encoded: 008080a0a0a0a04000a0a000808)<br> the best (known) move is **5** with a **-8** evaluation.
-- On a uniform 3 stone per pit game, the starting player wins by 2 points with perfect play.<br>Best start move is IDX: 5. (Depth reached was 108, which solved the position).
+- On a uniform 3 stone per pit game, the starting player wins by 2 points with perfect play.<br>
+  Best start move is IDX: 5. (Depth reached was 108, which solved the position).
 
 ### License
 CMancala is released under the MIT License. See LICENSE file for more details.
