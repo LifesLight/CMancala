@@ -171,7 +171,7 @@ void startCache(uint32_t size) {
     lastHitsLegalDepth = 0;
 }
 
-void cacheNode(Board* board, int evaluation, int boundType, int depth) {
+void cacheNode(Board* board, int evaluation, int boundType, int depth, bool solved) {
     // Compute evaluation without score cells
     int scoreDelta = board->cells[SCORE_P1] - board->cells[SCORE_P2];
     scoreDelta *= board->color;
@@ -218,7 +218,7 @@ void cacheNode(Board* board, int evaluation, int boundType, int depth) {
     }
 
     // Update cache entry
-    cache[index].boundType = boundType;
+    cache[index].boundType = (int8_t)((boundType & 0x03) | (solved ? 4 : 0));
     cache[index].validation = validation;
     cache[index].value = evaluation;
     cache[index].depth = depth;
@@ -234,7 +234,7 @@ void cacheNode(Board* board, int evaluation, int boundType, int depth) {
     return;
 }
 
-bool getCachedValue(Board* board, int currentDepth, int *eval, int *boundType) {
+bool getCachedValue(Board* board, int currentDepth, int *eval, int *boundType, bool *solved) {
     uint64_t hashValue;
     if (!translateBoard(board, &hashValue)) {
         return false;
@@ -282,8 +282,8 @@ bool getCachedValue(Board* board, int currentDepth, int *eval, int *boundType) {
     int scoreDelta = board->cells[SCORE_P1] - board->cells[SCORE_P2];
     scoreDelta *= board->color;
     *eval = cache[index].value + scoreDelta;
-    *boundType = cache[index].boundType;
-
+    *boundType = cache[index].boundType & 0x03;
+    *solved = (cache[index].boundType & 4) != 0;
     return true;
 }
 

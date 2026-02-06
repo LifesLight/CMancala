@@ -2,7 +2,7 @@
  * Copyright (c) Alexander Kurtz 2026
  */
 
-#include "logic/solver/full/local.h"
+ #include "logic/solver/full/local.h"
 
 #define PREFIX LOCAL
 #define IS_CLIPPED 0
@@ -26,11 +26,13 @@ void LOCAL_aspirationRoot(Context* context, SolverConfig *config) {
     int currentDepth = 1;
     int bestMove = -1;
     int windowMisses = 0;
+    bool solved = false;
+
     clock_t start = clock();
     nodeCount = 0;
 
     while (true) {
-        score = LOCAL_negamaxWithMove(context->board, &bestMove, alpha, beta, currentDepth);
+        score = LOCAL_negamaxWithMove(context->board, &bestMove, alpha, beta, currentDepth, &solved);
         if (score > alpha && score < beta) {
             currentDepth += depthStep;
             if (currentDepth > config->depth && config->depth > 0) break;
@@ -53,9 +55,7 @@ void LOCAL_aspirationRoot(Context* context, SolverConfig *config) {
     context->metadata.lastMove = bestMove;
     context->metadata.lastEvaluation = score;
     context->metadata.lastDepth = currentDepth - 1;
-
-    // TODO: Reimplement Solved Detection.
-    context->metadata.lastSolved = false;
+    context->metadata.lastSolved = solved;
 
     stepCache();
 }

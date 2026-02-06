@@ -21,13 +21,12 @@
 /**
  * Negamax algorithm with alpha-beta pruning and best move output.
 */
-int LOCAL_negamaxWithMove(
-    Board *board, int *bestMove, int alpha, int beta, const int depth);
+int LOCAL_negamaxWithMove(Board *board, int *bestMove, int alpha, int beta, const int depth, bool *solved);
 
 /**
  * Distribution root
 */
-void LOCAL_distributionRoot(Board *board, int *distribution, SolverConfig *config);
+void LOCAL_distributionRoot(Board *board, int *distribution, bool *solved, SolverConfig *config);
 
 /**
  * Aspiration root

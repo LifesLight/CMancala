@@ -22,12 +22,15 @@ void LOCAL_CLIP_aspirationRoot(Context* context, SolverConfig *config) {
     int score;
     int currentDepth = 1;
     int bestMove = -1;
+    bool solved = false;
+
     clock_t start = clock();
     nodeCount = 0;
 
     while (true) {
-        score = LOCAL_CLIP_negamaxWithMove(context->board, &bestMove, currentDepth);
+        score = LOCAL_CLIP_negamaxWithMove(context->board, &bestMove, currentDepth, &solved);
         currentDepth += depthStep;
+        if (solved) break;
         if (currentDepth > config->depth && config->depth > 0) break;
         if (((double)(clock() - start) / CLOCKS_PER_SEC) >= config->timeLimit && config->timeLimit > 0) break;
     }
@@ -38,9 +41,7 @@ void LOCAL_CLIP_aspirationRoot(Context* context, SolverConfig *config) {
     context->metadata.lastMove = bestMove;
     context->metadata.lastEvaluation = score;
     context->metadata.lastDepth = currentDepth - 1;
-
-    // TODO: Reimplement solve detection
-    context->metadata.lastSolved = false;
+    context->metadata.lastSolved = solved;
 
     if (score < 0) {
         renderOutput("[WARNING]: Clipped best move calculators should not be used in losing positions!", CHEAT_PREFIX);
