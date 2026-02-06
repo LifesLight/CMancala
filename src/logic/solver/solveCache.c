@@ -234,7 +234,7 @@ void cacheNode(Board* board, int evaluation, int boundType, int depth) {
     return;
 }
 
-bool getCachedValue(Board* board, int *eval, int *boundType, int *depth, int currentDepth) {
+bool getCachedValue(Board* board, int currentDepth, int *eval, int *boundType) {
     uint64_t hashValue;
     if (!translateBoard(board, &hashValue)) {
         return false;
@@ -283,7 +283,6 @@ bool getCachedValue(Board* board, int *eval, int *boundType, int *depth, int cur
     scoreDelta *= board->color;
     *eval = cache[index].value + scoreDelta;
     *boundType = cache[index].boundType;
-    *depth = cache[index].depth;
 
     return true;
 }

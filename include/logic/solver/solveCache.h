@@ -97,7 +97,7 @@ void cacheNode(Board* board, int evaluation, int boundType, int depth);
  * Returns true if values where found
  * Current depth is the depth of the node querrying the cache.
 */
-bool getCachedValue(Board* board, int *evaluation, int *boundType, int *depth, int currentDepth);
+bool getCachedValue(Board* board, int currentDepth, int *evaluation, int *boundType);
 
 /**
  * Gets the number of cached nodes.

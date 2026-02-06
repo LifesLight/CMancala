@@ -20,8 +20,7 @@ int FN(negamax)(Board *board, int alpha, int beta, const int depth) {
     // Check if board is cached
     int cachedValue;
     int boundType;
-    int cachedDepth;
-    if (getCachedValue(board, &cachedValue, &boundType, &cachedDepth, depth)) {
+    if (getCachedValue(board, depth, &cachedValue, &boundType)) {
         if (boundType == EXACT_BOUND) {
             return cachedValue;
         } else if (boundType == LOWER_BOUND && cachedValue >= beta) {
