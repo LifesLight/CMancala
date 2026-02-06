@@ -13,16 +13,9 @@ int FN(negamax)(Board *board, int alpha, const int beta, const int depth) {
     // Terminally check
     // The order of the checks is important here
     // Otherwise we could have a empty side, without adding up the opponents pieces to his score
-#if IS_CLIPPED
-    int out = processBoardTerminalClip(board);
-    if (out != INT32_MAX) {
-        return board->color * out;
-    }
-#else
     if (processBoardTerminal(board)) {
         return board->color * getBoardEvaluation(board);
     }
-#endif
 
     // Check if depth limit is reached
     if (depth == 0) {
