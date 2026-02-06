@@ -326,14 +326,11 @@ void renderCacheStats() {
     renderOutput(message, CHEAT_PREFIX);
 
 #ifdef GUARANTEE_VALIDATION
-    sprintf(message, "  Detected: %"PRIu64"", lastDetectedInvalidations);
+    sprintf(message, "  Detected:   %"PRIu64"", lastDetectedInvalidations);
     renderOutput(message, CHEAT_PREFIX);
 #endif
 
-    sprintf(message, "  Hits:       %"PRIu64"", lastHits);
-    renderOutput(message, CHEAT_PREFIX);
-    
-    sprintf(message, "  Hits Legal: %"PRIu64"", lastHitsLegalDepth);
+    sprintf(message, "  Hits (Bad): %"PRIu64" (%"PRIu64")", lastHitsLegalDepth, lastHits - lastHitsLegalDepth);
     renderOutput(message, CHEAT_PREFIX);
 
 #ifdef CACHE_GUARD
