@@ -4,7 +4,7 @@
 
 #include "logic/solver/full/global.h"
 
-bool solved;
+static bool solved;
 
 // Template Instantiation
 #define PREFIX GLOBAL
