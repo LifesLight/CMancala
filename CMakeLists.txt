@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(CMancala)
+project(Mancala)
 
 set(CMAKE_C_STANDARD 23)
 set(CMAKE_C_COMPILER "gcc")
@@ -24,7 +24,7 @@ set(SOURCE_FILES
 
 include_directories(include)
 
-add_executable(CMancala ${SOURCE_FILES})
+add_executable(Mancala ${SOURCE_FILES})
 
 
 # Optimization flags, windows doesn't need these since we are using Release mode
