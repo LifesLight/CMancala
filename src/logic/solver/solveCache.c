@@ -29,8 +29,6 @@ Entry* cache;
 int cacheSize = 0;
 uint32_t cacheSizePow = 0;
 
-uint64_t overwrites;
-uint64_t lastOverwrites;
 uint64_t invalidReads;
 uint64_t lastInvalidReads;
 uint64_t hits;
@@ -82,7 +80,7 @@ bool translateBoard(Board* board, uint64_t *code) {
 // Hash function to get into the array index
 uint32_t indexHash(uint64_t hash) {
     // Fibonacci Hash
-    return (uint32_t)((hash * 11400714819323198485ULL) >> (64 - cacheSizePow));
+    return (uint32_t)(((hash * 11400714819323198485ULL) >> (64 + BUCKET_POW - cacheSizePow)) * BUCKET_ELEMENTS);
 }
 
 void startCache(int sizePow) {
@@ -98,19 +96,17 @@ void startCache(int sizePow) {
     cache = malloc(sizeof(Entry) * cacheSize);
 
     for (int i = 0; i < (int64_t)cacheSize; i++) {
-        cache[i].value = UNSET_VALUE;
-        cache[i].validation = 0;
+        cache[i].value = 0;
+        cache[i].validation = UNSET_VALIDATION;
         cache[i].boundType = 0;
         cache[i].depth = 0;
         cache[i].solved = false;
     }
 
-    overwrites = 0;
     invalidReads = 0;
     hits = 0;
     hitsLegalDepth = 0;
 
-    lastOverwrites = 0;
     lastInvalidReads = 0;
     lastHits = 0;
     lastHitsLegalDepth = 0;
@@ -129,17 +125,25 @@ void cacheNode(Board* board, int evaluation, int boundType, int depth, bool solv
     }
 
     // Compute primary index and validation
-    const uint32_t index = indexHash(hashValue);
+    const uint32_t indexCalc = indexHash(hashValue);
 
-    // Check if the entry already exists
-    if (cache[index].validation == hashValue) {
-        // No reason to store a lower depth cache
+    // Check if bucket has this node.
+    int index = -1;
+    for (int i = 0; i < BUCKET_ELEMENTS; i++) {
+        if (cache[indexCalc + i].validation == hashValue) {
+            index = index + i;
+            break;
+        }
+    }
+
+    // We don't have this node, so replace random
+    if (index == -1) {
+        index = indexCalc + rand() % BUCKET_ELEMENTS;
+    } else {
+    //We have the node, do depth check
         if (cache[index].depth > depth) {
             return;
         }
-
-        // We will overwrite the current entry
-        overwrites++;
     }
 
     // Update cache entry
@@ -159,15 +163,18 @@ bool getCachedValue(Board* board, int currentDepth, int *eval, int *boundType, b
     }
 
     // Get the primary hash
-    const int index = indexHash(hashValue);
+    const int indexCalc = indexHash(hashValue);
 
-    // Check if the entry is unset
-    if (cache[index].value == UNSET_VALUE) {
-        return false;
+    int index = -1;
+    for (int i = 0; i < BUCKET_ELEMENTS; i++) {
+        if (cache[indexCalc + i].validation == hashValue) {
+            index = index + i;
+            break;
+        }
     }
 
     // Check if the key matches
-    if (cache[index].validation != hashValue) {
+    if (index == -1) {
         invalidReads++;
         return false;
     }
@@ -216,7 +223,7 @@ void renderCacheStats() {
     uint64_t solvedEntries = 0;
 
     for (int i = 0; i < (int64_t)cacheSize; i++) {
-        if (cache[i].value != UNSET_VALUE) {
+        if (cache[i].validation != UNSET_VALIDATION) {
             setEntries++;
 
             if (cache[i].solved) {
@@ -238,11 +245,6 @@ void renderCacheStats() {
     }
     getLogNotation(logBuffer, solvedEntries);
     sprintf(message, "  Solved:     %-12"PRIu64" %s (%.2f%%)", solvedEntries, logBuffer, solvedPercentage);
-    renderOutput(message, CHEAT_PREFIX);
-
-    // Overwrites
-    getLogNotation(logBuffer, lastOverwrites);
-    sprintf(message, "  Overwrites: %-12"PRIu64" %s", lastOverwrites, logBuffer);
     renderOutput(message, CHEAT_PREFIX);
 
     // Collisions
@@ -267,12 +269,12 @@ void renderCacheStats() {
 
     Chunk* chunks = malloc(sizeof(Chunk) * cacheSize);
     int chunkCount = 0;
-    int currentType = cache[0].value != UNSET_VALUE;
+    int currentType = cache[0].validation != UNSET_VALIDATION;
     int chunkStart = 0;
     int chunkSize = 1;
 
     for (int i = 1; i < (int64_t)cacheSize; i++) {
-        if ((cache[i].value != UNSET_VALUE) == currentType) { 
+        if ((cache[i].validation != UNSET_VALIDATION) == currentType) { 
             chunkSize++;
         } else {
             chunks[chunkCount].type = currentType;
@@ -280,7 +282,7 @@ void renderCacheStats() {
             chunks[chunkCount].size = chunkSize;
             chunkCount++;
 
-            currentType = cache[i].value != UNSET_VALUE;
+            currentType = cache[i].validation != UNSET_VALIDATION;
             chunkStart = i;
             chunkSize = 1;
         }
@@ -317,12 +319,10 @@ void renderCacheStats() {
 
 
 void stepCache() {
-    lastOverwrites = overwrites;
     lastInvalidReads = invalidReads;
     lastHits = hits;
     lastHitsLegalDepth = hitsLegalDepth;
 
-    overwrites = 0;
     invalidReads = 0;
     hits = 0;
     hitsLegalDepth = 0;

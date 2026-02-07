@@ -39,8 +39,9 @@
 #include "logic/utility.h"
 #include "user/render.h"
 
-#define UNSET_VALUE INT16_MIN
-#define INVALID_HASH UINT64_MAX
+#define BUCKET_POW 2
+// 2^BUCKET_POW
+#define BUCKET_ELEMENTS 4
 
 #define TINY_CACHE_SIZE     17
 #define SMALL_CACHE_SIZE    19
@@ -52,6 +53,9 @@
 #define EXACT_BOUND 0
 #define LOWER_BOUND 1
 #define UPPER_BOUND 2
+
+#define UNSET_VALIDATION UINT64_MAX
+#define INVALID_HASH UINT64_MAX
 
 /**
  * Starts the cache.
