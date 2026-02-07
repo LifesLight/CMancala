@@ -25,6 +25,7 @@ set(SOURCE_FILES
 include_directories(include)
 
 add_executable(Mancala ${SOURCE_FILES})
+target_link_libraries(Mancala m)
 
 
 # Optimization flags, windows doesn't need these since we are using Release mode
