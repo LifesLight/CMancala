@@ -22,14 +22,20 @@ int FN(negamax)(Board *board, int alpha, int beta, const int depth, bool *solved
     int cachedValue;
     int boundType;
     bool cachedSolved;
+
     if (getCachedValue(board, depth, &cachedValue, &boundType, &cachedSolved)) {
         if (boundType == EXACT_BOUND) {
             *solved = cachedSolved;
             return cachedValue;
-        } else if (boundType == LOWER_BOUND && cachedValue >= beta) {
-            *solved = cachedSolved;
-            return cachedValue;
-        } else if (boundType == UPPER_BOUND && cachedValue <= alpha) {
+        }
+
+        if (boundType == LOWER_BOUND) {
+            alpha = max(alpha, cachedValue);
+        } else if (boundType == UPPER_BOUND) {
+            beta = min(beta, cachedValue);
+        }
+
+        if (alpha >= beta) {
             *solved = cachedSolved;
             return cachedValue;
         }
@@ -43,6 +49,7 @@ int FN(negamax)(Board *board, int alpha, int beta, const int depth, bool *solved
     }
 
     int reference = INT32_MIN;
+    const int alphaOriginal = alpha;
 
     nodeCount++;
     bool nodeSolved = true;
@@ -53,8 +60,6 @@ int FN(negamax)(Board *board, int alpha, int beta, const int depth, bool *solved
     // Iterate over all possible moves
     const int8_t start = (board->color == 1)  ? HBOUND_P1 : HBOUND_P2;
     const int8_t end = (board->color == 1)    ? LBOUND_P1 : LBOUND_P2;
-
-    const int alphaOriginal = alpha;
 
     for (int8_t i = start; i >= end; i--) {
         // Filter invalid moves
