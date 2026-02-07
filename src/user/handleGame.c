@@ -342,11 +342,11 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
             renderOutput(message, CHEAT_PREFIX);
 
             double totalTime = context->metadata.lastTime;
-            snprintf(message, sizeof(message), "  Total time: %f seconds", totalTime);
+            snprintf(message, sizeof(message), "  Total time:  %f seconds", totalTime);
             renderOutput(message, CHEAT_PREFIX);
 
             double nodesPerSecond = totalNodes / totalTime;
-            snprintf(message, sizeof(message), "  Throughput: %f million nodes/s", nodesPerSecond / 1000000);
+            snprintf(message, sizeof(message), "  Throughput:  %f million nodes/s", nodesPerSecond / 1000000);
             renderOutput(message, CHEAT_PREFIX);
         }
 

@@ -104,3 +104,20 @@ void updateCell(Board* board, int player, int idx, int value) {
     board->cells[cellIndex] = value;
     return;
 }
+
+void getLogNotation(char* buffer, uint64_t value) {
+    if (value == 0) {
+        strcpy(buffer, "[0,00]");
+        return;
+    }
+
+    double lg = log10((double)value);
+
+    if (lg == floor(lg)) {
+        sprintf(buffer, "[%.0f]", lg);
+    } else {
+        int integerPart = (int)lg;
+        int decimalPart = (int)((lg - integerPart) * 100);
+        sprintf(buffer, "[%d,%02d]", integerPart, decimalPart);
+    }
+}

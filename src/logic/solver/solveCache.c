@@ -74,8 +74,14 @@ uint32_t indexHash(uint64_t hash) {
 }
 
 void startCache(int sizePow) {
-    cacheSize = pow(2, sizePow);
-    cacheSizePow = sizePow;
+    // sizePow == 0 means disabled
+    if (sizePow == 0) {
+        cacheSize = 0;
+    } else {
+        cacheSize = pow(2, sizePow);
+        cacheSizePow = sizePow;
+    }
+
     free(cache);
     cache = malloc(sizeof(Entry) * cacheSize);
 
@@ -193,41 +199,68 @@ int compareChunksStart(const void *a, const void *b) {
 }
 
 void renderCacheStats() {
-    char message[100];
+    char message[256];
+    char logBuffer[32]; 
 
     uint64_t setEntries = 0;
+    uint64_t solvedEntries = 0;
 
     for (int i = 0; i < (int64_t)cacheSize; i++) {
         if (cache[i].value != UNSET_VALUE) {
             setEntries++;
+
+            if (cache[i].boundType & 4) {
+                solvedEntries++;
+            }
         }
     }
 
     double fillPercentage = (double)setEntries / (double)cacheSize;
-    sprintf(message, "  Cache size: %d (%.2f", cacheSize, fillPercentage * 100);
-    strcat(message, "%)");
+
+    // Cache Size
+    getLogNotation(logBuffer, cacheSize);
+    sprintf(message, "  Cache size: %-12d %s (%.2f%% Used)", cacheSize, logBuffer, fillPercentage * 100);
     renderOutput(message, CHEAT_PREFIX);
 
-    sprintf(message, "  Overwrites: %"PRIu64"", lastOverwrites);
-    renderOutput(message, CHEAT_PREFIX);
-    sprintf(message, "  Collisions: %"PRIu64"", lastInvalidReads);
+    double solvedPercentage = 0.0;
+    if (setEntries > 0) {
+        solvedPercentage = (double)solvedEntries / (double)setEntries * 100.0;
+    }
+    getLogNotation(logBuffer, solvedEntries);
+    sprintf(message, "  Solved:     %-12"PRIu64" %s (%.2f%%)", solvedEntries, logBuffer, solvedPercentage);
     renderOutput(message, CHEAT_PREFIX);
 
-    sprintf(message, "  Hits (Bad): %"PRIu64" (%"PRIu64")", lastHitsLegalDepth, lastHits - lastHitsLegalDepth);
+    // Overwrites
+    getLogNotation(logBuffer, lastOverwrites);
+    sprintf(message, "  Overwrites: %-12"PRIu64" %s", lastOverwrites, logBuffer);
+    renderOutput(message, CHEAT_PREFIX);
+
+    // Collisions
+    getLogNotation(logBuffer, lastInvalidReads);
+    sprintf(message, "  Collisions: %-12"PRIu64" %s", lastInvalidReads, logBuffer);
+    renderOutput(message, CHEAT_PREFIX);
+
+    // Hits (Bad)
+    uint64_t badHits = lastHits - lastHitsLegalDepth;
+    double badHitPercent = 0.0;
+    if (lastHits > 0) {
+        badHitPercent = (double)badHits / (double)lastHits * 100.0;
+    }
+
+    getLogNotation(logBuffer, lastHits);
+    sprintf(message, "  Hits (Bad): %-12"PRIu64" %s (%.2f%%)", lastHits, logBuffer, badHitPercent);
     renderOutput(message, CHEAT_PREFIX);
 
     renderOutput("  Fragmentation", CHEAT_PREFIX);
     renderOutput("  Chunk Type | Start Index | Chunk Size", CHEAT_PREFIX);
     renderOutput("  ---------------------------------------", CHEAT_PREFIX);
 
-    // Store all chunks
     Chunk* chunks = malloc(sizeof(Chunk) * cacheSize);
     int chunkCount = 0;
     int currentType = cache[0].value != UNSET_VALUE;
     int chunkStart = 0;
     int chunkSize = 1;
 
-    // Iterate through the cache to identify chunks
     for (int i = 1; i < (int64_t)cacheSize; i++) {
         if ((cache[i].value != UNSET_VALUE) == currentType) { 
             chunkSize++;
@@ -243,27 +276,20 @@ void renderCacheStats() {
         }
     }
 
-    // Add the last chunk
     chunks[chunkCount].type = currentType;
     chunks[chunkCount].start = chunkStart;
     chunks[chunkCount].size = chunkSize;
     chunkCount++;
 
-    // Sort the chunks by size in descending order
     qsort(chunks, chunkCount, sizeof(Chunk), compareChunksSize);
-
-    // Allocate memory for top chunks
     Chunk* topChunks = malloc(sizeof(Chunk) * min(chunkCount, OUTPUT_CHUNK_COUNT));
 
-    // Store top chunks separately
     for (int i = 0; i < min(chunkCount, OUTPUT_CHUNK_COUNT); i++) {
         topChunks[i] = chunks[i];
     }
 
-    // Sort top chunks by start index in ascending order
     qsort(topChunks, min(chunkCount, OUTPUT_CHUNK_COUNT), sizeof(Chunk), compareChunksStart);
 
-    // Print the largest OUTPUT_CHUNK_COUNT chunks
     for (int i = 0; i < min(chunkCount, OUTPUT_CHUNK_COUNT); i++) {
         sprintf(message, "     %s   | %10d  | %10d", topChunks[i].type ? "Set  " : "Unset", topChunks[i].start, topChunks[i].size);
         renderOutput(message, CHEAT_PREFIX);
@@ -274,7 +300,6 @@ void renderCacheStats() {
     }
 
     renderOutput("  ---------------------------------------", CHEAT_PREFIX);
-
 
     free(chunks);
     free(topChunks);

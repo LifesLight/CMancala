@@ -10,6 +10,7 @@
 #include <stdbool.h>
 #include <ctype.h>
 #include <stdint.h>
+#include <math.h>
 
 #ifndef _WIN32
 #include <unistd.h>
@@ -29,3 +30,4 @@ void getInput(char* input, const char* prefix);
 void initializeBoardFromConfig(Board* board, Config* config);
 void quitGame();
 void updateCell(Board* board, int player, int idx, int value);
+void getLogNotation(char* buffer, uint64_t value);
