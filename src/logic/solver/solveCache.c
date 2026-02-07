@@ -7,9 +7,21 @@
 typedef struct {
     uint64_t validation;
 
-    int8_t value;
+    int16_t value;
+    uint16_t depth;
+
     int8_t boundType;
-    uint8_t depth;
+    bool solved;
+
+/**
+ * 8
+ * 2
+ * 2 
+ * 1
+ * 1
+ * 
+ * 2 Bytes Unused
+ */
 } Entry;
 
 Entry* cache;
@@ -90,6 +102,7 @@ void startCache(int sizePow) {
         cache[i].validation = 0;
         cache[i].boundType = 0;
         cache[i].depth = 0;
+        cache[i].solved = false;
     }
 
     overwrites = 0;
@@ -108,10 +121,6 @@ void cacheNode(Board* board, int evaluation, int boundType, int depth, bool solv
     int scoreDelta = board->cells[SCORE_P1] - board->cells[SCORE_P2];
     scoreDelta *= board->color;
     evaluation -= scoreDelta;
-
-    if (evaluation > INT8_MAX || evaluation < INT8_MIN + 1) {
-        return;
-    }
 
     // Translate the board to a unique hash value
     uint64_t hashValue;
@@ -134,7 +143,8 @@ void cacheNode(Board* board, int evaluation, int boundType, int depth, bool solv
     }
 
     // Update cache entry
-    cache[index].boundType = (int8_t)((boundType & 0x03) | (solved ? 4 : 0));
+    cache[index].boundType = boundType;
+    cache[index].solved = solved;
     cache[index].validation = hashValue;
     cache[index].value = evaluation;
     cache[index].depth = depth;
@@ -176,8 +186,8 @@ bool getCachedValue(Board* board, int currentDepth, int *eval, int *boundType, b
     int scoreDelta = board->cells[SCORE_P1] - board->cells[SCORE_P2];
     scoreDelta *= board->color;
     *eval = cache[index].value + scoreDelta;
-    *boundType = cache[index].boundType & 0x03;
-    *solved = (cache[index].boundType & 4) != 0;
+    *boundType = cache[index].boundType;
+    *solved = cache[index].solved;
     return true;
 }
 
@@ -209,7 +219,7 @@ void renderCacheStats() {
         if (cache[i].value != UNSET_VALUE) {
             setEntries++;
 
-            if (cache[i].boundType & 4) {
+            if (cache[i].solved) {
                 solvedEntries++;
             }
         }

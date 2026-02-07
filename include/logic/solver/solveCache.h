@@ -39,7 +39,7 @@
 #include "logic/utility.h"
 #include "user/render.h"
 
-#define UNSET_VALUE INT8_MIN
+#define UNSET_VALUE INT16_MIN
 #define INVALID_HASH UINT64_MAX
 
 #define TINY_CACHE_SIZE     17
