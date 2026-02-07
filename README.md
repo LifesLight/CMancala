@@ -31,8 +31,7 @@ Observations were made on an M2 Pro, but similar performance is expected on mode
 All CMancala solvers employ a Negamax algorithm with Alpha-Beta pruning, tailored to accommodate double moves. Common features include:
 - **Double Move Handling**: The algorithm adjusts search parameters based on whether the player's turn continues or switches to the opponent.
 - **Aspiration Windows with Iterative Deepening**: This technique allows for time-limited searches while enhancing performance.
-- **Clip (WIP)**: Clip changes the behavior of solvers to only compute if any move is winning or losing. This feature can be used for playing solvers ONLY if the AI is playing from a winning position; in losing positions, it will treat every move as equally bad if it can't find a winning move, which will result in the agent most likely not returning to a winning position since it will always make the first IDX move.  
-  Clip is not tested with the **LOCAL** solver.
+- **Clip (WIP)**: Clip changes the behavior of solvers to only compute if any move is winning or losing. This feature can be used for playing solvers ONLY if the AI is playing from a winning position; in losing positions, it will treat every move as equally bad if it can't find a winning move, which will result in the agent most likely not returning to a winning position since it will always make the first IDX move.
 
 ### Solvers
 - **GLOBAL:**<br>
