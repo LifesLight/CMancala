@@ -5,15 +5,7 @@
 #include "logic/solver/solveCache.h"
 
 typedef struct {
-#ifdef GUARANTEE_VALIDATION
-    uint64_t key;
-#endif
-
-    VALIDATION_TYPE validation;
-
-#ifdef CACHE_GUARD
-    uint8_t protector;
-#endif
+    uint64_t validation;
 
     int8_t value;
     int8_t boundType;
@@ -22,7 +14,9 @@ typedef struct {
 
 Entry* cache;
 
-uint32_t cacheSize = 0;
+int cacheSize = 0;
+uint32_t cacheSizePow = 0;
+
 uint64_t overwrites;
 uint64_t lastOverwrites;
 uint64_t invalidReads;
@@ -32,57 +26,6 @@ uint64_t hitsLegalDepth;
 uint64_t lastHits;
 uint64_t lastHitsLegalDepth;
 
-#ifdef GUARANTEE_VALIDATION
-uint64_t detectedInvalidations;
-uint64_t lastDetectedInvalidations;
-#endif
-
-
-#ifdef CACHE_GUARD
-/**
- * A entry can be overwritten if it has "lifetime 0", which is indicated by the first 7 bits being 0.
- * The last bit is used to indicate if the entry was accessed this iteration,
- * this doesn't affect the protection status this iteration.
-*/
-const uint8_t freshLifetime = ((uint16_t)CACHE_GUARD + 1) & 0xFE;
-
-// Protect the entry for the next iteration
-void protectIndex(uint32_t index) {
-    cache[index].protector |= 0x80;
-}
-
-void removeProtection(uint32_t index) {
-    cache[index].protector &= 0x7F;
-}
-
-// Check if the entry was protected this iteration
-bool isProtected(uint32_t index) {
-    return (cache[index].protector & 0x80) != 0;
-}
-
-// Get how many iterations the entry is still protected
-uint8_t getLifetime(uint32_t index) {
-    return cache[index].protector & 0x7F; // Mask out the protected bit
-}
-
-// Set the lifetime
-void setLifetime(uint8_t lifetime, uint32_t index) {
-    cache[index].protector = (cache[index].protector & 0x80) | (lifetime & 0x7F);
-}
-
-uint32_t countPerAge[CACHE_GUARD + 1];
-#endif
-
-/**
- * Compute the validation hash
-*/
-VALIDATION_TYPE computeValidation(uint64_t hash) {
-#if VALIDATION_SIZE == 64
-    return hash;
-#else
-    return hash % VALMAX;
-#endif
-}
 
 uint32_t getCacheSize() {
     return cacheSize;
@@ -126,11 +69,13 @@ bool translateBoard(Board* board, uint64_t *code) {
 
 // Hash function to get into the array index
 uint32_t indexHash(uint64_t hash) {
-    return hash % cacheSize;
+    // Fibonacci Hash
+    return (uint32_t)((hash * 11400714819323198485ULL) >> (64 - cacheSizePow));
 }
 
-void startCache(uint32_t size) {
-    cacheSize = size;
+void startCache(int sizePow) {
+    cacheSize = pow(2, sizePow);
+    cacheSizePow = sizePow;
     free(cache);
     cache = malloc(sizeof(Entry) * cacheSize);
 
@@ -139,26 +84,7 @@ void startCache(uint32_t size) {
         cache[i].validation = 0;
         cache[i].boundType = 0;
         cache[i].depth = 0;
-
-
-#ifdef GUARANTEE_VALIDATION
-        cache[i].key = 0;
-#endif
-
-#ifdef CACHE_GUARD
-        cache[i].protector = 0;
-#endif
     }
-
-#ifdef CACHE_GUARD
-    lastOverwrites = 0;
-    lastInvalidReads = 0;
-#endif
-
-#ifdef GUARANTEE_VALIDATION
-    detectedInvalidations = 0;
-    lastDetectedInvalidations = 0;
-#endif
 
     overwrites = 0;
     invalidReads = 0;
@@ -189,47 +115,23 @@ void cacheNode(Board* board, int evaluation, int boundType, int depth, bool solv
 
     // Compute primary index and validation
     const uint32_t index = indexHash(hashValue);
-    const VALIDATION_TYPE validation = computeValidation(hashValue);
-
-#ifdef CACHE_GUARD
-    // Check if the entry is protected
-    if (getLifetime(index) > 0) {
-        return;
-    }
-#endif
 
     // Check if the entry already exists
-    if (cache[index].validation == validation) {
-#ifdef GUARANTEE_VALIDATION
-        if (cache[index].key != hashValue) {
-            detectedInvalidations++;
-        }
-#endif
-
+    if (cache[index].validation == hashValue) {
         // No reason to store a lower depth cache
         if (cache[index].depth > depth) {
             return;
         }
-    }
 
-    // Handle overwrites
-    if (cache[index].value != UNSET_VALUE) {
+        // We will overwrite the current entry
         overwrites++;
     }
 
     // Update cache entry
     cache[index].boundType = (int8_t)((boundType & 0x03) | (solved ? 4 : 0));
-    cache[index].validation = validation;
+    cache[index].validation = hashValue;
     cache[index].value = evaluation;
     cache[index].depth = depth;
-
-#ifdef GUARANTEE_VALIDATION
-    cache[index].key = hashValue;
-#endif
-
-#ifdef CACHE_GUARD
-    cache[index].protector = 0;
-#endif
 
     return;
 }
@@ -242,7 +144,6 @@ bool getCachedValue(Board* board, int currentDepth, int *eval, int *boundType, b
 
     // Get the primary hash
     const int index = indexHash(hashValue);
-    const VALIDATION_TYPE validation = computeValidation(hashValue);
 
     // Check if the entry is unset
     if (cache[index].value == UNSET_VALUE) {
@@ -250,21 +151,13 @@ bool getCachedValue(Board* board, int currentDepth, int *eval, int *boundType, b
     }
 
     // Check if the key matches
-    if (cache[index].validation != validation) {
+    if (cache[index].validation != hashValue) {
         invalidReads++;
         return false;
     }
 
-#ifdef GUARANTEE_VALIDATION
-    if (cache[index].key != hashValue) {
-        detectedInvalidations++;
-        return false;
-    }
-#endif
-
     // We have a hit
     hits++;
-
 
     // Our cached entry needs to be at least as deep as our current depth.
     if (cache[index].depth < currentDepth) {
@@ -272,11 +165,6 @@ bool getCachedValue(Board* board, int currentDepth, int *eval, int *boundType, b
     }
 
     hitsLegalDepth++;
-
-#ifdef CACHE_GUARD
-    // Protect the entry
-    protectIndex(index);
-#endif
 
     // Adjust for score cells
     int scoreDelta = board->cells[SCORE_P1] - board->cells[SCORE_P2];
@@ -325,23 +213,8 @@ void renderCacheStats() {
     sprintf(message, "  Collisions: %"PRIu64"", lastInvalidReads);
     renderOutput(message, CHEAT_PREFIX);
 
-#ifdef GUARANTEE_VALIDATION
-    sprintf(message, "  Detected:   %"PRIu64"", lastDetectedInvalidations);
-    renderOutput(message, CHEAT_PREFIX);
-#endif
-
     sprintf(message, "  Hits (Bad): %"PRIu64" (%"PRIu64")", lastHitsLegalDepth, lastHits - lastHitsLegalDepth);
     renderOutput(message, CHEAT_PREFIX);
-
-#ifdef CACHE_GUARD
-    renderOutput("  Guard durations", CHEAT_PREFIX);
-    renderOutput("  ---------------------------------------", CHEAT_PREFIX);
-    for (int i = 0; i <= CACHE_GUARD; i++) {
-        sprintf(message, "  %d: %d", i, countPerAge[i]);
-        renderOutput(message, CHEAT_PREFIX);
-    }
-    renderOutput("  ---------------------------------------", CHEAT_PREFIX);
-#endif
 
     renderOutput("  Fragmentation", CHEAT_PREFIX);
     renderOutput("  Chunk Type | Start Index | Chunk Size", CHEAT_PREFIX);
@@ -414,38 +287,8 @@ void stepCache() {
     lastHits = hits;
     lastHitsLegalDepth = hitsLegalDepth;
 
-#ifdef GUARANTEE_VALIDATION
-    lastDetectedInvalidations = detectedInvalidations;
-    detectedInvalidations = 0;
-#endif
-
     overwrites = 0;
     invalidReads = 0;
     hits = 0;
     hitsLegalDepth = 0;
-
-#ifdef CACHE_GUARD
-    // Track how many have what age
-    memset(countPerAge, 0, sizeof(countPerAge));
-
-    for (int i = 0; i < (int64_t)cacheSize; i++) {
-        if (cache[i].value == UNSET_VALUE) {
-            continue;
-        }
-
-        if (isProtected(i)) {
-            uint8_t remaining = getLifetime(i);
-            if (remaining > 0) {
-                remaining--;
-                setLifetime(remaining, i);
-            }
-        } else {
-            setLifetime(CACHE_GUARD, i);
-        }
-
-        countPerAge[getLifetime(i)]++;
-
-        removeProtection(i);
-    }
-#endif
 }

@@ -15,7 +15,7 @@ void renderConfigHelp() {
     renderOutput("  depth [number >= 0]              : Set depth limit for AI, if 0 unlimited", CONFIG_PREFIX);
     renderOutput("  solver [global|local]            : Set default solver for AI", CONFIG_PREFIX);
     renderOutput("  clip [true|false]                : Set clip on/off, clip only computes if a move is winning or losing", CONFIG_PREFIX);
-    renderOutput("  cache [t|s|n|l|e|number]         : Set cache size. Can be a custom value or preset", CONFIG_PREFIX);
+    renderOutput("  cache [t|s|n|l|e|number]         : Set cache size as power of two. Can be a custom value or preset", CONFIG_PREFIX);
     renderOutput("  starting [1|2]                   : Configure starting player", CONFIG_PREFIX);
     renderOutput("  player [1|2] [human|random|ai]   : Configure player", CONFIG_PREFIX);
     renderOutput("  display                          : Display current configuration", CONFIG_PREFIX);
@@ -176,6 +176,10 @@ void handleConfigInput(bool* requestedStart, Config* config) {
         if (cacheSize < 0) {
             renderOutput("Invalid cache size", CONFIG_PREFIX);
             return;
+        }
+
+        if (cacheSize > 30) {
+            renderOutput("Warning! Cache size is set as power of two", CONFIG_PREFIX);
         }
 
         // Update cache

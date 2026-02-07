@@ -42,11 +42,11 @@
 #define UNSET_VALUE INT8_MIN
 #define INVALID_HASH UINT64_MAX
 
-#define TINY_CACHE_SIZE     100003
-#define SMALL_CACHE_SIZE    2500009
-#define NORMAL_CACHE_SIZE   5000011
-#define LARGE_CACHE_SIZE    10000019
-#define EXTREME_CACHE_SIZE  25000009
+#define TINY_CACHE_SIZE     17
+#define SMALL_CACHE_SIZE    19
+#define NORMAL_CACHE_SIZE   21
+#define LARGE_CACHE_SIZE    25
+#define EXTREME_CACHE_SIZE  27
 #define OUTPUT_CHUNK_COUNT 10
 
 #define EXACT_BOUND 0
@@ -54,38 +54,10 @@
 #define UPPER_BOUND 2
 
 /**
- * How many bits are used as validation for the cache.
- * 32 is very good, 64 is guaranteed no undetected.
- * If worried about specific performances compile with GUARANTEE_VALIDATION,
- * this will output how many undetected collisions occurred.
-*/
-#define VALIDATION_SIZE 64
-// #define GUARANTEE_VALIDATION
-
-#if VALIDATION_SIZE == 8
-#define VALIDATION_TYPE uint8_t
-#define VALMAX UINT8_MAX
-#elif VALIDATION_SIZE == 16
-#define VALIDATION_TYPE uint16_t
-#define VALMAX UINT16_MAX
-#elif VALIDATION_SIZE == 32
-#define VALIDATION_TYPE uint32_t
-#define VALMAX UINT32_MAX
-#elif VALIDATION_SIZE == 64
-#define VALIDATION_TYPE uint64_t
-#define VALMAX UINT64_MAX 
-#endif
-
-/**
- * Specify how many compute iterations must pass before a cache entry is allowed to be overwritten.
- * If this is undefined this feature is disabled.
-*/
-// #define CACHE_GUARD 2
-
-/**
  * Starts the cache.
+ * We specify the power of two that is the cache size.
 */
-void startCache(uint32_t cacheSize);
+void startCache(int sizePow);
 
 /**
  * Caches a node.
