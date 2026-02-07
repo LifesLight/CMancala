@@ -44,16 +44,6 @@ All CMancala solvers employ a Negamax algorithm with Alpha-Beta pruning, tailore
   Uses a more complex algorithm with caching and should produce equal or better results at any given search depth.<br>
   It is not the default solver because the code is more complex and therefore harder to validate, even though in theory it should always be at least as strong as GLOBAL.
 
-  **Cache validation:**  
-  The transposition cache uses a configurable number of validation bits to detect hash collisions.
-  - 64 bits blocks all possible undetected collisions.
-  - 32 bits is extremely unlikely to ever cause issues.
-  - 16 bits and lower are likely to result in undetected collisions.
-
-  By default, the solver is compiled with 64-bit validation.
-  If memory bandwidth is a concern, this can be lowered.
-  A compile-time option exists to track and report undetected collisions if you want to compare different validation accuracies.
-
 ## Restrictions
 - The game is designed to support a maximum of 224 stones on the board at any given time.
 
