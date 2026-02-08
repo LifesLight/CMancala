@@ -14,6 +14,7 @@ set(SOURCE_FILES
     src/user/handleGame.c
     src/user/handlePlaying.c
     src/user/interface.c
+    src/user/runBenchmark.c
     src/logic/solver/full/global.c
     src/logic/solver/full/local.c
     src/logic/solver/clipped/local.c

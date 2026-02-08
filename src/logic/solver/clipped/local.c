@@ -10,7 +10,7 @@
 #undef PREFIX
 #undef IS_CLIPPED
 
-void LOCAL_CLIP_aspirationRoot(Context* context, SolverConfig *config) {
+void LOCAL_CLIP_aspirationRootBench(Context* context, SolverConfig *config, double* depthTimes) {
     // Cache checking
     if (getCacheSize() == 0) {
         renderOutput("Cache is disabled, starting with \"normal\" preset!", CHEAT_PREFIX);
@@ -27,8 +27,22 @@ void LOCAL_CLIP_aspirationRoot(Context* context, SolverConfig *config) {
     clock_t start = clock();
     nodeCount = 0;
 
+    // Benchmark Init
+    if (depthTimes != NULL) {
+        for (int i = 0; i < 1024; i++) depthTimes[i] = -1.0;
+    }
+    double lastTimeCaptured = 0.0;
+
     while (true) {
         score = LOCAL_CLIP_negamaxWithMove(context->board, &bestMove, currentDepth, &solved);
+
+        // Benchmark Record
+        if (depthTimes != NULL && currentDepth < 1024) {
+            double currentTime = (double)(clock() - start) / CLOCKS_PER_SEC;
+            depthTimes[currentDepth] = currentTime - lastTimeCaptured;
+            lastTimeCaptured = currentTime;
+        }
+
         currentDepth += depthStep;
         stepCache();
         if (solved) break;
@@ -49,4 +63,8 @@ void LOCAL_CLIP_aspirationRoot(Context* context, SolverConfig *config) {
     }
 
     resetCacheStats();
+}
+
+void LOCAL_CLIP_aspirationRoot(Context* context, SolverConfig *config) {
+    LOCAL_CLIP_aspirationRootBench(context, config, NULL);
 }

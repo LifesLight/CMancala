@@ -32,3 +32,4 @@ void LOCAL_distributionRoot(Board *board, int *distribution, bool *solved, Solve
  * Aspiration root
 */
 void LOCAL_aspirationRoot(Context* context, SolverConfig *config);
+void LOCAL_aspirationRootBench(Context* context, SolverConfig *config, double* depthTimes);

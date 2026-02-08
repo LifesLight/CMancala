@@ -32,3 +32,4 @@ void LOCAL_CLIP_distributionRoot(Board *board, int *distribution, bool *solved, 
  * Aspiration root
 */
 void LOCAL_CLIP_aspirationRoot(Context* context, SolverConfig *config);
+void LOCAL_CLIP_aspirationRootBench(Context* context, SolverConfig *config, double* depthTimes);
