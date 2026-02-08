@@ -13,24 +13,18 @@ typedef struct {
     int8_t boundType;
     bool solved;
 
-/**
- * 8
- * 2
- * 2 
- * 1
- * 1
- * 
- * 2 Bytes Unused
- */
+    // Replacement Policy Data
+    uint8_t  gen;
+    uint8_t  uses;
 } Entry;
+
+static uint8_t currentGen = 1;
 
 Entry* cache;
 
 int cacheSize = 0;
 uint32_t cacheSizePow = 0;
 
-uint64_t invalidReads;
-uint64_t lastInvalidReads;
 uint64_t hits;
 uint64_t hitsLegalDepth;
 uint64_t lastHits;
@@ -39,6 +33,39 @@ uint64_t lastHitsLegalDepth;
 
 uint32_t getCacheSize() {
     return cacheSize;
+}
+
+void startCache(int sizePow) {
+    // sizePow == 0 means disabled
+    if (sizePow == 0) {
+        cacheSize = 0;
+    } else {
+        cacheSize = pow(2, sizePow);
+        cacheSizePow = sizePow;
+    }
+
+    if (sizePow <= BUCKET_POW) {
+        cacheSize = 0;
+    }
+
+    free(cache);
+    cache = malloc(sizeof(Entry) * cacheSize);
+
+    for (int i = 0; i < (int64_t)cacheSize; i++) {
+        cache[i].value = 0;
+        cache[i].validation = UNSET_VALIDATION;
+        cache[i].gen = 0;
+        cache[i].uses = 0;
+        cache[i].boundType = 0;
+        cache[i].depth = 0;
+        cache[i].solved = false;
+    }
+
+    hits = 0;
+    hitsLegalDepth = 0;
+
+    lastHits = 0;
+    lastHitsLegalDepth = 0;
 }
 
 /**
@@ -83,33 +110,20 @@ uint32_t indexHash(uint64_t hash) {
     return (uint32_t)(((hash * 11400714819323198485ULL) >> (64 + BUCKET_POW - cacheSizePow)) * BUCKET_ELEMENTS);
 }
 
-void startCache(int sizePow) {
-    // sizePow == 0 means disabled
-    if (sizePow == 0) {
-        cacheSize = 0;
-    } else {
-        cacheSize = pow(2, sizePow);
-        cacheSizePow = sizePow;
-    }
+static inline uint8_t ageDiff(uint8_t now, uint8_t then) {
+    return (uint8_t)(now - then);
+}
 
-    free(cache);
-    cache = malloc(sizeof(Entry) * cacheSize);
+static inline int keepScore(const Entry *e) {
+    int s = (int)e->depth;
 
-    for (int i = 0; i < (int64_t)cacheSize; i++) {
-        cache[i].value = 0;
-        cache[i].validation = UNSET_VALIDATION;
-        cache[i].boundType = 0;
-        cache[i].depth = 0;
-        cache[i].solved = false;
-    }
+    if (e->boundType == EXACT_BOUND)    s += 2000;
+    if (e->solved)                      s += 4000;
 
-    invalidReads = 0;
-    hits = 0;
-    hitsLegalDepth = 0;
+    s += (int)                          (e->uses >> 4);
+    s -= (int)                          ageDiff(currentGen, e->gen) * 8;
 
-    lastInvalidReads = 0;
-    lastHits = 0;
-    lastHitsLegalDepth = 0;
+    return s;
 }
 
 void cacheNode(Board* board, int evaluation, int boundType, int depth, bool solved) {
@@ -125,33 +139,56 @@ void cacheNode(Board* board, int evaluation, int boundType, int depth, bool solv
     }
 
     // Compute primary index and validation
-    const uint32_t indexCalc = indexHash(hashValue);
+    const uint32_t base = indexHash(hashValue);
+    Entry *b = &cache[base];
 
-    // Check if bucket has this node.
-    int index = -1;
+    // same-key update
     for (int i = 0; i < BUCKET_ELEMENTS; i++) {
-        if (cache[indexCalc + i].validation == hashValue) {
-            index = indexCalc + i;
-            break;
-        }
-    }
+        if (b[i].validation == hashValue) {
+            if (b[i].depth > depth) return;
 
-    // We don't have this node, so replace random
-    if (index == -1) {
-        index = indexCalc + rand() % BUCKET_ELEMENTS;
-    } else {
-    //We have the node, do depth check
-        if (cache[index].depth > depth) {
+            b[i].validation = hashValue;
+            b[i].value = evaluation;
+            b[i].depth = depth;
+            b[i].boundType = boundType;
+            b[i].solved = solved;
+            b[i].gen = currentGen;
+            if (b[i].uses < 255) b[i].uses++; else b[i].uses = 255;
             return;
         }
     }
 
-    // Update cache entry
-    cache[index].boundType = boundType;
-    cache[index].solved = solved;
-    cache[index].validation = hashValue;
-    cache[index].value = evaluation;
-    cache[index].depth = depth;
+    // empty slot
+    for (int i = 0; i < BUCKET_ELEMENTS; i++) {
+        if (b[i].validation == UNSET_VALIDATION) {
+            b[i].validation = hashValue;
+            b[i].value = evaluation;
+            b[i].depth = depth;
+            b[i].boundType = boundType;
+            b[i].solved = solved;
+            b[i].gen = currentGen;
+            b[i].uses = 1;
+            return;
+        }
+    }
+
+    // pick victim = lowest keepScore
+    int victim = 0;
+    int worst = keepScore(&b[0]);
+    for (int i = 1; i < BUCKET_ELEMENTS; i++) {
+        int sc = keepScore(&b[i]);
+        if (sc < worst) { 
+            worst = sc; victim = i;
+        }
+    }
+
+    b[victim].validation = hashValue;
+    b[victim].value = evaluation;
+    b[victim].depth = depth;
+    b[victim].boundType = boundType;
+    b[victim].solved = solved;
+    b[victim].gen = currentGen;
+    b[victim].uses = 1;
 
     return;
 }
@@ -175,26 +212,29 @@ bool getCachedValue(Board* board, int currentDepth, int *eval, int *boundType, b
 
     // Check if the key matches
     if (index == -1) {
-        invalidReads++;
         return false;
     }
 
     // We have a hit
     hits++;
+    Entry *e = &cache[index];
 
     // Our cached entry needs to be at least as deep as our current depth.
-    if (cache[index].depth < currentDepth) {
+    if (e->depth < currentDepth) {
         return false;
     }
 
     hitsLegalDepth++;
+    if (e->uses < UINT8_MAX) {
+        e->uses++;
+    }
 
     // Adjust for score cells
     int scoreDelta = board->cells[SCORE_P1] - board->cells[SCORE_P2];
     scoreDelta *= board->color;
-    *eval = cache[index].value + scoreDelta;
-    *boundType = cache[index].boundType;
-    *solved = cache[index].solved;
+    *eval = e->value + scoreDelta;
+    *boundType = e->boundType;
+    *solved = e->solved;
     return true;
 }
 
@@ -245,11 +285,6 @@ void renderCacheStats() {
     }
     getLogNotation(logBuffer, solvedEntries);
     sprintf(message, "  Solved:     %-12"PRIu64" %s (%.2f%%)", solvedEntries, logBuffer, solvedPercentage);
-    renderOutput(message, CHEAT_PREFIX);
-
-    // Collisions
-    getLogNotation(logBuffer, lastInvalidReads);
-    sprintf(message, "  Collisions: %-12"PRIu64" %s", lastInvalidReads, logBuffer);
     renderOutput(message, CHEAT_PREFIX);
 
     // Hits (Bad)
@@ -317,13 +352,14 @@ void renderCacheStats() {
     free(topChunks);
 }
 
-
 void stepCache() {
-    lastInvalidReads = invalidReads;
+    currentGen++;
+}
+
+void resetCacheStats() {
     lastHits = hits;
     lastHitsLegalDepth = hitsLegalDepth;
 
-    invalidReads = 0;
     hits = 0;
     hitsLegalDepth = 0;
 }

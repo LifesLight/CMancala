@@ -37,6 +37,7 @@ void LOCAL_aspirationRoot(Context* context, SolverConfig *config) {
         score = LOCAL_negamaxWithMove(context->board, &bestMove, alpha, beta, currentDepth, &solved);
         if (score > alpha && score < beta) {
             currentDepth += depthStep;
+            stepCache();
             window = windowSize;
             if (solved) break;
             if (currentDepth > config->depth && config->depth > 0) break;
@@ -63,5 +64,5 @@ void LOCAL_aspirationRoot(Context* context, SolverConfig *config) {
     context->metadata.lastDepth = currentDepth - 1;
     context->metadata.lastSolved = solved;
 
-    stepCache();
+    resetCacheStats();
 }

@@ -39,15 +39,16 @@
 #include "logic/utility.h"
 #include "user/render.h"
 
-#define BUCKET_POW 0
+#define BUCKET_POW 2
 // 2^BUCKET_POW
-#define BUCKET_ELEMENTS 1
+#define BUCKET_ELEMENTS 4
 
 #define TINY_CACHE_SIZE     17
 #define SMALL_CACHE_SIZE    19
 #define NORMAL_CACHE_SIZE   21
 #define LARGE_CACHE_SIZE    25
 #define EXTREME_CACHE_SIZE  27
+
 #define OUTPUT_CHUNK_COUNT 10
 
 #define EXACT_BOUND 0
@@ -86,5 +87,7 @@ int getCachedNodeCount();
 void renderCacheStats();
 
 void stepCache();
+
+void resetCacheStats();
 
 uint32_t getCacheSize();

@@ -227,6 +227,7 @@ void FN(distributionRoot)(Board *board, int *distribution, bool *solved, SolverC
     }
     *solved = nodeSolved;
     stepCache();
+    resetCacheStats();
 }
 
 #undef FN
