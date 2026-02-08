@@ -10,20 +10,17 @@
 #define FN(name) CAT(PREFIX, name)
 
 int FN(negamax)(Board *board, int alpha, int beta, const int depth, bool *solved) {
-    // Terminally check
-    // The order of the checks is important here
-    // Otherwise we could have a empty side, without adding up the opponents pieces to his score
     if (processBoardTerminal(board)) {
         *solved = true;
         return board->color * getBoardEvaluation(board);
     }
 
-    // Check if board is cached
     int cachedValue;
     int boundType;
     bool cachedSolved;
+    int cacheBestMove = -1;
 
-    if (getCachedValue(board, depth, &cachedValue, &boundType, &cachedSolved)) {
+    if (getCachedValue(board, depth, &cachedValue, &boundType, &cachedSolved, &cacheBestMove)) {
         if (boundType == EXACT_BOUND) {
             *solved = cachedSolved;
             return cachedValue;
@@ -41,9 +38,7 @@ int FN(negamax)(Board *board, int alpha, int beta, const int depth, bool *solved
         }
     }
 
-    // Check if depth limit is reached
     if (depth == 0) {
-        // If we ever get depth limited in a non-terminal state, the game is not solved
         *solved = false;
         return board->color * getBoardEvaluation(board);
     }
@@ -53,50 +48,74 @@ int FN(negamax)(Board *board, int alpha, int beta, const int depth, bool *solved
 
     nodeCount++;
     bool nodeSolved = true;
-    // Will be needed in every iteration
+
     Board boardCopy;
     int score;
 
-    // Iterate over all possible moves
-    const int8_t start = (board->color == 1)  ? HBOUND_P1 : HBOUND_P2;
-    const int8_t end = (board->color == 1)    ? LBOUND_P1 : LBOUND_P2;
+    const int8_t start = (board->color == 1) ? HBOUND_P1 : HBOUND_P2;
+    const int8_t end   = (board->color == 1) ? LBOUND_P1 : LBOUND_P2;
 
-    for (int8_t i = start; i >= end; i--) {
-        // Filter invalid moves
-        if (board->cells[i] == 0) {
-            continue;
-        }
+    int bestMove = -1;
 
-        // Make copied board with move made
+    if (cacheBestMove != -1) {
         copyBoard(board, &boardCopy);
-        makeMoveFunction(&boardCopy, i);
+        makeMoveFunction(&boardCopy, cacheBestMove);
 
         bool childSolved;
-        // Branch to check if this player is still playing
         if (board->color == boardCopy.color) {
-            // If yes, call negamax with current parameters and no inversion
             score = FN(negamax)(&boardCopy, alpha, beta, depth - 1, &childSolved);
         } else {
-            // If no, call negamax with inverted parameters for the other player
             score = -FN(negamax)(&boardCopy, -beta, -alpha, depth - 1, &childSolved);
         }
-        nodeSolved = nodeSolved && childSolved;
-        // Update parameters
-        reference = max(reference, score);
-        alpha = max(alpha, reference);
 
-        // If we are somehow winning or alpha beta prune
+        nodeSolved = nodeSolved && childSolved;
+
+        reference = score;
+        bestMove = cacheBestMove;
+        alpha = max(alpha, reference);
+    }
 
 #if IS_CLIPPED
-        if (alpha >= beta || alpha >= 1) {
-            break;
-        }
+    if (!(alpha >= beta || alpha >= 1)) {
 #else
-        if (alpha >= beta) {
-            break;
-        }
+    if (!(alpha >= beta)) {
 #endif
+        for (int8_t i = start; i >= end; i--) {
+            if (i == cacheBestMove) {
+                continue;
+            }
+            if (board->cells[i] == 0) {
+                continue;
+            }
 
+            copyBoard(board, &boardCopy);
+            makeMoveFunction(&boardCopy, i);
+
+            bool childSolved;
+            if (board->color == boardCopy.color) {
+                score = FN(negamax)(&boardCopy, alpha, beta, depth - 1, &childSolved);
+            } else {
+                score = -FN(negamax)(&boardCopy, -beta, -alpha, depth - 1, &childSolved);
+            }
+
+            nodeSolved = nodeSolved && childSolved;
+
+            if (score > reference) {
+                reference = score;
+                bestMove = i;
+            }
+            alpha = max(alpha, reference);
+
+#if IS_CLIPPED
+            if (alpha >= beta || alpha >= 1) {
+                break;
+            }
+#else
+            if (alpha >= beta) {
+                break;
+            }
+#endif
+        }
     }
 
     // Cache node
@@ -108,7 +127,7 @@ int FN(negamax)(Board *board, int alpha, int beta, const int depth, bool *solved
         boundType = EXACT_BOUND;
     }
 
-    cacheNode(board, reference, boundType, depth, nodeSolved);
+    cacheNode(board, reference, boundType, depth, nodeSolved, bestMove);
     *solved = nodeSolved;
     return reference;
 }

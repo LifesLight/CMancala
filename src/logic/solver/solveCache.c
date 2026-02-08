@@ -12,6 +12,9 @@ typedef struct {
 
     int8_t boundType;
 
+    // Move ordering
+    int8_t bestMove;
+
     // Replacement Policy Data
     uint8_t  gen;
 } Entry;
@@ -55,6 +58,7 @@ void startCache(int sizePow) {
         cache[i].gen = 0;
         cache[i].boundType = 0;
         cache[i].depth = 0;
+        cache[i].bestMove = 0;
     }
 
     hits = 0;
@@ -124,7 +128,7 @@ static inline bool worseToKeep(const Entry *a, const Entry *b) {
     return ageDiff(currentGen, a->gen) > ageDiff(currentGen, b->gen);
 }
 
-void cacheNode(Board* board, int evaluation, int boundType, int depth, bool solved) {
+void cacheNode(Board* board, int evaluation, int boundType, int depth, bool solved, int bestMove) {
     // Compute evaluation without score cells
     int scoreDelta = board->cells[SCORE_P1] - board->cells[SCORE_P2];
     scoreDelta *= board->color;
@@ -154,6 +158,7 @@ void cacheNode(Board* board, int evaluation, int boundType, int depth, bool solv
             b[i].depth = depth;
             b[i].boundType = boundType;
             b[i].gen = currentGen;
+            b[i].bestMove = bestMove;
             return;
         }
     }
@@ -166,6 +171,7 @@ void cacheNode(Board* board, int evaluation, int boundType, int depth, bool solv
             b[i].depth = depth;
             b[i].boundType = boundType;
             b[i].gen = currentGen;
+            b[i].bestMove = bestMove;
             return;
         }
     }
@@ -183,11 +189,12 @@ void cacheNode(Board* board, int evaluation, int boundType, int depth, bool solv
     b[victim].depth = depth;
     b[victim].boundType = boundType;
     b[victim].gen = currentGen;
+    b[victim].bestMove = bestMove;
 
     return;
 }
 
-bool getCachedValue(Board* board, int currentDepth, int *eval, int *boundType, bool *solved) {
+bool getCachedValue(Board* board, int currentDepth, int *eval, int *boundType, bool *solved, int *bestMove) {
     uint64_t hashValue;
     if (!translateBoard(board, &hashValue)) {
         return false;
@@ -226,6 +233,8 @@ bool getCachedValue(Board* board, int currentDepth, int *eval, int *boundType, b
     *eval = e->value + scoreDelta;
     *boundType = e->boundType;
     *solved = e->depth == UINT16_MAX;
+    *bestMove = e->bestMove;
+
     return true;
 }
 
@@ -353,12 +362,12 @@ void renderCacheStats() {
         enum { DEPTH_BINS = 8 };
         uint64_t depthBins[DEPTH_BINS] = {0};
 
-        const uint32_t span = (uint32_t)maxDepth + 1;                 // >= 1
-        const uint32_t binW = (span + DEPTH_BINS - 1) / DEPTH_BINS;   // ceil, >= 1
+        const uint32_t span = (uint32_t)maxDepth + 1;
+        const uint32_t binW = (span + DEPTH_BINS - 1) / DEPTH_BINS;
 
         for (int i = 0; i < (int64_t)cacheSize; i++) {
             if (cache[i].validation == UNSET_VALIDATION) continue;
-            if (cache[i].depth == UINT16_MAX) continue; // ignore solved
+            if (cache[i].depth == UINT16_MAX) continue;
             const uint16_t d = cache[i].depth;
             uint32_t bi = (uint32_t)d / binW;
             if (bi >= DEPTH_BINS) bi = DEPTH_BINS - 1;
