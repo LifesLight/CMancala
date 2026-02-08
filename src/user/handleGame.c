@@ -4,6 +4,12 @@
 
 #include "user/handleGame.h"
 
+static int safe_int_max_for_buffer(size_t bufsize, const char *prefix) {
+    int overhead = (int)strlen(prefix) + 2;
+    int max = (int)bufsize - 1 - overhead;
+    return max > 0 ? max : 0;
+}
+
 void renderCheatHelp() {
     renderOutput("Commands:", CHEAT_PREFIX);
     renderOutput("  step                             : Step to the next turn", CHEAT_PREFIX);
@@ -85,7 +91,7 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
             if (nextSpace != NULL) *nextSpace = '\0';
 
             char *endPtr;
-            int parsedDepth = strtol(depthPoint, &endPtr, 10);
+            int parsedDepth = (int)strtol(depthPoint, &endPtr, 10);
             if (depthPoint == endPtr) {
                 renderOutput("Invalid depth value", CHEAT_PREFIX);
                 return;
@@ -168,9 +174,11 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
         char* code = encodeBoard(context->board);
 
         char message[256];
-        snprintf(message, sizeof(message), "Code: %s", code);
 
-        free (code);
+        int allowed = safe_int_max_for_buffer(sizeof(message), "Code ");
+        snprintf(message, sizeof(message), "Code \"%.*s\"", allowed, code);
+
+        free(code);
         renderOutput(message, CHEAT_PREFIX);
         return;
     }
@@ -183,14 +191,12 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
             return;
         }
 
-        // Remove leading spaces
-        while (input[5] == ' ') {
-            sprintf(input, "%s", input + 1);
-        }
+        char *payload = input + 5;
+        while (*payload == ' ') payload++;
+        memmove(input + 5, payload, strlen(payload) + 1);
 
-        // Add 5 trailing zeros to the input
         char temp[256];
-        snprintf(temp, sizeof(temp), "00000%s", input + 5);
+        snprintf(temp, sizeof(temp), "00000%.*s", (int)(sizeof(temp) - 6), input + 5);
 
         // Save previous board
         copyBoard(context->board, context->lastBoard);
@@ -338,16 +344,25 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
             renderOutput(message, CHEAT_PREFIX);
 
             int64_t totalNodes = context->metadata.lastNodes;
-            sprintf(message, "  Total nodes: %f million", (double)totalNodes / 1000000);
+
+            snprintf(message, sizeof(message), "  Total nodes: %.3f million", (double)totalNodes / 1000000.0);
             renderOutput(message, CHEAT_PREFIX);
 
             double totalTime = context->metadata.lastTime;
-            snprintf(message, sizeof(message), "  Total time:  %f seconds", totalTime);
-            renderOutput(message, CHEAT_PREFIX);
+            if (totalTime <= 0.0) {
+                snprintf(message, sizeof(message), "  Total time:  N/A");
+                renderOutput(message, CHEAT_PREFIX);
 
-            double nodesPerSecond = totalNodes / totalTime;
-            snprintf(message, sizeof(message), "  Throughput:  %f million nodes/s", nodesPerSecond / 1000000);
-            renderOutput(message, CHEAT_PREFIX);
+                snprintf(message, sizeof(message), "  Throughput:  N/A");
+                renderOutput(message, CHEAT_PREFIX);
+            } else {
+                snprintf(message, sizeof(message), "  Total time:  %f seconds", totalTime);
+                renderOutput(message, CHEAT_PREFIX);
+
+                double nodesPerSecond = totalNodes / totalTime;
+                snprintf(message, sizeof(message), "  Throughput:  %f million nodes/s", nodesPerSecond / 1000000.0);
+                renderOutput(message, CHEAT_PREFIX);
+            }
         }
 
         return;
@@ -389,7 +404,10 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
             return;
         } else {
             char message[256];
-            snprintf(message, sizeof(message), "Invalid autoplay \"%s\"", input + 9);
+
+            const char *prefix = "Invalid autoplay ";
+            int allowed = safe_int_max_for_buffer(sizeof(message), prefix);
+            snprintf(message, sizeof(message), "%s\"%.*s\"", prefix, allowed, input + 9);
             renderOutput(message, CHEAT_PREFIX);
             return;
         }
@@ -408,7 +426,10 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
     }
 
     char message[256];
-    snprintf(message, sizeof(message), "Unknown command: \"%s\". Type \"help\" to get all current commands", input);
+    /* safely print unknown command */
+    const char *unknown_prefix = "Unknown command: ";
+    int allowed = safe_int_max_for_buffer(sizeof(message), unknown_prefix);
+    snprintf(message, sizeof(message), "%s\"%.*s\"", unknown_prefix, allowed, input);
     renderOutput(message, CHEAT_PREFIX);
     return;
 }
@@ -470,7 +491,7 @@ void startGameHandling(Config config) {
                     snprintf(temp, sizeof(temp), "Draw");
                 }
 
-                snprintf(message, sizeof(message), "%s, score: %d - %d", temp, score1, score2);
+                snprintf(message, sizeof(message), "%.200s, score: %d - %d", temp, score1, score2);
                 renderOutput(message, PLAY_PREFIX);
 
                 break;
