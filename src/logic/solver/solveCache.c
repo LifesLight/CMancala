@@ -131,7 +131,7 @@ void cacheNode(Board* board, int evaluation, int boundType, int depth, bool solv
     int index = -1;
     for (int i = 0; i < BUCKET_ELEMENTS; i++) {
         if (cache[indexCalc + i].validation == hashValue) {
-            index = index + i;
+            index = indexCalc + i;
             break;
         }
     }
@@ -168,7 +168,7 @@ bool getCachedValue(Board* board, int currentDepth, int *eval, int *boundType, b
     int index = -1;
     for (int i = 0; i < BUCKET_ELEMENTS; i++) {
         if (cache[indexCalc + i].validation == hashValue) {
-            index = index + i;
+            index = indexCalc + i;
             break;
         }
     }
