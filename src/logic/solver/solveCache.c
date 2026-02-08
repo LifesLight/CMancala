@@ -14,7 +14,6 @@ typedef struct {
 
     // Replacement Policy Data
     uint8_t  gen;
-    uint8_t  uses;
 } Entry;
 
 static uint8_t currentGen = 1;
@@ -54,7 +53,6 @@ void startCache(int sizePow) {
         cache[i].value = 0;
         cache[i].validation = UNSET_VALIDATION;
         cache[i].gen = 0;
-        cache[i].uses = 0;
         cache[i].boundType = 0;
         cache[i].depth = 0;
     }
@@ -112,20 +110,18 @@ static inline uint8_t ageDiff(uint8_t now, uint8_t then) {
     return (uint8_t)(now - then);
 }
 
-static inline int keepScore(const Entry *e) {
-    int s = 0;
-    if (e->depth == UINT16_MAX) {
-        s += 4000;
-    } else {
-        s += e->depth;
+static inline bool worseToKeep(const Entry *a, const Entry *b) {
+    if (a->depth != b->depth) {
+        return a->depth < b->depth;
     }
 
-    if (e->boundType == EXACT_BOUND)    s += 2000;
+    const int aExact = (a->boundType == EXACT_BOUND);
+    const int bExact = (b->boundType == EXACT_BOUND);
+    if (aExact != bExact) {
+        return aExact < bExact;
+    }
 
-    s += (int)                          (e->uses >> 4);
-    s -= (int)                          ageDiff(currentGen, e->gen) * 8;
-
-    return s;
+    return ageDiff(currentGen, a->gen) > ageDiff(currentGen, b->gen);
 }
 
 void cacheNode(Board* board, int evaluation, int boundType, int depth, bool solved) {
@@ -158,7 +154,6 @@ void cacheNode(Board* board, int evaluation, int boundType, int depth, bool solv
             b[i].depth = depth;
             b[i].boundType = boundType;
             b[i].gen = currentGen;
-            if (b[i].uses < 255) b[i].uses++; else b[i].uses = 255;
             return;
         }
     }
@@ -171,18 +166,15 @@ void cacheNode(Board* board, int evaluation, int boundType, int depth, bool solv
             b[i].depth = depth;
             b[i].boundType = boundType;
             b[i].gen = currentGen;
-            b[i].uses = 1;
             return;
         }
     }
 
-    // pick victim = lowest keepScore
+    // pick victim
     int victim = 0;
-    int worst = keepScore(&b[0]);
     for (int i = 1; i < BUCKET_ELEMENTS; i++) {
-        int sc = keepScore(&b[i]);
-        if (sc < worst) { 
-            worst = sc; victim = i;
+        if (worseToKeep(&b[i], &b[victim])) {
+            victim = i;
         }
     }
 
@@ -191,7 +183,6 @@ void cacheNode(Board* board, int evaluation, int boundType, int depth, bool solv
     b[victim].depth = depth;
     b[victim].boundType = boundType;
     b[victim].gen = currentGen;
-    b[victim].uses = 1;
 
     return;
 }
@@ -228,9 +219,6 @@ bool getCachedValue(Board* board, int currentDepth, int *eval, int *boundType, b
     }
 
     hitsLegalDepth++;
-    if (e->uses < UINT8_MAX) {
-        e->uses++;
-    }
 
     // Adjust for score cells
     int scoreDelta = board->cells[SCORE_P1] - board->cells[SCORE_P2];
