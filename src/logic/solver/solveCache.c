@@ -11,7 +11,6 @@ typedef struct {
     uint16_t depth;
 
     int8_t boundType;
-    bool solved;
 
     // Replacement Policy Data
     uint8_t  gen;
@@ -58,7 +57,6 @@ void startCache(int sizePow) {
         cache[i].uses = 0;
         cache[i].boundType = 0;
         cache[i].depth = 0;
-        cache[i].solved = false;
     }
 
     hits = 0;
@@ -115,10 +113,14 @@ static inline uint8_t ageDiff(uint8_t now, uint8_t then) {
 }
 
 static inline int keepScore(const Entry *e) {
-    int s = (int)e->depth;
+    int s = 0;
+    if (e->depth == UINT16_MAX) {
+        s += 4000;
+    } else {
+        s += e->depth;
+    }
 
     if (e->boundType == EXACT_BOUND)    s += 2000;
-    if (e->solved)                      s += 4000;
 
     s += (int)                          (e->uses >> 4);
     s -= (int)                          ageDiff(currentGen, e->gen) * 8;
@@ -142,6 +144,10 @@ void cacheNode(Board* board, int evaluation, int boundType, int depth, bool solv
     const uint32_t base = indexHash(hashValue);
     Entry *b = &cache[base];
 
+    if (solved) {
+        depth = UINT16_MAX;
+    }
+
     // same-key update
     for (int i = 0; i < BUCKET_ELEMENTS; i++) {
         if (b[i].validation == hashValue) {
@@ -151,7 +157,6 @@ void cacheNode(Board* board, int evaluation, int boundType, int depth, bool solv
             b[i].value = evaluation;
             b[i].depth = depth;
             b[i].boundType = boundType;
-            b[i].solved = solved;
             b[i].gen = currentGen;
             if (b[i].uses < 255) b[i].uses++; else b[i].uses = 255;
             return;
@@ -165,7 +170,6 @@ void cacheNode(Board* board, int evaluation, int boundType, int depth, bool solv
             b[i].value = evaluation;
             b[i].depth = depth;
             b[i].boundType = boundType;
-            b[i].solved = solved;
             b[i].gen = currentGen;
             b[i].uses = 1;
             return;
@@ -186,7 +190,6 @@ void cacheNode(Board* board, int evaluation, int boundType, int depth, bool solv
     b[victim].value = evaluation;
     b[victim].depth = depth;
     b[victim].boundType = boundType;
-    b[victim].solved = solved;
     b[victim].gen = currentGen;
     b[victim].uses = 1;
 
@@ -234,7 +237,7 @@ bool getCachedValue(Board* board, int currentDepth, int *eval, int *boundType, b
     scoreDelta *= board->color;
     *eval = e->value + scoreDelta;
     *boundType = e->boundType;
-    *solved = e->solved;
+    *solved = e->depth == UINT16_MAX;
     return true;
 }
 
@@ -266,7 +269,7 @@ void renderCacheStats() {
         if (cache[i].validation != UNSET_VALIDATION) {
             setEntries++;
 
-            if (cache[i].solved) {
+            if (cache[i].depth == UINT16_MAX) {
                 solvedEntries++;
             }
         }
