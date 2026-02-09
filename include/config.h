@@ -21,6 +21,8 @@
 
 #define ASIZE 14
 
+#define MAX_DEPTH 1024
+
 #define OUTPUT_PREFIX    ">> "
 #define INPUT_PREFIX     "<< "
 #define CONFIG_PREFIX    "(C) "

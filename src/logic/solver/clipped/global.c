@@ -13,7 +13,7 @@ static bool solved;
 #undef PREFIX
 #undef IS_CLIPPED
 
-void GLOBAL_CLIP_aspirationRootBench(Context* context, SolverConfig *config, double* depthTimes) {
+void GLOBAL_CLIP_aspirationRoot(Context* context, SolverConfig *config) {
     const int depthStep = 1;
     int score;
     int currentDepth = 1;
@@ -21,9 +21,11 @@ void GLOBAL_CLIP_aspirationRootBench(Context* context, SolverConfig *config, dou
     clock_t start = clock();
     nodeCount = 0;
 
+    double* depthTimes = context->metadata.lastDepthTimes;
+
     // Benchmark Init
     if (depthTimes != NULL) {
-        for (int i = 0; i < 1024; i++) depthTimes[i] = -1.0;
+        for (int i = 0; i < MAX_DEPTH; i++) depthTimes[i] = -1.0;
     }
     double lastTimeCaptured = 0.0;
 
@@ -32,7 +34,7 @@ void GLOBAL_CLIP_aspirationRootBench(Context* context, SolverConfig *config, dou
         score = GLOBAL_CLIP_negamaxWithMove(context->board, &bestMove, currentDepth);
 
         // Benchmark Record
-        if (depthTimes != NULL && currentDepth < 1024) {
+        if (depthTimes != NULL && currentDepth < MAX_DEPTH) {
             double currentTime = (double)(clock() - start) / CLOCKS_PER_SEC;
             depthTimes[currentDepth] = currentTime - lastTimeCaptured;
             lastTimeCaptured = currentTime;
@@ -53,8 +55,4 @@ void GLOBAL_CLIP_aspirationRootBench(Context* context, SolverConfig *config, dou
     if (score < 0) {
         renderOutput("[WARNING]: Clipped best move calculators should not be used in losing positions!", CHEAT_PREFIX);
     }
-}
-
-void GLOBAL_CLIP_aspirationRoot(Context* context, SolverConfig *config) {
-    GLOBAL_CLIP_aspirationRootBench(context, config, NULL);
 }

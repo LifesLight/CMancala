@@ -32,4 +32,3 @@ void GLOBAL_distributionRoot(Board *board, int *distribution, bool *solvedOutput
  * Aspiration root
  */
 void GLOBAL_aspirationRoot(Context* context, SolverConfig *config);
-void GLOBAL_aspirationRootBench(Context* context, SolverConfig *config, double* depthTimes);

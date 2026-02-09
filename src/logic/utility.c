@@ -121,3 +121,23 @@ void getLogNotation(char* buffer, uint64_t value) {
         sprintf(buffer, "[%d,%02d]", integerPart, decimalPart);
     }
 }
+
+void storeBenchmarkData(const char* fileName, double* data) {
+    FILE *fp = fopen(fileName, "w");
+    if (!fp) {
+        printf("Error writing to file %s\n", fileName);
+        return;
+    }
+
+    // CSV Header
+    fprintf(fp, "Depth,Time\n");
+
+    for (int i = 1; i < MAX_DEPTH; i++) {
+        if (data[i] == -1.0) {
+            break;
+        }
+        fprintf(fp, "%d,%.10g\n", i, data[i]);
+    }
+
+    fclose(fp);
+}

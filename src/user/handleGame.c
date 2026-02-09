@@ -22,6 +22,7 @@ void renderCheatHelp() {
     renderOutput("  analyze --solver --depth --clip  : Run analysis on the board, solver, depth and clip can be specified", CHEAT_PREFIX);
     renderOutput("  last                             : Fetch the last moves metadata", CHEAT_PREFIX);
     renderOutput("  cache                            : Fetch the cache stats", CHEAT_PREFIX);
+    renderOutput("  store [file name]                : Writes performance characteristics of the last \"step\" to a file", CHEAT_PREFIX);
     renderOutput("  trace                            : Compute move trace of the last move (requires cached evaluation)", CHEAT_PREFIX);
     renderOutput("  autoplay [true|false]            : If enabled the game loop will automatically continue", CHEAT_PREFIX);
     renderOutput("  config                           : Return the config menu. Will discard the current game", CHEAT_PREFIX);
@@ -375,6 +376,48 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
             return;
         }
         renderCacheStats();
+        return;
+    }
+
+    // Check for store
+    if (strcmp(input, "store") == 0) {
+        renderOutput("No file name specified", CHEAT_PREFIX);
+        return;
+    }
+
+    if (strncmp(input, "store ", 6) == 0) {
+        // Extract filename
+        char *raw = input + 6;
+        while (*raw == ' ') raw++;
+
+        if (*raw == '\0') {
+            renderOutput("No file name specified", CHEAT_PREFIX);
+            return;
+        }
+
+        if (context->metadata.lastEvaluation == INT32_MAX) {
+            renderOutput("Nothing to store", CHEAT_PREFIX);
+            return;
+        }
+
+        // Build filename with .csv if missing
+        char filename[256];
+        size_t len = strlen(raw);
+        if (len >= 4 && strcmp(raw + len - 4, ".csv") == 0) {
+            snprintf(filename, sizeof(filename), "%s", raw);
+        } else {
+            snprintf(filename, sizeof(filename), "%s.csv", raw);
+        }
+
+        // Write benchmark data
+        storeBenchmarkData(filename, context->metadata.lastDepthTimes);
+
+        char message[256];
+        const char *prefix = "Stored data to ";
+        int allowed = safe_int_max_for_buffer(sizeof(message), prefix);
+        snprintf(message, sizeof(message), "%s\"%.*s\"", prefix, allowed, filename);
+        renderOutput(message, CHEAT_PREFIX);
+
         return;
     }
 

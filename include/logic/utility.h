@@ -31,3 +31,4 @@ void initializeBoardFromConfig(Board* board, Config* config);
 void quitGame();
 void updateCell(Board* board, int player, int idx, int value);
 void getLogNotation(char* buffer, uint64_t value);
+void storeBenchmarkData(const char* fileName, double* data);

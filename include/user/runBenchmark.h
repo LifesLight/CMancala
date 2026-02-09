@@ -8,6 +8,6 @@
 
 #include "logic/solver/algo.h"
 
-#define BENCH_DEPTH 1024
+#define BENCHMARK_CACHE_POW 24
 
 void runBenchmark(void);

@@ -60,6 +60,7 @@ typedef struct {
     int lastDepth;
     bool lastSolved;
     double lastTime;
+    double lastDepthTimes[MAX_DEPTH];
     uint64_t lastNodes;
 } Metadata;
 

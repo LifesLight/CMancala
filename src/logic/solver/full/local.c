@@ -10,7 +10,7 @@
 #undef PREFIX
 #undef IS_CLIPPED
 
-void LOCAL_aspirationRootBench(Context* context, SolverConfig *config, double* depthTimes) {
+void LOCAL_aspirationRoot(Context* context, SolverConfig *config) {
     // Cache checking
     if (getCacheSize() == 0) {
         renderOutput("Cache is disabled, starting with \"normal\" preset!", CHEAT_PREFIX);
@@ -31,9 +31,11 @@ void LOCAL_aspirationRootBench(Context* context, SolverConfig *config, double* d
     clock_t start = clock();
     nodeCount = 0;
 
+    double* depthTimes = context->metadata.lastDepthTimes;
+
     // Benchmark Init
     if (depthTimes != NULL) {
-        for (int i = 0; i < 1024; i++) depthTimes[i] = -1.0;
+        for (int i = 0; i < MAX_DEPTH; i++) depthTimes[i] = -1.0;
     }
     double lastTimeCaptured = 0.0;
 
@@ -43,7 +45,7 @@ void LOCAL_aspirationRootBench(Context* context, SolverConfig *config, double* d
         score = LOCAL_negamaxWithMove(context->board, &bestMove, alpha, beta, currentDepth, &solved);
         if (score > alpha && score < beta) {
             // Benchmark Record
-            if (depthTimes != NULL && currentDepth < 1024) {
+            if (depthTimes != NULL && currentDepth < MAX_DEPTH) {
                 double currentTime = (double)(clock() - start) / CLOCKS_PER_SEC;
                 depthTimes[currentDepth] = currentTime - lastTimeCaptured;
                 lastTimeCaptured = currentTime;
@@ -78,8 +80,4 @@ void LOCAL_aspirationRootBench(Context* context, SolverConfig *config, double* d
     context->metadata.lastSolved = solved;
 
     resetCacheStats();
-}
-
-void LOCAL_aspirationRoot(Context* context, SolverConfig *config) {
-    LOCAL_aspirationRootBench(context, config, NULL);
 }
