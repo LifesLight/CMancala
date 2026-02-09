@@ -10,4 +10,4 @@
 
 #define BENCHMARK_CACHE_POW 24
 
-void runBenchmark(void);
+void runBenchmark();

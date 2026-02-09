@@ -4,6 +4,16 @@
 
 #include "logic/solver/solveCache.h"
 
+int cacheSize = 0;
+uint32_t cacheSizePow = 0;
+
+// Perf Tracking
+uint64_t hits;
+uint64_t hitsLegalDepth;
+uint64_t lastHits;
+uint64_t lastHitsLegalDepth;
+
+
 typedef struct {
     uint64_t validation;
 
@@ -14,91 +24,15 @@ typedef struct {
 
     // Replacement Policy Data
     uint8_t  gen;
-} Entry;
 
-static uint8_t currentGen = 1;
+    /**
+     * 3 Spare Bytes
+     */
+} Entry;
 
 Entry* cache;
 
-int cacheSize = 0;
-uint32_t cacheSizePow = 0;
-
-uint64_t hits;
-uint64_t hitsLegalDepth;
-uint64_t lastHits;
-uint64_t lastHitsLegalDepth;
-
-
-uint32_t getCacheSize() {
-    return cacheSize;
-}
-
-void startCache(int sizePow) {
-    // sizePow == 0 means disabled
-    if (sizePow == 0) {
-        cacheSize = 0;
-    } else {
-        cacheSize = pow(2, sizePow);
-        cacheSizePow = sizePow;
-    }
-
-    if (sizePow <= BUCKET_POW) {
-        cacheSize = 0;
-    }
-
-    free(cache);
-    cache = malloc(sizeof(Entry) * cacheSize);
-
-    for (int i = 0; i < (int64_t)cacheSize; i++) {
-        cache[i].value = 0;
-        cache[i].validation = UNSET_VALIDATION;
-        cache[i].gen = 0;
-        cache[i].boundType = 0;
-        cache[i].depth = 0;
-    }
-
-    hits = 0;
-    hitsLegalDepth = 0;
-
-    lastHits = 0;
-    lastHitsLegalDepth = 0;
-}
-
-/**
- * Returns false if cant be translated
-*/
-bool translateBoard(Board* board, uint64_t *code) {
-    // Check if window can be stored
-    uint64_t hash = 0;
-
-    // Make first bit the current player
-    hash |= ((uint64_t)((board->color == 1) ? 1 : 0));
-
-    int offset = 1;
-    uint8_t value;
-
-    // 5 bits per cell
-    for (int i = 0; i < 6; i++) {
-        value = board->cells[i];
-        if (value > 31) {
-            return false;
-        }
-        hash |= ((uint64_t)(value & 0x1F)) << offset;
-        offset += 5;
-    }
-
-    for (int i = 7; i < 13; i++) {
-        value = board->cells[i];
-        if (value > 31) {
-            return false;
-        }
-        hash |= ((uint64_t)(value & 0x1F)) << offset;
-        offset += 5;
-    }
-
-    *code = hash;
-    return true;
-}
+static uint8_t currentGen = 1;
 
 // Hash function to get into the array index
 uint32_t indexHash(uint64_t hash) {
@@ -106,11 +40,13 @@ uint32_t indexHash(uint64_t hash) {
     return (uint32_t)(((hash * 11400714819323198485ULL) >> (64 + BUCKET_POW - cacheSizePow)) * BUCKET_ELEMENTS);
 }
 
-static inline uint8_t ageDiff(uint8_t now, uint8_t then) {
-    return (uint8_t)(now - then);
+// Get Wrapparound save age
+uint8_t getAge(uint8_t gen) {
+    return (uint8_t)(currentGen - gen);
 }
 
-static inline bool worseToKeep(const Entry *a, const Entry *b) {
+// Replacement Policy, returns true if we should discard a instead of b.
+bool worseToKeep(const Entry *a, const Entry *b) {
     if (a->depth != b->depth) {
         return a->depth < b->depth;
     }
@@ -121,7 +57,7 @@ static inline bool worseToKeep(const Entry *a, const Entry *b) {
         return aExact < bExact;
     }
 
-    return ageDiff(currentGen, a->gen) > ageDiff(currentGen, b->gen);
+    return getAge(a->gen) > getAge(b->gen);
 }
 
 void cacheNode(Board* board, int evaluation, int boundType, int depth, bool solved) {
@@ -230,6 +166,77 @@ bool getCachedValue(Board* board, int currentDepth, int *eval, int *boundType, b
     return true;
 }
 
+uint32_t getCacheSize() {
+    return cacheSize;
+}
+
+void startCache(int sizePow) {
+    // sizePow == 0 means disabled
+    if (sizePow == 0) {
+        cacheSize = 0;
+    } else {
+        cacheSize = pow(2, sizePow);
+        cacheSizePow = sizePow;
+    }
+
+    if (sizePow <= BUCKET_POW) {
+        cacheSize = 0;
+    }
+
+    free(cache);
+    cache = malloc(sizeof(Entry) * cacheSize);
+
+    for (int i = 0; i < (int64_t)cacheSize; i++) {
+        cache[i].value = 0;
+        cache[i].validation = UNSET_VALIDATION;
+        cache[i].gen = 0;
+        cache[i].boundType = 0;
+        cache[i].depth = 0;
+    }
+
+    hits = 0;
+    hitsLegalDepth = 0;
+
+    lastHits = 0;
+    lastHitsLegalDepth = 0;
+}
+
+/**
+ * Returns false if cant be translated
+*/
+bool translateBoard(Board* board, uint64_t *code) {
+    // Check if window can be stored
+    uint64_t hash = 0;
+
+    // Make first bit the current player
+    hash |= ((uint64_t)((board->color == 1) ? 1 : 0));
+
+    int offset = 1;
+    uint8_t value;
+
+    // 5 bits per cell
+    for (int i = 0; i < 6; i++) {
+        value = board->cells[i];
+        if (value > 31) {
+            return false;
+        }
+        hash |= ((uint64_t)(value & 0x1F)) << offset;
+        offset += 5;
+    }
+
+    for (int i = 7; i < 13; i++) {
+        value = board->cells[i];
+        if (value > 31) {
+            return false;
+        }
+        hash |= ((uint64_t)(value & 0x1F)) << offset;
+        offset += 5;
+    }
+
+    *code = hash;
+    return true;
+}
+
 void stepCache() {
     currentGen++;
 }
@@ -306,7 +313,7 @@ void renderCacheStats() {
         else if (cache[i].boundType == LOWER_BOUND) lowerCount++;
         else if (cache[i].boundType == UPPER_BOUND) upperCount++;
 
-        const uint8_t age = ageDiff(currentGen, cache[i].gen);
+        const uint8_t age = getAge(cache[i].gen);
         ageSum += age;
         if (age > maxAge) maxAge = age;
     }
@@ -398,7 +405,7 @@ void renderCacheStats() {
 
         for (int i = 0; i < (int64_t)cacheSize; i++) {
             if (cache[i].validation == UNSET_VALIDATION) continue;
-            const uint8_t age = ageDiff(currentGen, cache[i].gen);
+            const uint8_t age = getAge(cache[i].gen);
             uint32_t bi = (uint32_t)age / binW;
             if (bi >= AGE_BINS) bi = AGE_BINS - 1;
             ageBins[bi]++;

@@ -46,7 +46,7 @@ def main(files):
     ax.set_yscale("log")
     ax.set_xlabel("Depth")
     ax.set_ylabel("Time (s, log)")
-    ax.set_title("Benchmark Results")
+    ax.set_title("Time Per Depth Step")
 
     all_depths = []
     all_times = []

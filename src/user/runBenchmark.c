@@ -4,7 +4,7 @@
 
 #include "user/runBenchmark.h"
 
-void runBenchmark(void) {
+void runBenchmark() {
     printf("Starting Benchmark Mode...\n");
 
     // Setup Context

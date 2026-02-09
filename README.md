@@ -35,13 +35,14 @@ All CMancala solvers employ a Negamax algorithm with Alpha-Beta pruning, tailore
 
 ### Solvers
 - **GLOBAL:**<br>
-  Recommended for quickly analyzing a position or playing against an AI.<br>
-  The reference solver. Is only satisfied once the complete game tree is exhaustively searched for the best possible move at the current node.
+  The default, reference solver.<br>
+  It is only satisfied once the complete game tree is exhaustively searched for the best possible move at the current node.
 
 - **LOCAL:**<br>
-  Generally better than **GLOBAL** for basically all use cases.<br>
-  Uses a more complex algorithm with caching and should produce equal or better results at any given search depth.<br>
-  It is not the default solver because the code is more complex and therefore harder to validate, even though in theory it should always be at least as strong as GLOBAL.
+  Way faster solver for almost all use cases.<br>
+  Uses a more complex algorithm with transposition tables and should produce equal or better results at any given search depth.<br>
+  It is not the default solver because the code is more complex and therefore harder to validate, even though in my testing it should always be at least as strong as GLOBAL.<br>
+  The cache size be increased to ~28-30 for longer calculations (like solving 4 stones uniform).
 
 ## Restrictions
 - The game is designed to support a maximum of 224 stones on the board at any given time.
@@ -65,10 +66,12 @@ To build and run CMancala:
     ./Mancala
     ```
 
+CMancala also supports PGO, a example build script is provided.
+
 ## Discoveries
-- On search depth 50 in the standard 4 stones per pit losing position (Encoded: 008080a0a0a0a04000a0a000808)<br> the best (known) move is **5** with a **-8** evaluation.
-- On a uniform 3 stone per pit game, the starting player wins by 2 points with perfect play.<br>
-  Best start move is IDX: 5. (Depth reached was 108, which solved the position).
+- The standard uniform 4 stones per pit position has been solved using the **LOCAL** solver. The starting player wins by **8** points with perfect play and the best starting move is **IDX: 3**.
+- On a uniform 3 stone per pit game, the starting player wins by **2** points with perfect play.<br>
+  Best start move is **IDX: 5**.
 
 ### License
 CMancala is released under the MIT License. See LICENSE file for more details.
