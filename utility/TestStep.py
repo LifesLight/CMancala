@@ -5,7 +5,7 @@ import sys
 import os
 
 # --- CONFIGURATION ---
-EXECUTABLE_PATH = "./build/Mancala"
+EXECUTABLE_PATH = "./build-pgo/Mancala"
 ITERATIONS = 100
 LOG_FILE = "mismatch_step_log.txt"
 # ---------------------

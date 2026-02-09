@@ -3,6 +3,7 @@ import csv
 import sys
 import os
 import random
+import argparse
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 
@@ -10,7 +11,7 @@ def read_depth_time(path):
     depth = []
     time = []
 
-    with open(path, newline='') as f:
+    with open(path, newline="") as f:
         reader = csv.DictReader(f)
 
         if "Depth" not in reader.fieldnames or "Time" not in reader.fieldnames:
@@ -23,6 +24,8 @@ def read_depth_time(path):
             except Exception:
                 continue
 
+            # Log scales don't play well with 0 or negative numbers,
+            # so we keep the filter strict.
             if t > 0.0:
                 depth.append(d)
                 time.append(t)
@@ -37,15 +40,38 @@ def cumulative(values):
         out.append(total)
     return out
 
-def main(files):
-    if not files:
-        print("Usage: VisualizeBenchmark.py file1.csv [file2.csv ...]")
-        sys.exit(1)
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("files", nargs="+")
+    parser.add_argument(
+        "--log-factor",
+        type=float,
+        default=10.0,
+        help="Log base for Y-axis scaling. Set to 0 for linear scale. (Default: 10)"
+    )
+    parser.add_argument(
+        "--cumulative",
+        action="store_true",
+        help="Enable plotting of the cumulative time curve (Default: Off)"
+    )
+    args = parser.parse_args()
 
     fig, ax = plt.subplots(figsize=(16, 10))
-    ax.set_yscale("log")
+
+    # Configure Y-Axis Scale
+    if args.log_factor > 0:
+        ax.set_yscale("log", base=args.log_factor)
+        # Clean label formatting based on if it's an integer-like float or not
+        if args.log_factor.is_integer():
+            base_label = int(args.log_factor)
+        else:
+            base_label = args.log_factor
+        ax.set_ylabel(f"Time (s, log base {base_label})")
+    else:
+        ax.set_yscale("linear")
+        ax.set_ylabel("Time (s)")
+
     ax.set_xlabel("Depth")
-    ax.set_ylabel("Time (s, log)")
     ax.set_title("Time Per Depth Step")
 
     all_depths = []
@@ -57,11 +83,11 @@ def main(files):
 
     plotted = False
 
-    for i, path in enumerate(files):
+    for i, path in enumerate(args.files):
         try:
             x, y = read_depth_time(path)
         except Exception as e:
-            print(e)
+            print(f"Error reading {path}: {e}")
             continue
 
         if not x:
@@ -70,19 +96,21 @@ def main(files):
         label = os.path.basename(path)
         color = colors[i % len(colors)]
 
-        # cumulative (background)
-        y_acc = cumulative(y)
-        ax.semilogy(
-            x, y_acc,
-            linestyle=":",
-            linewidth=2.5,
-            color=color,
-            alpha=0.8,
-            zorder=1
-        )
+        # 1. Plot Cumulative (Background) - Only if flag is set
+        if args.cumulative:
+            y_acc = cumulative(y)
+            ax.plot(
+                x, y_acc,
+                linestyle=":",
+                linewidth=2.5,
+                color=color,
+                alpha=0.8,
+                zorder=1
+            )
+            all_times.extend(y_acc)
 
-        # per-depth (foreground)
-        ax.semilogy(
+        # 2. Plot Per-Depth (Foreground)
+        ax.plot(
             x, y,
             marker="o",
             linestyle="-",
@@ -94,15 +122,27 @@ def main(files):
 
         all_depths.extend(x)
         all_times.extend(y)
-        all_times.extend(y_acc)
         plotted = True
 
     if not plotted:
         print("No valid data to plot.")
         sys.exit(1)
 
+    # Set Limits
     ax.set_xlim(0, max(all_depths))
-    ax.set_ylim(min(all_times) * 0.9, max(all_times) * 1.1)
+    
+    # Calculate Y-limits dynamically
+    y_min = min(all_times)
+    y_max = max(all_times)
+    
+    # Add a little padding to the view
+    if args.log_factor > 0:
+        ax.set_ylim(y_min * 0.9, y_max * 1.1)
+    else:
+        # Linear scale padding
+        y_range = y_max - y_min
+        ax.set_ylim(max(0, y_min - (y_range * 0.05)), y_max + (y_range * 0.05))
+
     ax.xaxis.set_major_locator(MaxNLocator(integer=True))
 
     ax.grid(True, which="both", ls=":")
@@ -117,4 +157,4 @@ def main(files):
     plt.show()
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    main()

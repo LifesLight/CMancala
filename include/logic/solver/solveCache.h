@@ -82,6 +82,12 @@ bool getCachedValue(Board* board, int currentDepth, int *evaluation, int *boundT
 int getCachedNodeCount();
 
 /**
+ * Attemts to convert the input board into a 64 bit representation.
+ * Returns false if board can't be encoded.
+ */
+bool translateBoard(Board* board, uint64_t *code);
+
+/**
  * Gets overviews of the cache stats.
 */
 void renderCacheStats();
@@ -90,4 +96,4 @@ void stepCache();
 
 void resetCacheStats();
 
-uint32_t getCacheSize();
+uint64_t getCacheSize();

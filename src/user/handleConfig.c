@@ -78,7 +78,7 @@ void printConfig(Config* config) {
     renderOutput(message, CONFIG_PREFIX);
 
     if (getCacheSize() > 0) {
-        snprintf(message, sizeof(message), "  Cache size: %d", getCacheSize());
+        snprintf(message, sizeof(message), "  Cache size: %-12"PRIu64"", getCacheSize());
         renderOutput(message, CONFIG_PREFIX);
     }
 
@@ -164,10 +164,6 @@ void handleConfigInput(bool* requestedStart, Config* config) {
         if (cacheSize < 0) {
             renderOutput("Invalid cache size", CONFIG_PREFIX);
             return;
-        }
-
-        if (cacheSize > 30) {
-            renderOutput("Warning! Cache size is set as power of two", CONFIG_PREFIX);
         }
 
         startCache(cacheSize);

@@ -1,77 +1,94 @@
 ## CMancala
-## Overview
-CMancala is a powerful Mancala solver and analyzer.<br>
-While it's not the project’s primary focus, it is very much possible to play against (effectively unbeatable) AI agents.
 
-## Rules
-The game adheres to basic Mancala rules. In addition, an **Avalanche** mode is available.
+### Overview
 
-## Interface
-CMancala starts in **config** mode, where you can set up the game hyperparameters.<br>
-When starting the game, you will enter one of three modes, between which you can switch at all times:
-- **Config:** Adjust application / game hyperparameters.
-- **Menu:** Perform analytical operations on the current game.
-- **Playing:** Play the game.
+CMancala is a powerful Mancala solver and analyzer.
+While it's not the project’s primary focus, you can play against (effectively unbeatable) AI agents.
 
-More information is provided via “help," which provides all legal commands in every mode.
+### Rules
 
-## Performance
-The AI operates on a single thread.<br> Its performance varies based on the game's state:<br>
-- It typically anticipates 20-30 moves within a 5-second thinking window, influenced by the number of stones on the board.<br>
-- With 4 stones per cell, the AI reaches a very high level of play in about 60 seconds.<br>
-- Games with fewer stones per cell enhance the AI's performance.<br>
-- As the game progresses, the AI's ability to predict moves improves.<br>
+The game follows basic Mancala rules.
+An **Avalanche** mode is also available.
 
-In most configurations, when the AI starts the game, it becomes almost unbeatable due to the nature of Mancala.<br>
-(In the classic 4 stone per cell configuration, the starting player has an evaluation advantage of 8 at depth 40.)<br>
-These benchmarks are approximate and might slightly differ across various CPUs.<br>
-Observations were made on an M2 Pro, but similar performance is expected on modern processors due to the exponential nature of the problem.
+### Interface (config/menu/playing)
 
-## Algorithm
-All CMancala solvers employ a Negamax algorithm with Alpha-Beta pruning, tailored to accommodate double moves. Common features include:
-- **Double Move Handling**: The algorithm adjusts search parameters based on whether the player's turn continues or switches to the opponent.
-- **Aspiration Windows with Iterative Deepening**: This technique allows for time-limited searches while enhancing performance.
-- **Clip (WIP)**: Clip changes the behavior of solvers to only compute if any move is winning or losing. This feature can be used for playing solvers ONLY if the AI is playing from a winning position; in losing positions, it will treat every move as equally bad if it can't find a winning move, which will result in the agent most likely not returning to a winning position since it will always make the first IDX move.
+CMancala starts in **config** mode to set game hyperparameters.
+When you start the game you enter one of three modes. You can switch between them at any time:
 
-### Solvers
-- **GLOBAL:**<br>
-  The default, reference solver.<br>
-  It is only satisfied once the complete game tree is exhaustively searched for the best possible move at the current node.
+* **Config:** Adjust application and game hyperparameters.
+* **Menu:** Perform analytical operations on the current game.
+* **Playing:** Play the game.
 
-- **LOCAL:**<br>
-  Way faster solver for almost all use cases.<br>
-  Uses a more complex algorithm with transposition tables and should produce equal or better results at any given search depth.<br>
-  It is not the default solver because the code is more complex and therefore harder to validate, even though in my testing it should always be at least as strong as GLOBAL.<br>
-  The cache size be increased to ~28-30 for longer calculations (like solving 4 stones uniform).
+More info is available via `help`. It lists all legal commands in every mode.
 
-## Restrictions
-- The game is designed to support a maximum of 224 stones on the board at any given time.
+### Performance
 
-## Interface
-- CMancala features a terminal-based user interface. Users interested in a graphical interface may consider developing a simple web-based UI.
+The AI runs on a single thread.
+Performance varies with the game state and number of stones.
 
-## Building and Running
-To build and run CMancala:
+* It typically searches 20–30 moves in a 5-second thinking window.
+* With 4 stones per pit, the AI reaches a very high level in about 60 seconds.
+* Fewer stones per pit improve search speed.
+* As the game progresses, the AI's move prediction improves.
 
-1. Ensure you have CMake installed.
-2. Ensure you have a compatible C compiler.
-3. Run the following commands in the project directory:
-    ```bash
-    cd build
-    cmake ..
-    make
-    ```
-4. Execute the program:
-    ```bash
-    ./Mancala
-    ```
+In most configs, if the AI starts the game it becomes almost unbeatable.
+(In the classic 4 stones per pit setup, the starting player has an evaluation advantage of 8 at the start.)
 
-CMancala also supports PGO, a example build script is provided.
 
-## Discoveries
-- The standard uniform 4 stones per pit position has been solved using the **LOCAL** solver. The starting player wins by **8** points with perfect play and the best starting move is **IDX: 3**.
-- On a uniform 3 stone per pit game, the starting player wins by **2** points with perfect play.<br>
-  Best start move is **IDX: 5**.
+Time-to-solve measurements for my setup are in the `measurements` directory.
+
+### Algorithm
+
+All solvers use Negamax with Alpha-Beta pruning. They handle double moves. Common features:
+
+* **Double move handling:** Search adjusts when the same player continues or turn switches.
+* **Aspiration windows + iterative deepening:** Enables time-limited searches and better performance.
+* **Clip (WIP):** Changes solver behavior to only search for winning or losing moves. Use with playing solvers only when the AI is in a winning position. In losing positions it treats moves as equally bad if it can't find a win. That often causes the agent to pick the first IDX move and not return to a winning position.
+
+#### Solvers
+
+* **GLOBAL:**
+  Default reference solver.
+  It completes only after exhaustively searching the game tree for the best move at the current node.
+
+* **LOCAL:**
+  Much faster in most cases.
+  It incorporates a transposition table and should give equal or better results at the same search depth.
+  It is not the default because the code is more complex and harder to validate, though in testing it is at least as strong as GLOBAL.
+  Increase the cache size to ~28–30 for long calculations (e.g., solving the uniform 4-stone position).
+
+### Restrictions
+
+* Maximum supported stones on the board at any time: 224.
+
+### User interface
+
+* CMancala has a terminal UI.
+
+### Building and Running
+
+1. Install CMake.
+2. Have a compatible C compiler.
+3. In the project directory run:
+
+   ```bash
+   cd build
+   cmake ..
+   make
+   ```
+4. Run:
+
+   ```bash
+   ./Mancala
+   ```
+
+CMancala also supports PGO. An example build script is provided.
+
+### Discoveries
+
+* The uniform 4 stones per pit position is solved with **LOCAL**. The starting player wins by **8** points with perfect play. Best start move: **IDX: 3**.
+* In the uniform 3 stones per pit game the starting player wins by **2** points with perfect play. Best start move: **IDX: 5**.
 
 ### License
-CMancala is released under the MIT License. See LICENSE file for more details.
+
+CMancala is released under the MIT License. See the `LICENSE` file for details.
