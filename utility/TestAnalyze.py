@@ -6,7 +6,7 @@ import os
 
 # --- CONFIGURATION ---
 EXECUTABLE_PATH = "./build-pgo/Mancala"
-ITERATIONS = 50
+ITERATIONS = 100
 BASE_DEPTH = 100
 DEPTH_VARIATION = 0
 LOG_FILE = "mismatch_log.txt"

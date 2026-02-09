@@ -222,35 +222,27 @@ void startCache(int sizePow) {
  * Returns false if cant be translated
 */
 bool translateBoard(Board* board, uint64_t *code) {
-    // Check if window can be stored
-    uint64_t hash = 0;
+    uint64_t h = 0;
+    int offset = 0;
 
-    // Make first bit the current player
-    hash |= ((uint64_t)((board->color == 1) ? 1 : 0));
+    const int a0 = (board->color == 1) ? 0 : 7;
+    const int b0 = (board->color == 1) ? 7 : 0;
 
-    int offset = 1;
-    uint8_t value;
-
-    // 5 bits per cell
     for (int i = 0; i < 6; i++) {
-        value = board->cells[i];
-        if (value > 31) {
-            return false;
-        }
-        hash |= ((uint64_t)(value & 0x1F)) << offset;
+        uint8_t v = board->cells[a0 + i];
+        if (v > 31) return false;
+        h |= (uint64_t)(v & 0x1F) << offset;
         offset += 5;
     }
 
-    for (int i = 7; i < 13; i++) {
-        value = board->cells[i];
-        if (value > 31) {
-            return false;
-        }
-        hash |= ((uint64_t)(value & 0x1F)) << offset;
+    for (int i = 0; i < 6; i++) {
+        uint8_t v = board->cells[b0 + i];
+        if (v > 31) return false;
+        h |= (uint64_t)(v & 0x1F) << offset;
         offset += 5;
     }
 
-    *code = hash;
+    *code = h;
     return true;
 }
 
