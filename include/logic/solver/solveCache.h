@@ -18,18 +18,6 @@
  * https://en.wikipedia.org/wiki/Negamax
 */
 
-/**
- * We are caching into a 64bit integer
- * 
- * The board gets encoded like:
- * Score cells don't get encoded
- * 
- * Current player gets 1 bit                : 1
- * 1 bit is reserved for valid hash         : 2
- * Playing cells get: 5, 5, 5, 5, 5, 5 bits : 62
- * Ignored: 2 bits                          : 64
-*/
-
 #include <stdint.h>
 #include <inttypes.h>
 #include <math.h>
@@ -82,9 +70,15 @@ bool getCachedValue(Board* board, int currentDepth, int *evaluation, int *boundT
 int getCachedNodeCount();
 
 /**
- * Attemts to convert the input board into a 64 bit representation.
- * Returns false if board can't be encoded.
- */
+ * We are caching into a 64bit integer
+ * 
+ * The board gets encoded like:
+ * Score cells don't get encoded
+ * 
+ * 1 bit reserved for valid is valid hash   : 1
+ * Playing cells get: 5, 5, 5, 5, 5, 5 bits : 61
+ * Ignored: 3 bits                          : 64
+*/
 bool translateBoard(Board* board, uint64_t *code);
 
 /**
