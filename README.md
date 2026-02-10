@@ -34,8 +34,21 @@ Performance varies with the game state and number of stones.
 In most configs, if the AI starts the game it becomes almost unbeatable.
 (In the classic 4 stones per pit setup, the starting player has an evaluation advantage of 8 at the start.)
 
+Cache size notes (**LOCAL**):
 
-Time-to-solve measurements for my setup are in the `measurements` directory.
+* Cache size is an exponent: size = `2^N`
+* Memory usage: `2^N * 16 bytes`
+* Default: **24** → ~268 MB RAM
+* Too large is never a problem (only RAM)
+* Use **29–32** for long solves (e.g. uniform 4-stone)
+
+<p align="center">
+  <img src="measurements/v3.0/PickCacheSize.jpg" width="600">
+</p>
+
+*Measured on CMancala **v3.0***  
+
+More measurements are in the `measurements` directory.
 
 ### Algorithm
 
