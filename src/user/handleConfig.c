@@ -12,7 +12,7 @@ void renderConfigHelp() {
     renderOutput("  seed [number]                    : Set seed for random distribution, if 0 device time", CONFIG_PREFIX);
     renderOutput("  mode [classic|avalanche]         : Set game mode", CONFIG_PREFIX);
     renderOutput("  time [number >= 0]               : Set time limit for AI in seconds, if 0 unlimited", CONFIG_PREFIX);
-    renderOutput("  depth [number >= 0]              : Set depth limit for AI, if 0 unlimited", CONFIG_PREFIX);
+    renderOutput("  depth [number >= 0]              : Set depth limit for AI, if 0 solve mode", CONFIG_PREFIX);
     renderOutput("  solver [global|local]            : Set default solver for AI", CONFIG_PREFIX);
     renderOutput("  clip [true|false]                : Set clip on/off, clip only computes if a move is winning or losing", CONFIG_PREFIX);
     renderOutput("  cache [t|s|n|l|e|number]         : Set cache size as power of two. Can be a custom value or preset", CONFIG_PREFIX);
@@ -348,7 +348,7 @@ void handleConfigInput(bool* requestedStart, Config* config) {
     if (strncmp(input, "depth ", 6) == 0) {
         int depth = atoi(input + 6);
 
-        if (depth < 0) {
+        if (depth < 0 || depth > MAX_DEPTH) {
             renderOutput("Invalid depth limit", CONFIG_PREFIX);
             return;
         }

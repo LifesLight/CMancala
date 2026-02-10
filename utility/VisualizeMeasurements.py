@@ -111,15 +111,39 @@ def main():
             all_times.extend(y_acc)
 
         # 2. Plot Per-Depth (Foreground)
-        ax.plot(
-            x, y,
-            marker="o",
-            linestyle="-",
-            linewidth=2,
-            color=color,
-            label=label,
-            zorder=2
-        )
+        if len(x) == 1:
+            # Single-point run → horizontal line
+            y0 = y[0]
+            xmin = 0
+            xmax = max(1, max(all_depths, default=1))
+
+            ax.hlines(
+                y0,
+                xmin,
+                xmax,
+                linestyle="-",
+                linewidth=2,
+                color=color,
+                label=label,
+                zorder=2
+            )
+
+            ax.plot(
+                x, y,
+                marker="o",
+                color=color,
+                zorder=3
+            )
+        else:
+            ax.plot(
+                x, y,
+                marker="o",
+                linestyle="-",
+                linewidth=2,
+                color=color,
+                label=label,
+                zorder=2
+            )
 
         all_depths.extend(x)
         all_times.extend(y)

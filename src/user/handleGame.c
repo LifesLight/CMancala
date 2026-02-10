@@ -97,7 +97,19 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
                 renderOutput("Invalid depth value", CHEAT_PREFIX);
                 return;
             }
-            solveConfig.depth = parsedDepth;
+
+
+
+            if (parsedDepth >= 0 && parsedDepth < MAX_DEPTH) { 
+                if (parsedDepth == 0) {
+                    solveConfig.depth = MAX_DEPTH;
+                } else {
+                   solveConfig.depth = parsedDepth;
+                } 
+            } else {
+                renderOutput("Invalid depth value", CHEAT_PREFIX);
+                return;
+            }
         }
 
         // Check clip true false

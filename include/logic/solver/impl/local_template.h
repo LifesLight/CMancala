@@ -230,6 +230,12 @@ void FN(aspirationRoot)(Context* context, SolverConfig *config) {
 
     const int depthStep = 1;
     int currentDepth = 1;
+    bool oneShot = false;
+    if (config->timeLimit == 0 && config->depth == 0) {
+        currentDepth = MAX_DEPTH;
+        oneShot = true;
+    }
+
     int bestMove = -1;
     int score = 0;
     bool solved = false;
@@ -255,11 +261,28 @@ void FN(aspirationRoot)(Context* context, SolverConfig *config) {
         solved = true;
 
 #if IS_CLIPPED
-        score = FN(negamaxWithMove)(context->board, &bestMove, currentDepth, &solved);
+        score = FN(negamaxWithMove)(
+            context->board,
+            &bestMove,
+            currentDepth,
+            &solved
+        );
+#else
+        score = FN(negamaxWithMove)(
+            context->board,
+            &bestMove,
+            alpha,
+            beta,
+            currentDepth,
+            &solved
+        );
+#endif
 
-        if (depthTimes != NULL && currentDepth < MAX_DEPTH) {
+        int timeIndex = oneShot ? 1 : currentDepth;
+
+        if (depthTimes != NULL && timeIndex < MAX_DEPTH) {
             double t = (double)(clock() - start) / CLOCKS_PER_SEC;
-            depthTimes[currentDepth] = t - lastTimeCaptured;
+            depthTimes[timeIndex] = t - lastTimeCaptured;
             lastTimeCaptured = t;
         }
 
@@ -271,39 +294,26 @@ void FN(aspirationRoot)(Context* context, SolverConfig *config) {
         if (config->timeLimit > 0 &&
             ((double)(clock() - start) / CLOCKS_PER_SEC) >= config->timeLimit) break;
 
-#else
-        score = FN(negamaxWithMove)(context->board, &bestMove, alpha, beta, currentDepth, &solved);
-
-        if (score > alpha && score < beta) {
-            if (depthTimes != NULL && currentDepth < MAX_DEPTH) {
-                double t = (double)(clock() - start) / CLOCKS_PER_SEC;
-                depthTimes[currentDepth] = t - lastTimeCaptured;
-                lastTimeCaptured = t;
+#if !IS_CLIPPED
+        if (!oneShot) {
+            if (score <= alpha || score >= beta) {
+                windowMisses++;
+                window *= 2;
+                alpha = score - window;
+                beta  = score + window;
+                continue;
             }
-
-            currentDepth += depthStep;
-            stepCache();
             window = windowSize;
-
-            if (solved) break;
-            if (config->depth > 0 && currentDepth > config->depth) break;
-            if (config->timeLimit > 0 &&
-                ((double)(clock() - start) / CLOCKS_PER_SEC) >= config->timeLimit) break;
-        } else {
-            windowMisses++;
-            window *= 2;
-            alpha = score - window;
-            beta  = score + window;
         }
 #endif
     }
 
-    double timeTaken = (double)(clock() - start) / CLOCKS_PER_SEC;
-    context->metadata.lastTime = timeTaken;
+    context->metadata.lastTime =
+        (double)(clock() - start) / CLOCKS_PER_SEC;
     context->metadata.lastNodes = nodeCount;
     context->metadata.lastMove = bestMove;
     context->metadata.lastEvaluation = score;
-    context->metadata.lastDepth = currentDepth - 1;
+    context->metadata.lastDepth = oneShot ? 255 : (currentDepth - 1);
     context->metadata.lastSolved = solved;
 
 #if !IS_CLIPPED
