@@ -222,4 +222,107 @@ void FN(distributionRoot)(Board *board, int *distribution, bool *solved, SolverC
     resetCacheStats();
 }
 
+void FN(aspirationRoot)(Context* context, SolverConfig *config) {
+    if (getCacheSize() == 0) {
+        renderOutput("Cache is disabled, starting with \"normal\" preset!", CHEAT_PREFIX);
+        startCache(NORMAL_CACHE_SIZE);
+    }
+
+    const int depthStep = 1;
+    int currentDepth = 1;
+    int bestMove = -1;
+    int score = 0;
+    bool solved = false;
+
+#if !IS_CLIPPED
+    const int windowSize = 1;
+    int window = windowSize;
+    int alpha = INT32_MIN + 1;
+    int beta  = INT32_MAX;
+    int windowMisses = 0;
+#endif
+
+    clock_t start = clock();
+    nodeCount = 0;
+
+    double* depthTimes = context->metadata.lastDepthTimes;
+    if (depthTimes != NULL) {
+        for (int i = 0; i < MAX_DEPTH; i++) depthTimes[i] = -1.0;
+    }
+    double lastTimeCaptured = 0.0;
+
+    while (true) {
+        solved = true;
+
+#if IS_CLIPPED
+        score = FN(negamaxWithMove)(context->board, &bestMove, currentDepth, &solved);
+
+        if (depthTimes != NULL && currentDepth < MAX_DEPTH) {
+            double t = (double)(clock() - start) / CLOCKS_PER_SEC;
+            depthTimes[currentDepth] = t - lastTimeCaptured;
+            lastTimeCaptured = t;
+        }
+
+        currentDepth += depthStep;
+        stepCache();
+
+        if (solved) break;
+        if (config->depth > 0 && currentDepth > config->depth) break;
+        if (config->timeLimit > 0 &&
+            ((double)(clock() - start) / CLOCKS_PER_SEC) >= config->timeLimit) break;
+
+#else
+        score = FN(negamaxWithMove)(context->board, &bestMove, alpha, beta, currentDepth, &solved);
+
+        if (score > alpha && score < beta) {
+            if (depthTimes != NULL && currentDepth < MAX_DEPTH) {
+                double t = (double)(clock() - start) / CLOCKS_PER_SEC;
+                depthTimes[currentDepth] = t - lastTimeCaptured;
+                lastTimeCaptured = t;
+            }
+
+            currentDepth += depthStep;
+            stepCache();
+            window = windowSize;
+
+            if (solved) break;
+            if (config->depth > 0 && currentDepth > config->depth) break;
+            if (config->timeLimit > 0 &&
+                ((double)(clock() - start) / CLOCKS_PER_SEC) >= config->timeLimit) break;
+        } else {
+            windowMisses++;
+            window *= 2;
+            alpha = score - window;
+            beta  = score + window;
+        }
+#endif
+    }
+
+    double timeTaken = (double)(clock() - start) / CLOCKS_PER_SEC;
+    context->metadata.lastTime = timeTaken;
+    context->metadata.lastNodes = nodeCount;
+    context->metadata.lastMove = bestMove;
+    context->metadata.lastEvaluation = score;
+    context->metadata.lastDepth = currentDepth - 1;
+    context->metadata.lastSolved = solved;
+
+#if !IS_CLIPPED
+    if (windowMisses > currentDepth) {
+        renderOutput(
+            "[WARNING]: High window misses! (You may increase \"windowSize\" in algo.c)",
+            PLAY_PREFIX
+        );
+    }
+#else
+    if (score < 0) {
+        renderOutput(
+            "[WARNING]: Clipped best move calculators should not be used in losing positions!",
+            CHEAT_PREFIX
+        );
+    }
+#endif
+
+    resetCacheStats();
+}
+
 #undef FN

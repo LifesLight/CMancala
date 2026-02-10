@@ -93,7 +93,8 @@ def main():
         if not x:
             continue
 
-        label = os.path.basename(path)
+        #label = os.path.basename(path)
+        label = path
         color = colors[i % len(colors)]
 
         # 1. Plot Cumulative (Background) - Only if flag is set
