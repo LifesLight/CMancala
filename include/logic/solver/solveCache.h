@@ -43,8 +43,12 @@
 #define LOWER_BOUND 1
 #define UPPER_BOUND 2
 
-#define UNSET_VALIDATION UINT64_MAX
-#define INVALID_HASH UINT64_MAX
+// Max stones per cell for encoding
+#define CACHE_MAX_SPC 31
+
+#define CACHE_VAL_UNSET INT16_MIN
+#define CACHE_VAL_MIN INT16_MIN + 1
+#define CACHE_VAL_MAX INT16_MAX
 
 /**
  * Starts the cache.

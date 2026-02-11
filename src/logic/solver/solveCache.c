@@ -12,26 +12,30 @@ uint64_t hits;
 uint64_t hitsLegalDepth;
 uint64_t sameKeyOverwriteCount;
 uint64_t victimOverwriteCount;
+
 uint64_t lastHits;
 uint64_t lastHitsLegalDepth;
 uint64_t lastSameKeyOverwriteCount;
 uint64_t lastVictimOverwriteCount;
+
+// Problem Tracking
+uint64_t failedEncodeStoneCount;
+uint64_t failedEncodeValueRange;
+
+uint64_t lastFailedEncodeStoneCount;
+uint64_t lastFailedEncodeValueRange;
 
 
 typedef struct {
     uint64_t validation;
 
     int16_t value;
-    uint16_t depth;
+    uint8_t depth;
 
     int8_t boundType;
 
     // Replacement Policy Data
     uint8_t  gen;
-
-    /**
-     * 3 Spare Bytes
-     */
 } Entry;
 
 Entry* cache;
@@ -73,6 +77,12 @@ void cacheNode(Board* board, int evaluation, int boundType, int depth, bool solv
     // Translate the board to a unique hash value
     uint64_t hashValue;
     if (!translateBoard(board, &hashValue)) {
+        failedEncodeStoneCount++;
+        return;
+    }
+
+    if (evaluation > CACHE_VAL_MAX || evaluation < CACHE_VAL_MIN) {
+        failedEncodeValueRange++;
         return;
     }
 
@@ -102,7 +112,7 @@ void cacheNode(Board* board, int evaluation, int boundType, int depth, bool solv
 
     // empty slot
     for (int i = 0; i < BUCKET_ELEMENTS; i++) {
-        if (b[i].validation == UNSET_VALIDATION) {
+        if (b[i].value == CACHE_VAL_UNSET) {
             b[i].validation = hashValue;
             b[i].value = evaluation;
             b[i].depth = depth;
@@ -169,7 +179,7 @@ bool getCachedValue(Board* board, int currentDepth, int *eval, int *boundType, b
     scoreDelta *= board->color;
     *eval = e->value + scoreDelta;
     *boundType = e->boundType;
-    *solved = e->depth == UINT16_MAX;
+    *solved = e->depth == UINT8_MAX;
 
     return true;
 }
@@ -200,8 +210,8 @@ void startCache(int sizePow) {
     }
 
     for (int i = 0; i < (int64_t)cacheSize; i++) {
-        cache[i].value = 0;
-        cache[i].validation = UNSET_VALIDATION;
+        cache[i].value = CACHE_VAL_UNSET;
+        cache[i].validation = 0;
         cache[i].gen = 0;
         cache[i].boundType = 0;
         cache[i].depth = 0;
@@ -211,11 +221,15 @@ void startCache(int sizePow) {
     hitsLegalDepth = 0;
     sameKeyOverwriteCount = 0;
     victimOverwriteCount = 0;
+    failedEncodeStoneCount = 0;
+    failedEncodeValueRange = 0;
 
     lastHits = 0;
     lastHitsLegalDepth = 0;
     lastSameKeyOverwriteCount = 0;
     lastVictimOverwriteCount = 0;
+    lastFailedEncodeStoneCount = 0;
+    lastFailedEncodeValueRange = 0;
 }
 
 /**
@@ -230,14 +244,14 @@ bool translateBoard(Board* board, uint64_t *code) {
 
     for (int i = 0; i < 6; i++) {
         uint8_t v = board->cells[a0 + i];
-        if (v > 31) return false;
+        if (v > CACHE_MAX_SPC) return false;
         h |= (uint64_t)(v & 0x1F) << offset;
         offset += 5;
     }
 
     for (int i = 0; i < 6; i++) {
         uint8_t v = board->cells[b0 + i];
-        if (v > 31) return false;
+        if (v > CACHE_MAX_SPC) return false;
         h |= (uint64_t)(v & 0x1F) << offset;
         offset += 5;
     }
@@ -272,11 +286,15 @@ void resetCacheStats() {
     lastHitsLegalDepth = hitsLegalDepth;
     lastSameKeyOverwriteCount = sameKeyOverwriteCount;
     lastVictimOverwriteCount = victimOverwriteCount;
+    lastFailedEncodeStoneCount = failedEncodeStoneCount;
+    lastFailedEncodeValueRange = failedEncodeValueRange;
 
     hits = 0;
     hitsLegalDepth = 0;
     sameKeyOverwriteCount = 0;
     victimOverwriteCount = 0;
+    failedEncodeStoneCount = 0;
+    failedEncodeValueRange = 0;
 }
 
 void renderCacheStats() {
@@ -309,11 +327,11 @@ void renderCacheStats() {
 
     // Pass 1: gather totals and maxima
     for (uint64_t i = 0; i < cacheSize; i++) {
-        if (cache[i].validation == UNSET_VALIDATION) continue;
+        if (cache[i].value == CACHE_VAL_UNSET) continue;
 
         setEntries++;
 
-        const bool solved = (cache[i].depth == UINT16_MAX);
+        const bool solved = (cache[i].depth == UINT8_MAX);
         if (solved) {
             solvedEntries++;
         } else {
@@ -366,6 +384,19 @@ void renderCacheStats() {
              "    Evict:    %-12"PRIu64" %s", lastVictimOverwriteCount, logBuffer);
     renderOutput(message, CHEAT_PREFIX);
 
+    // Problem Tracking
+    if (lastFailedEncodeStoneCount > 0 || lastFailedEncodeValueRange > 0) {
+        renderOutput("  Encoding Fail Counts:", CHEAT_PREFIX);
+        getLogNotation(logBuffer, lastFailedEncodeStoneCount);
+        snprintf(message, sizeof(message),
+             "    Stones:   %-12"PRIu64" %s", lastFailedEncodeStoneCount, logBuffer);
+        renderOutput(message, CHEAT_PREFIX);
+        getLogNotation(logBuffer, lastFailedEncodeValueRange);
+        snprintf(message, sizeof(message),
+             "    Value:    %-12"PRIu64" %s", lastFailedEncodeValueRange, logBuffer);
+        renderOutput(message, CHEAT_PREFIX);
+    }
+
     // Bounds distribution
     if (setEntries > 0) {
         snprintf(message, sizeof(message),
@@ -393,8 +424,8 @@ void renderCacheStats() {
         const uint32_t binW = (span + DEPTH_BINS - 1) / DEPTH_BINS;
 
         for (uint64_t i = 0; i < cacheSize; i++) {
-            if (cache[i].validation == UNSET_VALIDATION) continue;
-            if (cache[i].depth == UINT16_MAX) continue;
+            if (cache[i].value == CACHE_VAL_UNSET) continue;
+            if (cache[i].depth == UINT8_MAX) continue;
             const uint16_t d = cache[i].depth;
             uint32_t bi = (uint32_t)d / binW;
             if (bi >= DEPTH_BINS) bi = DEPTH_BINS - 1;
@@ -432,7 +463,7 @@ void renderCacheStats() {
         const uint32_t binW = (span + AGE_BINS - 1) / AGE_BINS;
 
         for (uint64_t i = 0; i < cacheSize; i++) {
-            if (cache[i].validation == UNSET_VALIDATION) continue;
+            if (cache[i].value == CACHE_VAL_UNSET) continue;
             const uint8_t age = getAge(cache[i].gen);
             uint32_t bi = (uint32_t)age / binW;
             if (bi >= AGE_BINS) bi = AGE_BINS - 1;
@@ -471,12 +502,12 @@ void renderCacheStats() {
     Chunk top[OUTPUT_CHUNK_COUNT];
     int topCount = 0;
 
-    int currentType = (cache[0].validation != UNSET_VALIDATION);
+    int currentType = (cache[0].value != CACHE_VAL_UNSET);
     uint64_t chunkStart = 0;
     uint64_t chunkSize2 = 1;
 
     for (uint64_t i = 1; i < cacheSize; i++) {
-        const int t = (cache[i].validation != UNSET_VALIDATION);
+        const int t = (cache[i].value != CACHE_VAL_UNSET);
         if (t == currentType) {
             chunkSize2++;
         } else {
