@@ -68,7 +68,7 @@ void cacheNode(Board* board, int evaluation, int boundType, int depth, bool solv
     Entry *b = &cache[base];
 
     if (solved) {
-        depth = UINT16_MAX;
+        depth = DEPTH_SOLVED;
     }
 
     // same-key update
@@ -158,7 +158,7 @@ bool getCachedValue(Board* board, int currentDepth, int *eval, int *boundType, b
     scoreDelta *= board->color;
     *eval = e->value + scoreDelta;
     *boundType = e->boundType;
-    *solved = e->depth == UINT8_MAX;
+    *solved = e->depth == DEPTH_SOLVED;
 
     return true;
 }

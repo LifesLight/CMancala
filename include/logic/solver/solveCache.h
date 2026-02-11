@@ -46,6 +46,8 @@
 #define CACHE_VAL_MIN INT16_MIN + 1
 #define CACHE_VAL_MAX INT16_MAX
 
+#define DEPTH_SOLVED UINT8_MAX
+
 /**
  * Starts the cache.
  * We specify the power of two that is the cache size.
