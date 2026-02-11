@@ -98,14 +98,8 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
                 return;
             }
 
-
-
             if (parsedDepth >= 0 && parsedDepth < MAX_DEPTH) { 
-                if (parsedDepth == 0) {
-                    solveConfig.depth = MAX_DEPTH;
-                } else {
-                   solveConfig.depth = parsedDepth;
-                } 
+                solveConfig.depth = parsedDepth;
             } else {
                 renderOutput("Invalid depth value", CHEAT_PREFIX);
                 return;

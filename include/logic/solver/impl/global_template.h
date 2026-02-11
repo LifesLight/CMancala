@@ -150,6 +150,11 @@ void FN(distributionRoot)(Board *board, int *distribution, bool *solvedOutput, S
     int index = 5;
     int score;
 
+    int depth = config->depth;
+    if (config->depth == 0) {
+        depth = MAX_DEPTH;
+    }
+
     const int alpha = INT32_MIN + 1;
     const int beta = INT32_MAX;
 
@@ -166,9 +171,9 @@ void FN(distributionRoot)(Board *board, int *distribution, bool *solvedOutput, S
         makeMoveFunction(&boardCopy, i);
 
         if (board->color == boardCopy.color) {
-            score = FN(negamax)(&boardCopy, alpha, beta, config->depth);
+            score = FN(negamax)(&boardCopy, alpha, beta, depth);
         } else {
-            score = -FN(negamax)(&boardCopy, alpha, beta, config->depth);
+            score = -FN(negamax)(&boardCopy, alpha, beta, depth);
         }
 
         distribution[index] = score;
