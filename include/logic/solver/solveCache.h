@@ -27,10 +27,6 @@
 #include "logic/utility.h"
 #include "user/render.h"
 
-#define BUCKET_POW 1
-// 2^BUCKET_POW
-#define BUCKET_ELEMENTS 2
-
 #define TINY_CACHE_SIZE     20
 #define SMALL_CACHE_SIZE    22
 #define NORMAL_CACHE_SIZE   24

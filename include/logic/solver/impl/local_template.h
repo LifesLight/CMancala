@@ -280,19 +280,20 @@ void FN(aspirationRoot)(Context* context, SolverConfig *config) {
 
         int timeIndex = oneShot ? 1 : currentDepth;
 
-        if (depthTimes != NULL && timeIndex < MAX_DEPTH) {
+        if (depthTimes != NULL) {
             double t = (double)(clock() - start) / CLOCKS_PER_SEC;
             depthTimes[timeIndex] = t - lastTimeCaptured;
             lastTimeCaptured = t;
         }
 
-        currentDepth += depthStep;
         stepCache();
 
         if (solved) break;
-        if (config->depth > 0 && currentDepth > config->depth) break;
+        if (config->depth > 0 && currentDepth >= config->depth) break;
         if (config->timeLimit > 0 &&
             ((double)(clock() - start) / CLOCKS_PER_SEC) >= config->timeLimit) break;
+
+        currentDepth += depthStep;
 
 #if !IS_CLIPPED
         if (!oneShot) {
@@ -313,13 +314,13 @@ void FN(aspirationRoot)(Context* context, SolverConfig *config) {
     context->metadata.lastNodes = nodeCount;
     context->metadata.lastMove = bestMove;
     context->metadata.lastEvaluation = score;
-    context->metadata.lastDepth = oneShot ? 255 : (currentDepth - 1);
+    context->metadata.lastDepth = currentDepth;
     context->metadata.lastSolved = solved;
 
 #if !IS_CLIPPED
     if (windowMisses > currentDepth) {
         renderOutput(
-            "[WARNING]: High window misses! (You may increase \"windowSize\" in algo.c)",
+            "[WARNING]: High window misses! (You may increase \"windowSize\")",
             PLAY_PREFIX
         );
     }

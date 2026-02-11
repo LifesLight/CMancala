@@ -203,40 +203,17 @@ void FN(aspirationRoot)(Context* context, SolverConfig *config) {
 
     while (true) {
         solved = true;
+        bool searchValid = false;
 
 #if IS_CLIPPED
         score = FN(negamaxWithMove)(context->board, &bestMove, currentDepth);
-
-        if (depthTimes != NULL && currentDepth < MAX_DEPTH) {
-            double t = (double)(clock() - start) / CLOCKS_PER_SEC;
-            depthTimes[currentDepth] = t - lastTimeCaptured;
-            lastTimeCaptured = t;
-        }
-
-        currentDepth += depthStep;
-
-        if (solved) break;
-        if (config->depth > 0 && currentDepth > config->depth) break;
-        if (config->timeLimit > 0 &&
-            ((double)(clock() - start) / CLOCKS_PER_SEC) >= config->timeLimit) break;
-
+        searchValid = true;
 #else
         score = FN(negamaxWithMove)(context->board, &bestMove, alpha, beta, currentDepth);
 
         if (score > alpha && score < beta) {
-            if (depthTimes != NULL && currentDepth < MAX_DEPTH) {
-                double t = (double)(clock() - start) / CLOCKS_PER_SEC;
-                depthTimes[currentDepth] = t - lastTimeCaptured;
-                lastTimeCaptured = t;
-            }
-
-            currentDepth += depthStep;
+            searchValid = true;
             window = windowSize;
-
-            if (solved) break;
-            if (config->depth > 0 && currentDepth > config->depth) break;
-            if (config->timeLimit > 0 &&
-                ((double)(clock() - start) / CLOCKS_PER_SEC) >= config->timeLimit) break;
         } else {
             windowMisses++;
             window *= 2;
@@ -244,6 +221,21 @@ void FN(aspirationRoot)(Context* context, SolverConfig *config) {
             beta  = score + window;
         }
 #endif
+
+        if (searchValid) {
+            if (depthTimes != NULL) {
+                double t = (double)(clock() - start) / CLOCKS_PER_SEC;
+                depthTimes[currentDepth] = t - lastTimeCaptured;
+                lastTimeCaptured = t;
+            }
+
+            if (solved) break;
+            if (config->depth > 0 && currentDepth >= config->depth) break;
+            if (config->timeLimit > 0 &&
+                ((double)(clock() - start) / CLOCKS_PER_SEC) >= config->timeLimit) break;
+
+            currentDepth += depthStep;
+        }
     }
 
     double timeTaken = (double)(clock() - start) / CLOCKS_PER_SEC;
@@ -251,14 +243,14 @@ void FN(aspirationRoot)(Context* context, SolverConfig *config) {
     context->metadata.lastNodes = nodeCount;
     context->metadata.lastMove = bestMove;
     context->metadata.lastEvaluation = score;
-    context->metadata.lastDepth = currentDepth - 1;
+    context->metadata.lastDepth = currentDepth;
     context->metadata.lastSolved = solved;
 
 #if !IS_CLIPPED
     if (windowMisses > currentDepth) {
         char msg[256];
         snprintf(msg, sizeof(msg),
-            "[WARNING]: High window misses! (You may increase \"windowSize\" in algo.c)");
+            "[WARNING]: High window misses! (You may increase \"windowSize\")");
         renderOutput(msg, PLAY_PREFIX);
     }
 #else

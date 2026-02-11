@@ -12,11 +12,13 @@ uint64_t hits;
 uint64_t hitsLegalDepth;
 uint64_t sameKeyOverwriteCount;
 uint64_t victimOverwriteCount;
+uint64_t swapLRUCount;
 
 uint64_t lastHits;
 uint64_t lastHitsLegalDepth;
 uint64_t lastSameKeyOverwriteCount;
 uint64_t lastVictimOverwriteCount;
+uint64_t lastSwapLRUCount;
 
 // Problem Tracking
 uint64_t failedEncodeStoneCount;
@@ -25,7 +27,6 @@ uint64_t failedEncodeValueRange;
 uint64_t lastFailedEncodeStoneCount;
 uint64_t lastFailedEncodeValueRange;
 
-
 typedef struct {
     uint64_t validation;
 
@@ -33,39 +34,15 @@ typedef struct {
     uint8_t depth;
 
     int8_t boundType;
-
-    // Replacement Policy Data
-    uint8_t  gen;
 } Entry;
 
 Entry* cache;
 
-static uint8_t currentGen = 1;
-
 // Hash function to get into the array index
 uint64_t indexHash(uint64_t hash) {
     // Fibonacci Hash
-    return (uint32_t)(((hash * 11400714819323198485ULL) >> (64 + BUCKET_POW - cacheSizePow)) * BUCKET_ELEMENTS);
-}
-
-// Get Wrapparound save age
-uint8_t getAge(uint8_t gen) {
-    return (uint8_t)(currentGen - gen);
-}
-
-// Replacement Policy, returns true if we should discard a instead of b.
-bool worseToKeep(const Entry *a, const Entry *b) {
-    if (a->depth != b->depth) {
-        return a->depth < b->depth;
-    }
-
-    const int aExact = (a->boundType == EXACT_BOUND);
-    const int bExact = (b->boundType == EXACT_BOUND);
-    if (aExact != bExact) {
-        return aExact < bExact;
-    }
-
-    return getAge(a->gen) > getAge(b->gen);
+    // 65 because of bucketsize 2
+    return (((hash * 11400714819323198485ULL) >> (65 - cacheSizePow)) * 2);
 }
 
 void cacheNode(Board* board, int evaluation, int boundType, int depth, bool solved) {
@@ -95,7 +72,7 @@ void cacheNode(Board* board, int evaluation, int boundType, int depth, bool solv
     }
 
     // same-key update
-    for (int i = 0; i < BUCKET_ELEMENTS; i++) {
+    for (int i = 0; i < 2; i++) {
         if (b[i].validation == hashValue) {
             if (b[i].depth > depth) return;
 
@@ -103,7 +80,6 @@ void cacheNode(Board* board, int evaluation, int boundType, int depth, bool solv
             b[i].value = evaluation;
             b[i].depth = depth;
             b[i].boundType = boundType;
-            b[i].gen = currentGen;
 
             sameKeyOverwriteCount++;
             return;
@@ -111,22 +87,29 @@ void cacheNode(Board* board, int evaluation, int boundType, int depth, bool solv
     }
 
     // empty slot
-    for (int i = 0; i < BUCKET_ELEMENTS; i++) {
+    for (int i = 0; i < 2; i++) {
         if (b[i].value == CACHE_VAL_UNSET) {
             b[i].validation = hashValue;
             b[i].value = evaluation;
             b[i].depth = depth;
             b[i].boundType = boundType;
-            b[i].gen = currentGen;
             return;
         }
     }
 
-    // pick victim
-    int victim = 0;
-    for (int i = 1; i < BUCKET_ELEMENTS; i++) {
-        if (worseToKeep(&b[i], &b[victim])) {
-            victim = i;
+    // victim selection
+    int victim;
+
+    if (b[1].depth != b[0].depth) {
+        victim = (b[1].depth < b[0].depth) ? 1 : 0;
+    } else {
+        const int zeroExact = (b[0].boundType == EXACT_BOUND);
+        const int oneExact  = (b[1].boundType == EXACT_BOUND);
+
+        if (zeroExact != oneExact) {
+            victim = zeroExact ? 1 : 0;
+        } else {
+            victim = 1;
         }
     }
 
@@ -136,7 +119,6 @@ void cacheNode(Board* board, int evaluation, int boundType, int depth, bool solv
     b[victim].value = evaluation;
     b[victim].depth = depth;
     b[victim].boundType = boundType;
-    b[victim].gen = currentGen;
 
     return;
 }
@@ -147,27 +129,24 @@ bool getCachedValue(Board* board, int currentDepth, int *eval, int *boundType, b
         return false;
     }
 
-    // Get the primary hash
-    const uint64_t indexCalc = indexHash(hashValue);
+    const uint64_t base = indexHash(hashValue);
 
-    uint64_t index = UINT64_MAX;
-    for (int i = 0; i < BUCKET_ELEMENTS; i++) {
-        if (cache[indexCalc + i].validation == hashValue) {
-            index = indexCalc + i;
-            break;
-        }
-    }
+    if (cache[base + 0].validation == hashValue) {
+        // already MRU
+    } else if (cache[base + 1].validation == hashValue) {
+        // swap to MRU
+        Entry tmp = cache[base + 0];
+        cache[base + 0] = cache[base + 1];
+        cache[base + 1] = tmp;
 
-    // Check if the key matches
-    if (index == UINT64_MAX) {
+        swapLRUCount++;
+    } else {
         return false;
     }
 
-    // We have a hit
     hits++;
-    Entry *e = &cache[index];
+    Entry *e = &cache[base];
 
-    // Our cached entry needs to be at least as deep as our current depth.
     if (e->depth < currentDepth) {
         return false;
     }
@@ -197,7 +176,7 @@ void startCache(int sizePow) {
         cacheSizePow = sizePow;
     }
 
-    if (sizePow <= BUCKET_POW) {
+    if (sizePow <= 2) {
         cacheSize = 0;
     }
 
@@ -212,7 +191,6 @@ void startCache(int sizePow) {
     for (int i = 0; i < (int64_t)cacheSize; i++) {
         cache[i].value = CACHE_VAL_UNSET;
         cache[i].validation = 0;
-        cache[i].gen = 0;
         cache[i].boundType = 0;
         cache[i].depth = 0;
     }
@@ -223,6 +201,7 @@ void startCache(int sizePow) {
     victimOverwriteCount = 0;
     failedEncodeStoneCount = 0;
     failedEncodeValueRange = 0;
+    swapLRUCount = 0;
 
     lastHits = 0;
     lastHitsLegalDepth = 0;
@@ -230,6 +209,7 @@ void startCache(int sizePow) {
     lastVictimOverwriteCount = 0;
     lastFailedEncodeStoneCount = 0;
     lastFailedEncodeValueRange = 0;
+    lastSwapLRUCount = 0;
 }
 
 /**
@@ -261,7 +241,7 @@ bool translateBoard(Board* board, uint64_t *code) {
 }
 
 void stepCache() {
-    currentGen++;
+    // Nothing since age is gone
 }
 
 /**
@@ -288,6 +268,7 @@ void resetCacheStats() {
     lastVictimOverwriteCount = victimOverwriteCount;
     lastFailedEncodeStoneCount = failedEncodeStoneCount;
     lastFailedEncodeValueRange = failedEncodeValueRange;
+    lastSwapLRUCount = swapLRUCount;
 
     hits = 0;
     hitsLegalDepth = 0;
@@ -295,6 +276,7 @@ void resetCacheStats() {
     victimOverwriteCount = 0;
     failedEncodeStoneCount = 0;
     failedEncodeValueRange = 0;
+    swapLRUCount = 0;
 }
 
 void renderCacheStats() {
@@ -313,13 +295,14 @@ void renderCacheStats() {
     uint64_t lowerCount = 0;
     uint64_t upperCount = 0;
 
-    // Hits (Bad)
+    // Calculate Bad Hits (Shallow)
     const uint64_t badHits = lastHits - lastHitsLegalDepth;
-    const double badHitPercent = (lastHits > 0) ? (double)badHits / (double)lastHits * 100.0 : 0.0;
+    const double badHitPercent =
+        (lastHits > 0) ? (double)badHits / (double)lastHits * 100.0 : 0.0;
 
-    // Age + depth distributions
-    uint64_t ageSum = 0;
-    uint8_t  maxAge = 0;
+    // Calculate LRU Swaps
+    const double swapPct =
+        (lastHits > 0) ? (double)lastSwapLRUCount / (double)lastHits * 100.0 : 0.0;
 
     uint64_t nonSolvedCount = 0;
     uint64_t depthSum = 0;
@@ -337,63 +320,87 @@ void renderCacheStats() {
         } else {
             nonSolvedCount++;
             depthSum += cache[i].depth;
-            if (cache[i].depth > maxDepth) maxDepth = cache[i].depth;
+            if (cache[i].depth > maxDepth)
+                maxDepth = cache[i].depth;
         }
 
         if (cache[i].boundType == EXACT_BOUND) exactCount++;
         else if (cache[i].boundType == LOWER_BOUND) lowerCount++;
         else if (cache[i].boundType == UPPER_BOUND) upperCount++;
-
-        const uint8_t age = getAge(cache[i].gen);
-        ageSum += age;
-        if (age > maxAge) maxAge = age;
     }
 
     // Cache Size / fill
-    const double fillPct = (cacheSize > 0) ? (double)setEntries / (double)cacheSize * 100.0 : 0.0;
+    const double fillPct =
+        (cacheSize > 0) ? (double)setEntries / (double)cacheSize * 100.0 : 0.0;
+
     getLogNotation(logBuffer, cacheSize);
     snprintf(message, sizeof(message),
-             "  Cache size: %-12"PRIu64" %s (%.2f%% Used)", cacheSize, logBuffer, fillPct);
+             "  Cache size: %-12"PRIu64" %s (%.2f%% Used)",
+             cacheSize, logBuffer, fillPct);
     renderOutput(message, CHEAT_PREFIX);
 
     // Solved
-    const double solvedPct = (setEntries > 0) ? (double)solvedEntries / (double)setEntries * 100.0 : 0.0;
+    const double solvedPct =
+        (setEntries > 0) ? (double)solvedEntries / (double)setEntries * 100.0 : 0.0;
+
     getLogNotation(logBuffer, solvedEntries);
     snprintf(message, sizeof(message),
-             "  Solved:     %-12"PRIu64" %s (%.2f%% of used)", solvedEntries, logBuffer, solvedPct);
+             "  Solved:     %-12"PRIu64" %s (%.2f%% of used)",
+             solvedEntries, logBuffer, solvedPct);
     renderOutput(message, CHEAT_PREFIX);
 
-    // Hits (Bad)
+    // Total Hits
     getLogNotation(logBuffer, lastHits);
     snprintf(message, sizeof(message),
-             "  Hits (Bad): %-12"PRIu64" %s (%.2f%%)", lastHits, logBuffer, badHitPercent);
+             "  Hits:       %-12"PRIu64" %s",
+             lastHits, logBuffer);
     renderOutput(message, CHEAT_PREFIX);
 
-    // Cache Overwrites header
+    // Shallow (Bad Depth)
+    getLogNotation(logBuffer, badHits);
+    snprintf(message, sizeof(message),
+             "    Shallow:  %-12"PRIu64" %s (%.2f%%)",
+             badHits, logBuffer, badHitPercent);
+    renderOutput(message, CHEAT_PREFIX);
+
+    // LRU Swap (2nd bucket hit)
+    getLogNotation(logBuffer, lastSwapLRUCount);
+    snprintf(message, sizeof(message),
+             "    LRU Swap: %-12"PRIu64" %s (%.2f%%)",
+             lastSwapLRUCount, logBuffer, swapPct);
+    renderOutput(message, CHEAT_PREFIX);
+
+    // Cache Overwrites
     renderOutput("  Cache Overwrites:", CHEAT_PREFIX);
 
-    // Same-key overwrites (indented under Cache Overwrites)
     getLogNotation(logBuffer, lastSameKeyOverwriteCount);
     snprintf(message, sizeof(message),
-             "    Improve:  %-12"PRIu64" %s", lastSameKeyOverwriteCount, logBuffer);
+             "    Improve:  %-12"PRIu64" %s",
+             lastSameKeyOverwriteCount, logBuffer);
     renderOutput(message, CHEAT_PREFIX);
 
-    // Victim overwrites (indented under Cache Overwrites)
     getLogNotation(logBuffer, lastVictimOverwriteCount);
     snprintf(message, sizeof(message),
-             "    Evict:    %-12"PRIu64" %s", lastVictimOverwriteCount, logBuffer);
+             "    Evict:    %-12"PRIu64" %s",
+             lastVictimOverwriteCount, logBuffer);
     renderOutput(message, CHEAT_PREFIX);
 
-    // Problem Tracking
-    if (lastFailedEncodeStoneCount > 0 || lastFailedEncodeValueRange > 0) {
+    // Encoding fails
+    if (lastFailedEncodeStoneCount > 0 ||
+        lastFailedEncodeValueRange > 0) {
+
         renderOutput("  Encoding Fail Counts:", CHEAT_PREFIX);
+
         getLogNotation(logBuffer, lastFailedEncodeStoneCount);
         snprintf(message, sizeof(message),
-             "    Stones:   %-12"PRIu64" %s", lastFailedEncodeStoneCount, logBuffer);
+                 "    Stones:   %-12"PRIu64" %s",
+                 lastFailedEncodeStoneCount, logBuffer);
         renderOutput(message, CHEAT_PREFIX);
+
         getLogNotation(logBuffer, lastFailedEncodeValueRange);
         snprintf(message, sizeof(message),
-             "    Value:    %-12"PRIu64" %s", lastFailedEncodeValueRange, logBuffer);
+                 "    Value:    %-12"PRIu64" %s",
+                 lastFailedEncodeValueRange, logBuffer);
         renderOutput(message, CHEAT_PREFIX);
     }
 
@@ -410,24 +417,28 @@ void renderCacheStats() {
     }
     renderOutput(message, CHEAT_PREFIX);
 
-    // Depth overview table
+    // Depth overview
     if (nonSolvedCount > 0) {
-        const double avgDepth = (double)depthSum / (double)nonSolvedCount;
+        const double avgDepth =
+            (double)depthSum / (double)nonSolvedCount;
+
         snprintf(message, sizeof(message),
-                 "  Depth:      avg %.2f | max %u", avgDepth, (unsigned)maxDepth);
+                 "  Depth:      avg %.2f | max %u",
+                 avgDepth, (unsigned)maxDepth);
         renderOutput(message, CHEAT_PREFIX);
 
         enum { DEPTH_BINS = 8 };
         uint64_t depthBins[DEPTH_BINS] = {0};
 
         const uint32_t span = (uint32_t)maxDepth + 1;
-        const uint32_t binW = (span + DEPTH_BINS - 1) / DEPTH_BINS;
+        const uint32_t binW =
+            (span + DEPTH_BINS - 1) / DEPTH_BINS;
 
         for (uint64_t i = 0; i < cacheSize; i++) {
             if (cache[i].value == CACHE_VAL_UNSET) continue;
             if (cache[i].depth == UINT8_MAX) continue;
-            const uint16_t d = cache[i].depth;
-            uint32_t bi = (uint32_t)d / binW;
+
+            uint32_t bi = cache[i].depth / binW;
             if (bi >= DEPTH_BINS) bi = DEPTH_BINS - 1;
             depthBins[bi]++;
         }
@@ -438,15 +449,18 @@ void renderCacheStats() {
         for (uint32_t bi = 0; bi < DEPTH_BINS; bi++) {
             const uint32_t start = bi * binW;
             uint32_t end = start + binW - 1;
-            if (end > (uint32_t)maxDepth) end = (uint32_t)maxDepth;
+            if (end > maxDepth) end = maxDepth;
 
-            const double pct = (double)depthBins[bi] / (double)nonSolvedCount * 100.0;
+            const double pct =
+                (double)depthBins[bi] /
+                (double)nonSolvedCount * 100.0;
+
             snprintf(message, sizeof(message),
                      "  %3u-%-3u    | %-12"PRIu64"| %6.2f%%",
                      start, end, depthBins[bi], pct);
             renderOutput(message, CHEAT_PREFIX);
 
-            if (end == (uint32_t)maxDepth) break;
+            if (end == maxDepth) break;
         }
 
         renderOutput("  ------------------------------------", CHEAT_PREFIX);
@@ -454,47 +468,7 @@ void renderCacheStats() {
         renderOutput("  Depth:      avg 0.00 | max 0", CHEAT_PREFIX);
     }
 
-    // Age overview table
-    if (setEntries > 0) {
-        enum { AGE_BINS = 8 };
-        uint64_t ageBins[AGE_BINS] = {0};
-
-        const uint32_t span = (uint32_t)maxAge + 1;
-        const uint32_t binW = (span + AGE_BINS - 1) / AGE_BINS;
-
-        for (uint64_t i = 0; i < cacheSize; i++) {
-            if (cache[i].value == CACHE_VAL_UNSET) continue;
-            const uint8_t age = getAge(cache[i].gen);
-            uint32_t bi = (uint32_t)age / binW;
-            if (bi >= AGE_BINS) bi = AGE_BINS - 1;
-            ageBins[bi]++;
-        }
-
-        const double avgAge = (double)ageSum / (double)setEntries;
-        snprintf(message, sizeof(message),
-                 "  Age(gen):   avg %.2f | max %u", avgAge, (unsigned)maxAge);
-        renderOutput(message, CHEAT_PREFIX);
-
-        renderOutput("  Age range  | Count        | Percent", CHEAT_PREFIX);
-        renderOutput("  ------------------------------------", CHEAT_PREFIX);
-
-        for (uint32_t bi = 0; bi < AGE_BINS; bi++) {
-            const uint32_t start = bi * binW;
-            uint32_t end = start + binW - 1;
-            if (end > (uint32_t)maxAge) end = (uint32_t)maxAge;
-
-            const double pct = (double)ageBins[bi] / (double)setEntries * 100.0;
-            snprintf(message, sizeof(message),
-                     "  %3u-%-3u    | %-12"PRIu64"| %6.2f%%",
-                     start, end, ageBins[bi], pct);
-            renderOutput(message, CHEAT_PREFIX);
-
-            if (end == (uint32_t)maxAge) break;
-        }
-
-        renderOutput("  ------------------------------------", CHEAT_PREFIX);
-    }
-
+    // Fragmentation
     renderOutput("  Fragmentation", CHEAT_PREFIX);
     renderOutput("  Chunk Type | Start Index       | Chunk Size", CHEAT_PREFIX);
     renderOutput("  --------------------------------------------", CHEAT_PREFIX);
@@ -508,22 +482,22 @@ void renderCacheStats() {
 
     for (uint64_t i = 1; i < cacheSize; i++) {
         const int t = (cache[i].value != CACHE_VAL_UNSET);
+
         if (t == currentType) {
             chunkSize2++;
         } else {
-            Chunk c;
-            c.type = currentType;
-            c.start = chunkStart;
-            c.size = chunkSize2;
+            Chunk c = { chunkStart, chunkSize2, currentType };
 
             if (topCount < OUTPUT_CHUNK_COUNT) {
                 top[topCount++] = c;
             } else {
                 int minIdx = 0;
-                for (int k = 1; k < topCount; k++) {
-                    if (top[k].size < top[minIdx].size) minIdx = k;
-                }
-                if (c.size > top[minIdx].size) top[minIdx] = c;
+                for (int k = 1; k < topCount; k++)
+                    if (top[k].size < top[minIdx].size)
+                        minIdx = k;
+
+                if (c.size > top[minIdx].size)
+                    top[minIdx] = c;
             }
 
             currentType = t;
@@ -532,21 +506,18 @@ void renderCacheStats() {
         }
     }
 
-    {
-        Chunk c;
-        c.type = currentType;
-        c.start = chunkStart;
-        c.size = chunkSize2;
+    Chunk c = { chunkStart, chunkSize2, currentType };
 
-        if (topCount < OUTPUT_CHUNK_COUNT) {
-            top[topCount++] = c;
-        } else {
-            int minIdx = 0;
-            for (int k = 1; k < topCount; k++) {
-                if (top[k].size < top[minIdx].size) minIdx = k;
-            }
-            if (c.size > top[minIdx].size) top[minIdx] = c;
-        }
+    if (topCount < OUTPUT_CHUNK_COUNT) {
+        top[topCount++] = c;
+    } else {
+        int minIdx = 0;
+        for (int k = 1; k < topCount; k++)
+            if (top[k].size < top[minIdx].size)
+                minIdx = k;
+
+        if (c.size > top[minIdx].size)
+            top[minIdx] = c;
     }
 
     qsort(top, topCount, sizeof(Chunk), compareChunksStart);
@@ -560,9 +531,8 @@ void renderCacheStats() {
         renderOutput(message, CHEAT_PREFIX);
     }
 
-    if (topCount == OUTPUT_CHUNK_COUNT) {
+    if (topCount == OUTPUT_CHUNK_COUNT)
         renderOutput("  ...", CHEAT_PREFIX);
-    }
 
     renderOutput("  --------------------------------------------", CHEAT_PREFIX);
 }
