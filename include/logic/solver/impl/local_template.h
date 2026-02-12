@@ -197,10 +197,18 @@ void FN(distributionRoot)(Board *board, int *distribution, bool *solved, SolverC
     int depth = config->depth;
     if (config->depth == 0) {
         depth = MAX_DEPTH;
+        setCacheNoDepth(true);
+    } else {
+        setCacheNoDepth(false);
     }
 
+#ifdef IS_CLIPPED
+    const int alpha = -1;
+    const int beta = 1;
+#else
     const int alpha = INT32_MIN + 1;
     const int beta = INT32_MAX;
+#endif
     bool nodeSolved = true;
 
     for (int8_t i = start; i >= end; i--) {
@@ -222,7 +230,9 @@ void FN(distributionRoot)(Board *board, int *distribution, bool *solved, SolverC
         distribution[index] = score;
         index--;
     }
+
     *solved = nodeSolved;
+
     stepCache();
     resetCacheStats();
 }
@@ -240,6 +250,8 @@ void FN(aspirationRoot)(Context* context, SolverConfig *config) {
         currentDepth = MAX_DEPTH;
         oneShot = true;
         setCacheNoDepth(true);
+    } else {
+        setCacheNoDepth(false);
     }
 
     int bestMove = -1;

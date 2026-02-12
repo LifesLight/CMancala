@@ -21,7 +21,7 @@
 
 #define ASIZE 14
 
-#define MAX_DEPTH UINT8_MAX - 1
+#define MAX_DEPTH UINT16_MAX - 1
 
 #define OUTPUT_PREFIX    ">> "
 #define INPUT_PREFIX     "<< "

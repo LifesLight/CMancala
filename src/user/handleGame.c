@@ -122,10 +122,6 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
             }
         }
 
-        if (solveConfig.depth == 0) {
-            solveConfig.depth = 16;
-        }
-
         // Manually
         int distribution[6];
         bool solved = false;
@@ -170,7 +166,7 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
         }
 
         char message[256];
-        snprintf(message, sizeof(message), "Depth: %d", solveConfig.depth);
+        snprintf(message, sizeof(message), "Depth: %d", solveConfig.depth == 0 ? MAX_DEPTH : solveConfig.depth);
         renderOutput(message, CHEAT_PREFIX);
 
         return;

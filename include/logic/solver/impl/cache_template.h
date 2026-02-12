@@ -9,15 +9,6 @@
 
 #define FN(name) CAT(name, PREFIX)
 
-// --- Configuration based on Mode ---
-#if HAS_DEPTH
-    #define TEMPLATE_MAX_SPC CACHE_SPC_DEPTH
-    #define TEMPLATE_BITS_PER_CELL 5
-#else
-    #define TEMPLATE_MAX_SPC CACHE_SPC_NO_DEPTH
-    #define TEMPLATE_BITS_PER_CELL 4
-#endif
-
 // --- Struct Definition ---
 typedef struct {
 #if HAS_DEPTH
@@ -27,12 +18,12 @@ typedef struct {
     uint16_t validation_high;
 #endif
 
+#if HAS_DEPTH
+    uint16_t depth;
+#endif
+
     int16_t value;
     int8_t boundType;
-
-#if HAS_DEPTH
-    uint8_t depth;
-#endif
 } FN(Entry);
 
 // --- Unique Global Array ---
@@ -68,7 +59,7 @@ static void FN(initCacheInternal)(uint64_t size) {
     }
 }
 
-// --- Logic (Static Inline for Performance) ---
+// --- Logic ---
 
 static inline bool FN(translateBoard)(Board* board, uint64_t *code) {
     uint64_t h = 0;
@@ -80,13 +71,13 @@ static inline bool FN(translateBoard)(Board* board, uint64_t *code) {
     // Optimized loop for 5 bits (0x1F)
     for (int i = 0; i < 6; i++) {
         uint8_t v = board->cells[a0 + i];
-        if (v > TEMPLATE_MAX_SPC) return false;
+        if (v > 31) return false;
         h |= (uint64_t)(v & 0x1F) << offset;
         offset += 5;
     }
     for (int i = 0; i < 6; i++) {
         uint8_t v = board->cells[b0 + i];
-        if (v > TEMPLATE_MAX_SPC) return false;
+        if (v > 31) return false;
         h |= (uint64_t)(v & 0x1F) << offset;
         offset += 5;
     }
@@ -94,13 +85,13 @@ static inline bool FN(translateBoard)(Board* board, uint64_t *code) {
     // Optimized loop for 4 bits (0x0F)
     for (int i = 0; i < 6; i++) {
         uint8_t v = board->cells[a0 + i];
-        if (v > TEMPLATE_MAX_SPC) return false;
+        if (v > 15) return false;
         h |= (uint64_t)(v & 0x0F) << offset;
         offset += 4;
     }
     for (int i = 0; i < 6; i++) {
         uint8_t v = board->cells[b0 + i];
-        if (v > TEMPLATE_MAX_SPC) return false;
+        if (v > 15) return false;
         h |= (uint64_t)(v & 0x0F) << offset;
         offset += 4;
     }
@@ -132,8 +123,6 @@ static inline void FN(cacheNode)(Board* board, int evaluation, int boundType, in
 #if HAS_DEPTH
     if (solved) depth = DEPTH_SOLVED;
 #else
-    (void)depth;
-    (void)solved;
     // Prepare split hash parts
     const uint32_t hLow = (uint32_t)(hashValue);
     const uint16_t hHigh = (uint16_t)(hashValue >> 32);
@@ -448,6 +437,3 @@ static void FN(renderCacheStatsFull)() {
     if (topCount == OUTPUT_CHUNK_COUNT) renderOutput("  ...", CHEAT_PREFIX);
     renderOutput("  --------------------------------------------", CHEAT_PREFIX);
 }
-
-#undef TEMPLATE_MAX_SPC
-#undef TEMPLATE_BITS_PER_CELL
