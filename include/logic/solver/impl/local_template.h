@@ -197,7 +197,7 @@ void FN(distributionRoot)(Board *board, int *distribution, bool *solved, SolverC
     int depth = config->depth;
     if (config->depth == 0) {
         depth = MAX_DEPTH;
-        setCacheNoDepth(true);
+        setCacheNoDepth(config->allowCompressedCache);
     } else {
         setCacheNoDepth(false);
     }
@@ -249,7 +249,7 @@ void FN(aspirationRoot)(Context* context, SolverConfig *config) {
     if (config->timeLimit == 0 && config->depth == 0) {
         currentDepth = MAX_DEPTH;
         oneShot = true;
-        setCacheNoDepth(true);
+        setCacheNoDepth(config->allowCompressedCache);
     } else {
         setCacheNoDepth(false);
     }

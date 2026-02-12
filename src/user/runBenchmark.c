@@ -50,7 +50,7 @@ void runBenchmark() {
     configBoard(&board, 3);
     board.color = 1;
 
-    config = (SolverConfig){ LOCAL_SOLVER, 0, 0, false };
+    config = (SolverConfig){ LOCAL_SOLVER, 0, 0, false, true };
 
     start = currentTimeMs();
     LOCAL_aspirationRoot(&context, &config);
@@ -87,7 +87,7 @@ void runBenchmark() {
     configBoard(&board, 2);
     board.color = 1;
 
-    config = (SolverConfig){ GLOBAL_SOLVER, 0, 0, false };
+    config = (SolverConfig){ GLOBAL_SOLVER, 0, 0, false, true };
 
     start = currentTimeMs();
     GLOBAL_aspirationRoot(&context, &config);
@@ -124,7 +124,7 @@ void runBenchmark() {
     configBoard(&board, 2);
     board.color = 1;
 
-    config = (SolverConfig){ LOCAL_SOLVER, 0, 0, false };
+    config = (SolverConfig){ LOCAL_SOLVER, 0, 0, false, true };
 
     start = currentTimeMs();
     LOCAL_aspirationRoot(&context, &config);
@@ -143,7 +143,7 @@ void runBenchmark() {
     configBoard(&board, 2);
     board.color = 1;
 
-    config = (SolverConfig){ LOCAL_SOLVER, 0, 0, true };
+    config = (SolverConfig){ LOCAL_SOLVER, 0, 0, true, true };
 
     start = currentTimeMs();
     LOCAL_CLIP_aspirationRoot(&context, &config);
@@ -161,7 +161,7 @@ void runBenchmark() {
     configBoard(&board, 3);
     board.color = 1;
 
-    config = (SolverConfig){ LOCAL_SOLVER, 40, 0, false };
+    config = (SolverConfig){ LOCAL_SOLVER, 40, 0, false, true };
 
     start = currentTimeMs();
     LOCAL_aspirationRoot(&context, &config);
@@ -178,7 +178,7 @@ void runBenchmark() {
     configBoard(&board, 3);
     board.color = 1;
 
-    config = (SolverConfig){ LOCAL_SOLVER, 40, 0, true };
+    config = (SolverConfig){ LOCAL_SOLVER, 40, 0, true, true };
 
     start = currentTimeMs();
     LOCAL_CLIP_aspirationRoot(&context, &config);
@@ -194,7 +194,7 @@ void runBenchmark() {
     configBoard(&board, 2);
     board.color = 1;
 
-    config = (SolverConfig){ GLOBAL_SOLVER, 30, 0, false };
+    config = (SolverConfig){ GLOBAL_SOLVER, 30, 0, false, true };
 
     start = currentTimeMs();
     GLOBAL_aspirationRoot(&context, &config);
@@ -210,7 +210,7 @@ void runBenchmark() {
     configBoard(&board, 2);
     board.color = 1;
 
-    config = (SolverConfig){ GLOBAL_SOLVER, 30, 0, true };
+    config = (SolverConfig){ GLOBAL_SOLVER, 30, 0, true, true };
 
     start = currentTimeMs();
     GLOBAL_CLIP_aspirationRoot(&context, &config);

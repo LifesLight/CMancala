@@ -311,9 +311,9 @@ static void FN(renderCacheStatsFull)() {
     }
 
 #if HAS_DEPTH
-    renderOutput("  Mode:       Store Depth", CHEAT_PREFIX);
+    renderOutput("  Mode:       16 Byte (Full)", CHEAT_PREFIX);
 #else
-    renderOutput("  Mode:       No Depth", CHEAT_PREFIX);
+    renderOutput("  Mode:       8 Byte  (No Depth)", CHEAT_PREFIX);
 #endif
 
     const double fillPct = (cacheSize > 0) ? (double)setEntries / (double)cacheSize * 100.0 : 0.0;

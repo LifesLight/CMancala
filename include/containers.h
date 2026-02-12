@@ -36,6 +36,7 @@ typedef struct {
     int depth;
     double timeLimit;
     bool clip;
+    bool allowCompressedCache;
 } SolverConfig;
 
 typedef struct {

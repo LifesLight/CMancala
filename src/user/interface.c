@@ -14,7 +14,8 @@ void startInterface() {
         .solver = GLOBAL_SOLVER,
         .depth = 0,
         .timeLimit = 5.0,
-        .clip = false
+        .clip = false,
+        .allowCompressedCache = false
     };
 
     GameSettings gameSettings = {

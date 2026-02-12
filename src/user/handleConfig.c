@@ -16,6 +16,7 @@ void renderConfigHelp() {
     renderOutput("  solver [global|local]            : Set default solver for AI", CONFIG_PREFIX);
     renderOutput("  clip [true|false]                : Set clip on/off, clip only computes if a move is winning or losing", CONFIG_PREFIX);
     renderOutput("  cache [t|s|n|l|e|number]         : Set cache size as power of two. Can be a custom value or preset", CONFIG_PREFIX);
+    renderOutput("  compress [true|false]            : Allows half sized cache entries. Only applies if time = depth = 0", CONFIG_PREFIX);
     renderOutput("  starting [1|2]                   : Configure starting player", CONFIG_PREFIX);
     renderOutput("  player [1|2] [human|random|ai]   : Configure player", CONFIG_PREFIX);
     renderOutput("  display                          : Display current configuration", CONFIG_PREFIX);
@@ -81,6 +82,9 @@ void printConfig(Config* config) {
         snprintf(message, sizeof(message), "  Cache size: %-12"PRIu64"", getCacheSize());
         renderOutput(message, CONFIG_PREFIX);
     }
+
+    snprintf(message, sizeof(message), "  Compress: %s", config->solverConfig.allowCompressedCache ? "true" : "false");
+    renderOutput(message, CONFIG_PREFIX);
 
     snprintf(message, sizeof(message), "  Starting: %d", config->gameSettings.startColor == 1 ? 1 : 2);
     renderOutput(message, CONFIG_PREFIX);
@@ -177,6 +181,33 @@ void handleConfigInput(bool* requestedStart, Config* config) {
         }
 
         return;
+    }
+
+    if (strncmp(input, "compress ", 9) == 0) {
+        bool originalCompress = config->solverConfig.allowCompressedCache;
+
+        if (strcmp(input + 9, "true") == 0 || strcmp(input + 9, "1") == 0) {
+            config->solverConfig.allowCompressedCache = true;
+            if (originalCompress) {
+                renderOutput("Compress already enabled", CONFIG_PREFIX);
+                return;
+            }
+            renderOutput("Enabled compress", CONFIG_PREFIX);
+            return;
+        } else if (strcmp(input + 9, "false") == 0 || strcmp(input + 9, "0") == 0) {
+            config->solverConfig.allowCompressedCache = false;
+            if (!originalCompress) {
+                renderOutput("Compress already disabled", CONFIG_PREFIX);
+                return;
+            }
+            renderOutput("Disabled compress", CONFIG_PREFIX);
+            return;
+        } else {
+            char message[256];
+            snprintf(message, sizeof(message), "Invalid compress \"%.200s\"", input + 9);
+            renderOutput(message, CONFIG_PREFIX);
+            return;
+        }
     }
 
     if (strncmp(input, "clip ", 5) == 0) {
