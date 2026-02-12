@@ -5,17 +5,11 @@
 
 #include "logic/board.h"
 
-MakeMoveFunction makeMoveFunction = NULL;
+// State variable to track current mode
+static MoveFunction activeMoveMode = CLASSIC_MOVE;
 
 void setMoveFunction(MoveFunction moveFunction) {
-    switch (moveFunction) {
-        case CLASSIC_MOVE:
-            makeMoveFunction = makeMoveOnBoardClassic;
-            break;
-        case AVALANCHE_MOVE:
-            makeMoveFunction = makeMoveOnBoardAvalanche;
-            break;
-    }
+    activeMoveMode = moveFunction;
 }
 
 void copyBoard(const Board *board, Board *target) {
@@ -200,8 +194,16 @@ void makeMoveOnBoardClassic(Board *board, const uint8_t actionIndex) {
     board->color = -board->color;
 }
 
+void makeMoveFunction(Board* board, const uint8_t actionIndex) {
+    if (activeMoveMode == CLASSIC_MOVE) {
+        makeMoveOnBoardClassic(board, actionIndex);
+    } else {
+        makeMoveOnBoardAvalanche(board, actionIndex);
+    }
+}
+
 void makeMoveManual(Board* board, int index) {
-    makeMoveFunction(board, index);
+    makeMoveFunction(board, (uint8_t)index);
     processBoardTerminal(board);
 }
 

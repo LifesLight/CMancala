@@ -19,29 +19,26 @@ typedef struct {
 #endif
 } FN(Entry);
 
-// --- Unique Global Array for this Template Instance ---
-FN(Entry)* FN(cache) = NULL;
+// --- Unique Global Array (Static to this file inclusion) ---
+static FN(Entry)* FN(cache) = NULL;
 
-// --- Memory Management Helpers ---
+// --- Memory Management Helpers (Static) ---
 
-void FN(freeCacheInternal)() {
+static void FN(freeCacheInternal)() {
     if (FN(cache) != NULL) {
         free(FN(cache));
         FN(cache) = NULL;
     }
 }
 
-void FN(initCacheInternal)(uint64_t size) {
+static void FN(initCacheInternal)(uint64_t size) {
     FN(freeCacheInternal)();
     if (size == 0) return;
 
     FN(cache) = malloc(sizeof(FN(Entry)) * size);
 
-    if (FN(cache) == NULL) {
-        return;
-    }
+    if (FN(cache) == NULL) return;
 
-    // Initialize memory
     for (uint64_t i = 0; i < size; i++) {
         FN(cache)[i].value = CACHE_VAL_UNSET;
         FN(cache)[i].validation = 0;
@@ -52,9 +49,9 @@ void FN(initCacheInternal)(uint64_t size) {
     }
 }
 
-// --- Logic ---
+// --- Logic (Static Inline for Performance) ---
 
-void FN(cacheNode)(Board* board, int evaluation, int boundType, int depth, bool solved) {
+static inline void FN(cacheNode)(Board* board, int evaluation, int boundType, int depth, bool solved) {
     int scoreDelta = board->cells[SCORE_P1] - board->cells[SCORE_P2];
     scoreDelta *= board->color;
     evaluation -= scoreDelta;
@@ -76,7 +73,6 @@ void FN(cacheNode)(Board* board, int evaluation, int boundType, int depth, bool 
 #if HAS_DEPTH
     if (solved) depth = DEPTH_SOLVED;
 #else
-    // Suppress unused parameter warnings
     (void)depth;
     (void)solved;
 #endif
@@ -120,7 +116,6 @@ void FN(cacheNode)(Board* board, int evaluation, int boundType, int depth, bool 
         victim = (zeroExact != oneExact) ? (zeroExact ? 1 : 0) : 1;
     }
 #else
-    // Without depth, prefer keeping EXACT bounds
     const int zeroExact = (b[0].boundType == EXACT_BOUND);
     const int oneExact  = (b[1].boundType == EXACT_BOUND);
     victim = (zeroExact != oneExact) ? (zeroExact ? 1 : 0) : 1;
@@ -135,7 +130,7 @@ void FN(cacheNode)(Board* board, int evaluation, int boundType, int depth, bool 
 #endif
 }
 
-bool FN(getCachedValue)(Board* board, int currentDepth, int *eval, int *boundType, bool *solved) {
+static inline bool FN(getCachedValue)(Board* board, int currentDepth, int *eval, int *boundType, bool *solved) {
     uint64_t hashValue;
     if (!translateBoard(board, &hashValue)) return false;
 
@@ -173,9 +168,9 @@ bool FN(getCachedValue)(Board* board, int currentDepth, int *eval, int *boundTyp
     return true;
 }
 
-// --- Combined Stats Renderer ---
-// We do the entire rendering here to ensure the order of output lines is preserved
-void FN(renderCacheStatsFull)() {
+// --- Stats (Not inline, too big) ---
+
+static void FN(renderCacheStatsFull)() {
     char message[256];
     char logBuffer[32];
 
@@ -191,7 +186,6 @@ void FN(renderCacheStatsFull)() {
     uint16_t maxDepth = 0;
 #endif
 
-    // Pass 1: Gather Array Stats
     for (uint64_t i = 0; i < cacheSize; i++) {
         if (FN(cache)[i].value == CACHE_VAL_UNSET) continue;
         setEntries++;
@@ -211,22 +205,17 @@ void FN(renderCacheStatsFull)() {
 #endif
     }
 
-    // --- Output Section ---
-
-    // 1. Mode
 #if HAS_DEPTH
     renderOutput("  Mode:       Store Depth", CHEAT_PREFIX);
 #else
     renderOutput("  Mode:       No Depth", CHEAT_PREFIX);
 #endif
 
-    // 2. Cache Size
     const double fillPct = (cacheSize > 0) ? (double)setEntries / (double)cacheSize * 100.0 : 0.0;
     getLogNotation(logBuffer, cacheSize);
     snprintf(message, sizeof(message), "  Cache size: %-12"PRIu64" %s (%.2f%% Used)", cacheSize, logBuffer, fillPct);
     renderOutput(message, CHEAT_PREFIX);
 
-    // 3. Solved (Only in Depth Mode)
 #if HAS_DEPTH
     const double solvedPct = (setEntries > 0) ? (double)solvedEntries / (double)setEntries * 100.0 : 0.0;
     getLogNotation(logBuffer, solvedEntries);
@@ -234,12 +223,10 @@ void FN(renderCacheStatsFull)() {
     renderOutput(message, CHEAT_PREFIX);
 #endif
 
-    // 4. Hits (Global Variable)
     getLogNotation(logBuffer, lastHits);
     snprintf(message, sizeof(message), "  Hits:       %-12"PRIu64" %s", lastHits, logBuffer);
     renderOutput(message, CHEAT_PREFIX);
 
-    // 5. Shallow Hits (Only in Depth Mode)
 #if HAS_DEPTH
     const uint64_t badHits = lastHits - lastHitsLegalDepth;
     const double badHitPercent = (lastHits > 0) ? (double)badHits / (double)lastHits * 100.0 : 0.0;
@@ -248,13 +235,11 @@ void FN(renderCacheStatsFull)() {
     renderOutput(message, CHEAT_PREFIX);
 #endif
 
-    // 6. LRU Swap (Global Variable)
     const double swapPct = (lastHits > 0) ? (double)lastSwapLRUCount / (double)lastHits * 100.0 : 0.0;
     getLogNotation(logBuffer, lastSwapLRUCount);
     snprintf(message, sizeof(message), "    LRU Swap: %-12"PRIu64" %s (%.2f%%)", lastSwapLRUCount, logBuffer, swapPct);
     renderOutput(message, CHEAT_PREFIX);
 
-    // 7. Overwrites (Global Variables)
     renderOutput("  Cache Overwrites:", CHEAT_PREFIX);
     getLogNotation(logBuffer, lastSameKeyOverwriteCount);
     snprintf(message, sizeof(message), "    Improve:  %-12"PRIu64" %s", lastSameKeyOverwriteCount, logBuffer);
@@ -264,7 +249,6 @@ void FN(renderCacheStatsFull)() {
     snprintf(message, sizeof(message), "    Evict:    %-12"PRIu64" %s", lastVictimOverwriteCount, logBuffer);
     renderOutput(message, CHEAT_PREFIX);
 
-    // 8. Encoding Fails (Global Variables)
     if (lastFailedEncodeStoneCount > 0 || lastFailedEncodeValueRange > 0) {
         renderOutput("  Encoding Fail Counts:", CHEAT_PREFIX);
         getLogNotation(logBuffer, lastFailedEncodeStoneCount);
@@ -275,7 +259,6 @@ void FN(renderCacheStatsFull)() {
         renderOutput(message, CHEAT_PREFIX);
     }
 
-    // 9. Bounds
     if (setEntries > 0) {
         snprintf(message, sizeof(message), "  Bounds:     E %.2f%% | L %.2f%% | U %.2f%%",
                  (double)exactCount / (double)setEntries * 100.0,
@@ -286,7 +269,6 @@ void FN(renderCacheStatsFull)() {
     }
     renderOutput(message, CHEAT_PREFIX);
 
-    // 10. Depth Stats (Only in Depth Mode)
 #if HAS_DEPTH
     if (nonSolvedCount > 0) {
         const double avgDepth = (double)depthSum / (double)nonSolvedCount;
@@ -324,7 +306,6 @@ void FN(renderCacheStatsFull)() {
     }
 #endif
 
-    // 11. Fragmentation
     renderOutput("  Fragmentation", CHEAT_PREFIX);
     renderOutput("  Chunk Type | Start Index       | Chunk Size", CHEAT_PREFIX);
     renderOutput("  --------------------------------------------", CHEAT_PREFIX);

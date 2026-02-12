@@ -21,14 +21,16 @@
  * Indicies P2: 7 - 12
  */
 
-typedef void (*MakeMoveFunction)(Board*, const uint8_t);
-
-extern MakeMoveFunction makeMoveFunction;
-
 /**
- * Sets the move function to use
+ * Sets the move function to use (Classic vs Avalanche)
 */
 void setMoveFunction(MoveFunction moveFunction);
+
+/**
+ * Main wrapper function that dispatches to the active mode.
+ * Replaces the old function pointer.
+ */
+void makeMoveFunction(Board* board, const uint8_t actionIndex);
 
 /**
  * Copies the board from the source to the target
@@ -68,9 +70,13 @@ bool isBoardPlayerTwoEmpty(const Board *board);
 bool processBoardTerminal(Board *board);
 
 /**
- * Makes a move on the board
+ * Makes a move on the board (Classic Logic)
 */
 void makeMoveOnBoardClassic(Board *board, const uint8_t actionIndex);
+
+/**
+ * Makes a move on the board (Avalanche Logic)
+*/
 void makeMoveOnBoardAvalanche(Board *board, const uint8_t actionIndex);
 
 /**

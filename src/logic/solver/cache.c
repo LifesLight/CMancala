@@ -10,7 +10,7 @@
 // --- Global State ---
 uint64_t cacheSize = 0;
 uint32_t cacheSizePow = 0;
-bool isNoDepthMode = false; // Default to DEPTH mode
+bool isNoDepthMode = false;
 
 // --- Performance Tracking ---
 uint64_t hits;
@@ -21,7 +21,7 @@ uint64_t swapLRUCount;
 uint64_t failedEncodeStoneCount;
 uint64_t failedEncodeValueRange;
 
-// Snapshot stats for rendering
+// Snapshot stats
 uint64_t lastHits;
 uint64_t lastHitsLegalDepth;
 uint64_t lastSameKeyOverwriteCount;
@@ -30,14 +30,7 @@ uint64_t lastSwapLRUCount;
 uint64_t lastFailedEncodeStoneCount;
 uint64_t lastFailedEncodeValueRange;
 
-// --- Function Pointers for Active Mode ---
-typedef void (*CacheNodeFunc)(Board*, int, int, int, bool);
-typedef bool (*GetCachedValueFunc)(Board*, int, int*, int*, bool*);
-
-static CacheNodeFunc cacheNodePtr = NULL;
-static GetCachedValueFunc getCachedValuePtr = NULL;
-
-// --- Helper Struct for Fragmentation Stats ---
+// --- Common Helper: Frag Stats ---
 typedef struct {
     uint64_t start;
     uint64_t size;
@@ -52,7 +45,7 @@ int compareChunksStart(const void *a, const void *b) {
     return ((Chunk*)a)->start - ((Chunk*)b)->start;
 }
 
-// --- Common Shared Logic ---
+// --- Common Logic ---
 
 uint64_t indexHash(uint64_t hash) {
     // Fibonacci Hash, bucket size 2
@@ -82,41 +75,37 @@ bool translateBoard(Board* board, uint64_t *code) {
 }
 
 // --- Template Instantiation ---
+// This generates static functions like cacheNode_DEPTH, cacheNode_NO_DEPTH
+// because the functions in the template are marked "static inline".
 
-// 1. CACHE_DEPTH (Standard Mode)
 #define PREFIX DEPTH
 #define HAS_DEPTH 1
 #include "logic/solver/impl/cache_template.h"
 #undef PREFIX
 #undef HAS_DEPTH
 
-// 2. CACHE_NO_DEPTH (Optimized Mode)
 #define PREFIX NO_DEPTH
 #define HAS_DEPTH 0
 #include "logic/solver/impl/cache_template.h"
 #undef PREFIX
 #undef HAS_DEPTH
 
-// --- Internal Helper to set pointers based on mode ---
-static void updateCachePointers() {
-    if (isNoDepthMode) {
-        cacheNodePtr = cacheNode_NO_DEPTH;
-        getCachedValuePtr = getCachedValue_NO_DEPTH;
-    } else {
-        cacheNodePtr = cacheNode_DEPTH;
-        getCachedValuePtr = getCachedValue_DEPTH;
-    }
-}
-
 // --- Public API ---
 
 void cacheNode(Board* board, int evaluation, int boundType, int depth, bool solved) {
-    if (cacheNodePtr) cacheNodePtr(board, evaluation, boundType, depth, solved);
+    if (isNoDepthMode) {
+        cacheNode_NO_DEPTH(board, evaluation, boundType, depth, solved);
+    } else {
+        cacheNode_DEPTH(board, evaluation, boundType, depth, solved);
+    }
 }
 
 bool getCachedValue(Board* board, int currentDepth, int *evaluation, int *boundType, bool *solved) {
-    if (getCachedValuePtr) return getCachedValuePtr(board, currentDepth, evaluation, boundType, solved);
-    return false;
+    if (isNoDepthMode) {
+        return getCachedValue_NO_DEPTH(board, currentDepth, evaluation, boundType, solved);
+    } else {
+        return getCachedValue_DEPTH(board, currentDepth, evaluation, boundType, solved);
+    }
 }
 
 uint64_t getCacheSize() {
@@ -124,7 +113,7 @@ uint64_t getCacheSize() {
 }
 
 void stepCache() {
-    // No aging logic
+    // No aging
 }
 
 void resetCacheStats() {
@@ -146,14 +135,12 @@ void resetCacheStats() {
 }
 
 void startCache(int sizePow) {
-    // 1. Free existing memory for both potential modes
+    // Clear both
     freeCacheInternal_DEPTH();
     freeCacheInternal_NO_DEPTH();
 
     if (sizePow <= 2) {
         cacheSize = 0;
-        cacheNodePtr = NULL;
-        getCachedValuePtr = NULL;
         resetCacheStats();
         return;
     }
@@ -161,7 +148,6 @@ void startCache(int sizePow) {
     cacheSize = pow(2, sizePow);
     cacheSizePow = sizePow;
 
-    // 2. Allocate based on current mode
     if (isNoDepthMode) {
         initCacheInternal_NO_DEPTH(cacheSize);
         if (cache_NO_DEPTH == NULL) {
@@ -176,16 +162,7 @@ void startCache(int sizePow) {
         }
     }
 
-    // 3. Set pointers
-    if (cacheSize > 0) {
-        updateCachePointers();
-    } else {
-        cacheNodePtr = NULL;
-        getCachedValuePtr = NULL;
-    }
-
     resetCacheStats();
-    // Zero out "Last" stats on restart
     lastHits = 0; lastHitsLegalDepth = 0; lastSameKeyOverwriteCount = 0;
     lastVictimOverwriteCount = 0; lastFailedEncodeStoneCount = 0;
     lastFailedEncodeValueRange = 0; lastSwapLRUCount = 0;
@@ -194,23 +171,16 @@ void startCache(int sizePow) {
 void setCacheNoDepth(bool enable) {
     if (isNoDepthMode == enable) return;
 
-    // Free the OLD mode
     if (isNoDepthMode) freeCacheInternal_NO_DEPTH();
     else freeCacheInternal_DEPTH();
 
     isNoDepthMode = enable;
 
-    // Allocate the NEW mode if cache is active
     if (cacheSize > 0) {
-        if (isNoDepthMode) {
-            initCacheInternal_NO_DEPTH(cacheSize);
-        } else {
-            initCacheInternal_DEPTH(cacheSize);
-        }
-        updateCachePointers();
+        if (isNoDepthMode) initCacheInternal_NO_DEPTH(cacheSize);
+        else initCacheInternal_DEPTH(cacheSize);
     }
     
-    // Reset stats because we cleared the data
     resetCacheStats();
 }
 
@@ -220,8 +190,6 @@ void renderCacheStats() {
         return;
     }
 
-    // Delegate entirely to the template function to ensure correct output order
-    // independent of the function split.
     if (isNoDepthMode) {
         renderCacheStatsFull_NO_DEPTH();
     } else {
