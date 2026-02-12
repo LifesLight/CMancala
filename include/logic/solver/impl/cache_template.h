@@ -9,20 +9,36 @@
 
 #define FN(name) CAT(name, PREFIX)
 
+// --- Configuration based on Mode ---
+#if HAS_DEPTH
+    #define TEMPLATE_MAX_SPC CACHE_SPC_DEPTH
+    #define TEMPLATE_BITS_PER_CELL 5
+#else
+    #define TEMPLATE_MAX_SPC CACHE_SPC_NO_DEPTH
+    #define TEMPLATE_BITS_PER_CELL 4
+#endif
+
 // --- Struct Definition ---
 typedef struct {
+#if HAS_DEPTH
     uint64_t validation;
+#else
+    uint32_t validation_low;
+    uint16_t validation_high;
+#endif
+
     int16_t value;
     int8_t boundType;
+
 #if HAS_DEPTH
     uint8_t depth;
 #endif
 } FN(Entry);
 
-// --- Unique Global Array (Static to this file inclusion) ---
+// --- Unique Global Array ---
 static FN(Entry)* FN(cache) = NULL;
 
-// --- Memory Management Helpers (Static) ---
+// --- Memory Management Helpers ---
 
 static void FN(freeCacheInternal)() {
     if (FN(cache) != NULL) {
@@ -41,15 +57,58 @@ static void FN(initCacheInternal)(uint64_t size) {
 
     for (uint64_t i = 0; i < size; i++) {
         FN(cache)[i].value = CACHE_VAL_UNSET;
-        FN(cache)[i].validation = 0;
         FN(cache)[i].boundType = 0;
 #if HAS_DEPTH
+        FN(cache)[i].validation = 0;
         FN(cache)[i].depth = 0;
+#else
+        FN(cache)[i].validation_low = 0;
+        FN(cache)[i].validation_high = 0;
 #endif
     }
 }
 
 // --- Logic (Static Inline for Performance) ---
+
+static inline bool FN(translateBoard)(Board* board, uint64_t *code) {
+    uint64_t h = 0;
+    int offset = 0;
+    const int a0 = (board->color == 1) ? 0 : 7;
+    const int b0 = (board->color == 1) ? 7 : 0;
+
+#if HAS_DEPTH
+    // Optimized loop for 5 bits (0x1F)
+    for (int i = 0; i < 6; i++) {
+        uint8_t v = board->cells[a0 + i];
+        if (v > TEMPLATE_MAX_SPC) return false;
+        h |= (uint64_t)(v & 0x1F) << offset;
+        offset += 5;
+    }
+    for (int i = 0; i < 6; i++) {
+        uint8_t v = board->cells[b0 + i];
+        if (v > TEMPLATE_MAX_SPC) return false;
+        h |= (uint64_t)(v & 0x1F) << offset;
+        offset += 5;
+    }
+#else
+    // Optimized loop for 4 bits (0x0F)
+    for (int i = 0; i < 6; i++) {
+        uint8_t v = board->cells[a0 + i];
+        if (v > TEMPLATE_MAX_SPC) return false;
+        h |= (uint64_t)(v & 0x0F) << offset;
+        offset += 4;
+    }
+    for (int i = 0; i < 6; i++) {
+        uint8_t v = board->cells[b0 + i];
+        if (v > TEMPLATE_MAX_SPC) return false;
+        h |= (uint64_t)(v & 0x0F) << offset;
+        offset += 4;
+    }
+#endif
+
+    *code = h;
+    return true;
+}
 
 static inline void FN(cacheNode)(Board* board, int evaluation, int boundType, int depth, bool solved) {
     int scoreDelta = board->cells[SCORE_P1] - board->cells[SCORE_P2];
@@ -57,7 +116,7 @@ static inline void FN(cacheNode)(Board* board, int evaluation, int boundType, in
     evaluation -= scoreDelta;
 
     uint64_t hashValue;
-    if (!translateBoard(board, &hashValue)) {
+    if (!FN(translateBoard)(board, &hashValue)) {
         failedEncodeStoneCount++;
         return;
     }
@@ -75,31 +134,44 @@ static inline void FN(cacheNode)(Board* board, int evaluation, int boundType, in
 #else
     (void)depth;
     (void)solved;
+    // Prepare split hash parts
+    const uint32_t hLow = (uint32_t)(hashValue);
+    const uint16_t hHigh = (uint16_t)(hashValue >> 32);
 #endif
 
     // Same-key update
     for (int i = 0; i < 2; i++) {
-        if (b[i].validation == hashValue) {
 #if HAS_DEPTH
+        if (b[i].validation == hashValue) {
             if (b[i].depth > depth) return;
             b[i].depth = depth;
-#endif
             b[i].validation = hashValue;
             b[i].value = evaluation;
             b[i].boundType = boundType;
             sameKeyOverwriteCount++;
             return;
         }
+#else
+        if (b[i].validation_low == hLow && b[i].validation_high == hHigh) {
+            b[i].value = evaluation;
+            b[i].boundType = boundType;
+            sameKeyOverwriteCount++;
+            return;
+        }
+#endif
     }
 
     // Empty slot
     for (int i = 0; i < 2; i++) {
         if (b[i].value == CACHE_VAL_UNSET) {
-            b[i].validation = hashValue;
             b[i].value = evaluation;
             b[i].boundType = boundType;
 #if HAS_DEPTH
+            b[i].validation = hashValue;
             b[i].depth = depth;
+#else
+            b[i].validation_low = hLow;
+            b[i].validation_high = hHigh;
 #endif
             return;
         }
@@ -122,20 +194,24 @@ static inline void FN(cacheNode)(Board* board, int evaluation, int boundType, in
 #endif
 
     victimOverwriteCount++;
-    b[victim].validation = hashValue;
     b[victim].value = evaluation;
     b[victim].boundType = boundType;
 #if HAS_DEPTH
+    b[victim].validation = hashValue;
     b[victim].depth = depth;
+#else
+    b[victim].validation_low = hLow;
+    b[victim].validation_high = hHigh;
 #endif
 }
 
 static inline bool FN(getCachedValue)(Board* board, int currentDepth, int *eval, int *boundType, bool *solved) {
     uint64_t hashValue;
-    if (!translateBoard(board, &hashValue)) return false;
+    if (!FN(translateBoard)(board, &hashValue)) return false;
 
     const uint64_t base = indexHash(hashValue);
 
+#if HAS_DEPTH
     if (FN(cache)[base + 0].validation == hashValue) {
         // already MRU
     } else if (FN(cache)[base + 1].validation == hashValue) {
@@ -146,6 +222,23 @@ static inline bool FN(getCachedValue)(Board* board, int currentDepth, int *eval,
     } else {
         return false;
     }
+#else
+    const uint32_t hLow = (uint32_t)(hashValue);
+    const uint16_t hHigh = (uint16_t)(hashValue >> 32);
+
+    if (FN(cache)[base + 0].validation_low == hLow && 
+        FN(cache)[base + 0].validation_high == hHigh) {
+        // already MRU
+    } else if (FN(cache)[base + 1].validation_low == hLow && 
+               FN(cache)[base + 1].validation_high == hHigh) {
+        FN(Entry) tmp = FN(cache)[base + 0];
+        FN(cache)[base + 0] = FN(cache)[base + 1];
+        FN(cache)[base + 1] = tmp;
+        swapLRUCount++;
+    } else {
+        return false;
+    }
+#endif
 
     hits++;
     FN(Entry) *e = &FN(cache)[base];
@@ -168,7 +261,7 @@ static inline bool FN(getCachedValue)(Board* board, int currentDepth, int *eval,
     return true;
 }
 
-// --- Stats (Not inline, too big) ---
+// --- Stats ---
 
 static void FN(renderCacheStatsFull)() {
     char message[256];
@@ -335,7 +428,7 @@ static void FN(renderCacheStatsFull)() {
             chunkSize2 = 1;
         }
     }
-    
+
     Chunk c = { chunkStart, chunkSize2, currentType };
     if (topCount < OUTPUT_CHUNK_COUNT) {
         top[topCount++] = c;
@@ -355,3 +448,6 @@ static void FN(renderCacheStatsFull)() {
     if (topCount == OUTPUT_CHUNK_COUNT) renderOutput("  ...", CHEAT_PREFIX);
     renderOutput("  --------------------------------------------", CHEAT_PREFIX);
 }
+
+#undef TEMPLATE_MAX_SPC
+#undef TEMPLATE_BITS_PER_CELL

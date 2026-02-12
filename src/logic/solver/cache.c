@@ -52,31 +52,7 @@ uint64_t indexHash(uint64_t hash) {
     return (((hash * 11400714819323198485ULL) >> (65 - cacheSizePow)) * 2);
 }
 
-bool translateBoard(Board* board, uint64_t *code) {
-    uint64_t h = 0;
-    int offset = 0;
-    const int a0 = (board->color == 1) ? 0 : 7;
-    const int b0 = (board->color == 1) ? 7 : 0;
-
-    for (int i = 0; i < 6; i++) {
-        uint8_t v = board->cells[a0 + i];
-        if (v > CACHE_MAX_SPC) return false;
-        h |= (uint64_t)(v & 0x1F) << offset;
-        offset += 5;
-    }
-    for (int i = 0; i < 6; i++) {
-        uint8_t v = board->cells[b0 + i];
-        if (v > CACHE_MAX_SPC) return false;
-        h |= (uint64_t)(v & 0x1F) << offset;
-        offset += 5;
-    }
-    *code = h;
-    return true;
-}
-
 // --- Template Instantiation ---
-// This generates static functions like cacheNode_DEPTH, cacheNode_NO_DEPTH
-// because the functions in the template are marked "static inline".
 
 #define PREFIX DEPTH
 #define HAS_DEPTH 1
@@ -105,6 +81,14 @@ bool getCachedValue(Board* board, int currentDepth, int *evaluation, int *boundT
         return getCachedValue_NO_DEPTH(board, currentDepth, evaluation, boundType, solved);
     } else {
         return getCachedValue_DEPTH(board, currentDepth, evaluation, boundType, solved);
+    }
+}
+
+bool translateBoard(Board* board, uint64_t *code) {
+    if (isNoDepthMode) {
+        return translateBoard_NO_DEPTH(board, code);
+    } else {
+        return translateBoard_DEPTH(board, code);
     }
 }
 
@@ -180,7 +164,7 @@ void setCacheNoDepth(bool enable) {
         if (isNoDepthMode) initCacheInternal_NO_DEPTH(cacheSize);
         else initCacheInternal_DEPTH(cacheSize);
     }
-    
+
     resetCacheStats();
 }
 

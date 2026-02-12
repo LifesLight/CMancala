@@ -239,6 +239,7 @@ void FN(aspirationRoot)(Context* context, SolverConfig *config) {
     if (config->timeLimit == 0 && config->depth == 0) {
         currentDepth = MAX_DEPTH;
         oneShot = true;
+        setCacheNoDepth(true);
     }
 
     int bestMove = -1;

@@ -40,10 +40,11 @@
 #define UPPER_BOUND 2
 
 // Max stones per cell for encoding
-#define CACHE_MAX_SPC 31
+#define CACHE_SPC_DEPTH    31
+#define CACHE_SPC_NO_DEPTH 15
 
 #define CACHE_VAL_UNSET INT16_MIN
-#define CACHE_VAL_MIN INT16_MIN + 1
+#define CACHE_VAL_MIN (INT16_MIN + 1)
 #define CACHE_VAL_MAX INT16_MAX
 
 #define DEPTH_SOLVED UINT8_MAX
