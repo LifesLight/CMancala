@@ -55,6 +55,14 @@
 void startCache(int sizePow);
 
 /**
+ * Toggles the cache mode.
+ * true  = NO_DEPTH mode (smaller memory footprint, ignores depth).
+ * false = DEPTH mode (normal behavior).
+ * This resets the cache.
+ */
+void setCacheNoDepth(bool enable);
+
+/**
  * Caches a node.
 */
 void cacheNode(Board* board, int evaluation, int boundType, int depth, bool solved);
@@ -65,11 +73,6 @@ void cacheNode(Board* board, int evaluation, int boundType, int depth, bool solv
  * Current depth is the depth of the node querrying the cache.
 */
 bool getCachedValue(Board* board, int currentDepth, int *evaluation, int *boundType, bool *solved);
-
-/**
- * Gets the number of cached nodes.
-*/
-int getCachedNodeCount();
 
 /**
  * We are caching into a 64bit integer
