@@ -16,10 +16,8 @@ set(SOURCE_FILES
     src/user/handlePlaying.c
     src/user/interface.c
     src/user/runBenchmark.c
-    src/logic/solver/full/global.c
-    src/logic/solver/full/local.c
-    src/logic/solver/clipped/local.c
-    src/logic/solver/clipped/global.c
+    src/logic/solver/global.c
+    src/logic/solver/local.c
     src/logic/throughput.c
     src/logic/solver/cache.c
 )
