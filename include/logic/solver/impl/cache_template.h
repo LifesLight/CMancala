@@ -23,7 +23,10 @@ typedef struct {
 #endif
 
     int16_t value;
+
+#if HAS_DEPTH
     int8_t boundType;
+#endif
 } FN(Entry);
 
 // --- Unique Global Array ---
@@ -48,8 +51,8 @@ static void FN(initCacheInternal)(uint64_t size) {
 
     for (uint64_t i = 0; i < size; i++) {
         FN(cache)[i].value = CACHE_VAL_UNSET;
-        FN(cache)[i].boundType = 0;
 #if HAS_DEPTH
+        FN(cache)[i].boundType = 0;
         FN(cache)[i].validation = 0;
         FN(cache)[i].depth = 0;
 #else
@@ -112,7 +115,11 @@ static inline void FN(cacheNode)(Board* board, int evaluation, int boundType, in
         return;
     }
 
+#if HAS_DEPTH
     if (evaluation > CACHE_VAL_MAX || evaluation < CACHE_VAL_MIN) {
+#else
+    if (evaluation > CACHE_VAL_MAX_PACKED || evaluation < CACHE_VAL_MIN_PACKED) {
+#endif
         failedEncodeValueRange++;
         return;
     }
@@ -126,6 +133,9 @@ static inline void FN(cacheNode)(Board* board, int evaluation, int boundType, in
     // Prepare split hash parts
     const uint32_t hLow = (uint32_t)(hashValue);
     const uint16_t hHigh = (uint16_t)(hashValue >> 32);
+
+    (void)depth;
+    (void)solved;
 #endif
 
     // Same-key update
@@ -142,8 +152,7 @@ static inline void FN(cacheNode)(Board* board, int evaluation, int boundType, in
         }
 #else
         if (b[i].validation_low == hLow && b[i].validation_high == hHigh) {
-            b[i].value = evaluation;
-            b[i].boundType = boundType;
+            b[i].value = (int16_t)((evaluation << 2) | (boundType & 0x3));
             sameKeyOverwriteCount++;
             return;
         }
@@ -153,12 +162,13 @@ static inline void FN(cacheNode)(Board* board, int evaluation, int boundType, in
     // Empty slot
     for (int i = 0; i < 2; i++) {
         if (b[i].value == CACHE_VAL_UNSET) {
+#if HAS_DEPTH
             b[i].value = evaluation;
             b[i].boundType = boundType;
-#if HAS_DEPTH
             b[i].validation = hashValue;
             b[i].depth = depth;
 #else
+            b[i].value = (int16_t)((evaluation << 2) | (boundType & 0x3));
             b[i].validation_low = hLow;
             b[i].validation_high = hHigh;
 #endif
@@ -177,18 +187,19 @@ static inline void FN(cacheNode)(Board* board, int evaluation, int boundType, in
         victim = (zeroExact != oneExact) ? (zeroExact ? 1 : 0) : 1;
     }
 #else
-    const int zeroExact = (b[0].boundType == EXACT_BOUND);
-    const int oneExact  = (b[1].boundType == EXACT_BOUND);
+    const int zeroExact = ((b[0].value & 0x3) == EXACT_BOUND);
+    const int oneExact  = ((b[1].value & 0x3) == EXACT_BOUND);
     victim = (zeroExact != oneExact) ? (zeroExact ? 1 : 0) : 1;
 #endif
 
     victimOverwriteCount++;
+#if HAS_DEPTH
     b[victim].value = evaluation;
     b[victim].boundType = boundType;
-#if HAS_DEPTH
     b[victim].validation = hashValue;
     b[victim].depth = depth;
 #else
+    b[victim].value = (int16_t)((evaluation << 2) | (boundType & 0x3));
     b[victim].validation_low = hLow;
     b[victim].validation_high = hHigh;
 #endif
@@ -244,8 +255,13 @@ static inline bool FN(getCachedValue)(Board* board, int currentDepth, int *eval,
 
     int scoreDelta = board->cells[SCORE_P1] - board->cells[SCORE_P2];
     scoreDelta *= board->color;
+#if HAS_DEPTH
     *eval = e->value + scoreDelta;
     *boundType = e->boundType;
+#else
+    *eval = (e->value >> 2) + scoreDelta;
+    *boundType = (e->value & 0x3);
+#endif
 
     return true;
 }
@@ -272,9 +288,16 @@ static void FN(renderCacheStatsFull)() {
         if (FN(cache)[i].value == CACHE_VAL_UNSET) continue;
         setEntries++;
 
-        if (FN(cache)[i].boundType == EXACT_BOUND) exactCount++;
-        else if (FN(cache)[i].boundType == LOWER_BOUND) lowerCount++;
-        else if (FN(cache)[i].boundType == UPPER_BOUND) upperCount++;
+        int bt;
+#if HAS_DEPTH
+        bt = FN(cache)[i].boundType;
+#else
+        bt = (FN(cache)[i].value & 0x3);
+#endif
+
+        if (bt == EXACT_BOUND) exactCount++;
+        else if (bt == LOWER_BOUND) lowerCount++;
+        else if (bt == UPPER_BOUND) upperCount++;
 
 #if HAS_DEPTH
         if (FN(cache)[i].depth == DEPTH_SOLVED) {

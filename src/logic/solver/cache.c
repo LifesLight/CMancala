@@ -119,32 +119,27 @@ void resetCacheStats() {
 }
 
 void startCache(int sizePow) {
-    // Clear both
-    freeCacheInternal_DEPTH();
-    freeCacheInternal_NO_DEPTH();
+    uint64_t targetSize;
+    uint32_t targetPow;
 
     if (sizePow <= 2) {
-        cacheSize = 0;
+        targetSize = 0;
+        targetPow = 0;
+    } else {
+        targetSize = pow(2, sizePow);
+        targetPow = sizePow;
+    }
+
+    if (targetSize == cacheSize) {
         resetCacheStats();
         return;
     }
 
-    cacheSize = pow(2, sizePow);
-    cacheSizePow = sizePow;
+    freeCacheInternal_DEPTH();
+    freeCacheInternal_NO_DEPTH();
 
-    if (isNoDepthMode) {
-        initCacheInternal_NO_DEPTH(cacheSize);
-        if (cache_NO_DEPTH == NULL) {
-             renderOutput("Failed to allocate NO_DEPTH cache!", CONFIG_PREFIX);
-             cacheSize = 0;
-        }
-    } else {
-        initCacheInternal_DEPTH(cacheSize);
-        if (cache_DEPTH == NULL) {
-             renderOutput("Failed to allocate DEPTH cache!", CONFIG_PREFIX);
-             cacheSize = 0;
-        }
-    }
+    cacheSize = targetSize;
+    cacheSizePow = targetPow;
 
     resetCacheStats();
     lastHits = 0; lastHitsLegalDepth = 0; lastSameKeyOverwriteCount = 0;
@@ -153,16 +148,36 @@ void startCache(int sizePow) {
 }
 
 void setCacheNoDepth(bool enable) {
-    if (isNoDepthMode == enable) return;
+    // 1. Check if we are already in the correct state and allocated
+    if (enable) {
+        if (isNoDepthMode && cache_NO_DEPTH != NULL) return;
+    } else {
+        if (!isNoDepthMode && cache_DEPTH != NULL) return;
+    }
 
-    if (isNoDepthMode) freeCacheInternal_NO_DEPTH();
-    else freeCacheInternal_DEPTH();
+    if (isNoDepthMode) {
+        freeCacheInternal_NO_DEPTH();
+    } else {
+        freeCacheInternal_DEPTH();
+    }
 
     isNoDepthMode = enable;
 
+    // 4. Allocate new mode
     if (cacheSize > 0) {
-        if (isNoDepthMode) initCacheInternal_NO_DEPTH(cacheSize);
-        else initCacheInternal_DEPTH(cacheSize);
+        if (isNoDepthMode) {
+            initCacheInternal_NO_DEPTH(cacheSize);
+            if (cache_NO_DEPTH == NULL) {
+                 renderOutput("Fatal: Failed to allocate NO_DEPTH cache!", CONFIG_PREFIX);
+                 quitGame();
+            }
+        } else {
+            initCacheInternal_DEPTH(cacheSize);
+            if (cache_DEPTH == NULL) {
+                 renderOutput("Fatal: Failed to allocate DEPTH cache!", CONFIG_PREFIX);
+                 quitGame();
+            }
+        }
     }
 
     resetCacheStats();

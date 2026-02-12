@@ -47,6 +47,10 @@
 #define CACHE_VAL_MIN (INT16_MIN + 1)
 #define CACHE_VAL_MAX INT16_MAX
 
+// Packed values for NO_DEPTH mode (2 bits stolen for bound type)
+#define CACHE_VAL_MAX_PACKED (INT16_MAX >> 2)
+#define CACHE_VAL_MIN_PACKED ((INT16_MIN >> 2) + 2)
+
 #define DEPTH_SOLVED UINT16_MAX
 
 /**
