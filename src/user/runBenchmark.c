@@ -4,23 +4,44 @@
 
 #include "user/runBenchmark.h"
 
+static double currentTimeMs() {
+    return (double)clock() * 1000.0 / CLOCKS_PER_SEC;
+}
+
 void runBenchmark() {
     printf("Starting Benchmark Mode...\n");
 
-    // Setup Context
     Board board;
     Board lastBoard;
     Context context;
+
     memset(&board, 0, sizeof(Board));
     memset(&lastBoard, 0, sizeof(Board));
     memset(&context, 0, sizeof(Context));
+
     context.board = &board;
     context.lastBoard = &lastBoard;
 
     double timings[MAX_DEPTH];
     SolverConfig config;
 
-    // --- RUN 1: LOCAL UNCLIPPED, 3 STONES, CLASSIC ---
+    typedef struct {
+        const char* name;
+        double timeMs;
+    } BenchmarkSummary;
+
+    BenchmarkSummary summary[64];
+    int summaryCount = 0;
+    double totalTime = 0.0;
+
+#define ADD_SUMMARY(label, ms) \
+    do { \
+        summary[summaryCount++] = (BenchmarkSummary){label, ms}; \
+        totalTime += ms; \
+    } while (0)
+
+    double start, elapsed;
+
     printf("Running: LOCAL SOLVER (Unclipped, 3 stones, Classic)...\n");
     setMoveFunction(CLASSIC_MOVE);
     startCache(BENCHMARK_CACHE_POW);
@@ -29,17 +50,17 @@ void runBenchmark() {
     configBoard(&board, 3);
     board.color = 1;
 
-    config = (SolverConfig){
-        .solver = LOCAL_SOLVER,
-        .depth = 0,
-        .timeLimit = 0,
-        .clip = false
-    };
+    config = (SolverConfig){ LOCAL_SOLVER, 0, 0, false };
+
+    start = currentTimeMs();
     LOCAL_aspirationRoot(&context, &config);
+    elapsed = currentTimeMs() - start;
+
     memcpy(timings, context.metadata.lastDepthTimes, MAX_DEPTH * sizeof(double));
     storeBenchmarkData("benchmark/local_3_normal", timings);
+    ADD_SUMMARY("Local, Unclipped, 3 stones, Classic, Depth 0", elapsed);
 
-    // --- RUN 2: LOCAL CLIPPED, 3 STONES, CLASSIC ---
+
     printf("Running: LOCAL SOLVER (Clipped, 3 stones, Classic)...\n");
     setMoveFunction(CLASSIC_MOVE);
     startCache(BENCHMARK_CACHE_POW);
@@ -49,30 +70,34 @@ void runBenchmark() {
     board.color = 1;
 
     config.clip = true;
+
+    start = currentTimeMs();
     LOCAL_CLIP_aspirationRoot(&context, &config);
+    elapsed = currentTimeMs() - start;
+
     memcpy(timings, context.metadata.lastDepthTimes, MAX_DEPTH * sizeof(double));
     storeBenchmarkData("benchmark/local_clipped_3_normal", timings);
+    ADD_SUMMARY("Local, Clipped, 3 stones, Classic, Depth 0", elapsed);
 
-    // --- RUN 3: GLOBAL UNCLIPPED, 2 STONES, CLASSIC ---
+
     printf("Running: GLOBAL SOLVER (Unclipped, 2 stones, Classic)...\n");
     setMoveFunction(CLASSIC_MOVE);
-    // No cache reset for GLOBAL
 
     memset(&board, 0, sizeof(Board));
     configBoard(&board, 2);
     board.color = 1;
 
-    config = (SolverConfig){
-        .solver = GLOBAL_SOLVER,
-        .depth = 0,
-        .timeLimit = 0,
-        .clip = false
-    };
+    config = (SolverConfig){ GLOBAL_SOLVER, 0, 0, false };
+
+    start = currentTimeMs();
     GLOBAL_aspirationRoot(&context, &config);
+    elapsed = currentTimeMs() - start;
+
     memcpy(timings, context.metadata.lastDepthTimes, MAX_DEPTH * sizeof(double));
     storeBenchmarkData("benchmark/global_2_normal", timings);
+    ADD_SUMMARY("Global, Unclipped, 2 stones, Classic, Depth 0", elapsed);
 
-    // --- RUN 4: GLOBAL CLIPPED, 2 STONES, CLASSIC ---
+
     printf("Running: GLOBAL SOLVER (Clipped, 2 stones, Classic)...\n");
     setMoveFunction(CLASSIC_MOVE);
 
@@ -81,11 +106,16 @@ void runBenchmark() {
     board.color = 1;
 
     config.clip = true;
+
+    start = currentTimeMs();
     GLOBAL_CLIP_aspirationRoot(&context, &config);
+    elapsed = currentTimeMs() - start;
+
     memcpy(timings, context.metadata.lastDepthTimes, MAX_DEPTH * sizeof(double));
     storeBenchmarkData("benchmark/global_clipped_2_normal", timings);
+    ADD_SUMMARY("Global, Clipped, 2 stones, Classic, Depth 0", elapsed);
 
-    // --- RUN 5: LOCAL (UNCLIPPED), 2 STONES, AVALANCHE ---
+
     printf("Running: LOCAL SOLVER (Unclipped, 2 stones, Avalanche)...\n");
     setMoveFunction(AVALANCHE_MOVE);
     startCache(BENCHMARK_CACHE_POW);
@@ -94,12 +124,17 @@ void runBenchmark() {
     configBoard(&board, 2);
     board.color = 1;
 
-    config.clip = false;
+    config = (SolverConfig){ LOCAL_SOLVER, 0, 0, false };
+
+    start = currentTimeMs();
     LOCAL_aspirationRoot(&context, &config);
+    elapsed = currentTimeMs() - start;
+
     memcpy(timings, context.metadata.lastDepthTimes, MAX_DEPTH * sizeof(double));
     storeBenchmarkData("benchmark/local_2_avalanche", timings);
+    ADD_SUMMARY("Local, Unclipped, 2 stones, Avalanche, Depth 0", elapsed);
 
-    // --- RUN 6: LOCAL CLIPPED, 2 STONES, AVALANCHE ---
+
     printf("Running: LOCAL SOLVER (Clipped, 2 stones, Avalanche)...\n");
     setMoveFunction(AVALANCHE_MOVE);
     startCache(BENCHMARK_CACHE_POW);
@@ -108,15 +143,89 @@ void runBenchmark() {
     configBoard(&board, 2);
     board.color = 1;
 
-    config = (SolverConfig){
-        .solver = LOCAL_SOLVER,
-        .depth = 0,
-        .timeLimit = 0,
-        .clip = true
-    };
+    config = (SolverConfig){ LOCAL_SOLVER, 0, 0, true };
+
+    start = currentTimeMs();
     LOCAL_CLIP_aspirationRoot(&context, &config);
+    elapsed = currentTimeMs() - start;
+
     memcpy(timings, context.metadata.lastDepthTimes, MAX_DEPTH * sizeof(double));
     storeBenchmarkData("benchmark/local_clipped_2_avalanche", timings);
+    ADD_SUMMARY("Local, Clipped, 2 stones, Avalanche, Depth 0", elapsed);
+
+    printf("Running: LOCAL SOLVER (Unclipped, 3 stones, Classic, depth 40)...\n");
+    setMoveFunction(CLASSIC_MOVE);
+    startCache(BENCHMARK_CACHE_POW);
+
+    memset(&board, 0, sizeof(Board));
+    configBoard(&board, 3);
+    board.color = 1;
+
+    config = (SolverConfig){ LOCAL_SOLVER, 40, 0, false };
+
+    start = currentTimeMs();
+    LOCAL_aspirationRoot(&context, &config);
+    elapsed = currentTimeMs() - start;
+
+    ADD_SUMMARY("Local, Unclipped, 3 stones, Classic, Depth 40", elapsed);
+
+
+    printf("Running: LOCAL SOLVER (Clipped, 3 stones, Classic, depth 40)...\n");
+    setMoveFunction(CLASSIC_MOVE);
+    startCache(BENCHMARK_CACHE_POW);
+
+    memset(&board, 0, sizeof(Board));
+    configBoard(&board, 3);
+    board.color = 1;
+
+    config = (SolverConfig){ LOCAL_SOLVER, 40, 0, true };
+
+    start = currentTimeMs();
+    LOCAL_CLIP_aspirationRoot(&context, &config);
+    elapsed = currentTimeMs() - start;
+
+    ADD_SUMMARY("Local, Clipped, 3 stones, Classic, Depth 40", elapsed);
+
+
+    printf("Running: GLOBAL SOLVER (Unclipped, 2 stones, Classic, depth 30)...\n");
+    setMoveFunction(CLASSIC_MOVE);
+
+    memset(&board, 0, sizeof(Board));
+    configBoard(&board, 2);
+    board.color = 1;
+
+    config = (SolverConfig){ GLOBAL_SOLVER, 30, 0, false };
+
+    start = currentTimeMs();
+    GLOBAL_aspirationRoot(&context, &config);
+    elapsed = currentTimeMs() - start;
+
+    ADD_SUMMARY("Global, Unclipped, 2 stones, Classic, Depth 30", elapsed);
+
+
+    printf("Running: GLOBAL SOLVER (Clipped, 2 stones, Classic, depth 30)...\n");
+    setMoveFunction(CLASSIC_MOVE);
+
+    memset(&board, 0, sizeof(Board));
+    configBoard(&board, 2);
+    board.color = 1;
+
+    config = (SolverConfig){ GLOBAL_SOLVER, 30, 0, true };
+
+    start = currentTimeMs();
+    GLOBAL_CLIP_aspirationRoot(&context, &config);
+    elapsed = currentTimeMs() - start;
+
+    ADD_SUMMARY("Global, Clipped, 2 stones, Classic, Depth 30", elapsed);
+
+    printf("\n=== BENCHMARK SUMMARY ===\n");
+
+    for (int i = 0; i < summaryCount; i++) {
+        printf("%s: %.0fms\n", summary[i].name, summary[i].timeMs);
+    }
+
+    printf("Total Time: %.0fms\n", totalTime);
+    printf("(Depth 0 = infinite depth)\n");
 
     printf("Benchmark complete.\n");
 }
