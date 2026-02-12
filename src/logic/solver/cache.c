@@ -2,7 +2,7 @@
  * Copyright (c) Alexander Kurtz 2026
  */
 
-#include "logic/solver/solveCache.h"
+#include "logic/solver/cache.h"
 
 uint64_t cacheSize = 0;
 uint32_t cacheSizePow = 0;

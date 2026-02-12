@@ -15,7 +15,7 @@
 #include "user/render.h"
 #include "logic/throughput.h"
 #include "logic/utility.h"
-#include "logic/solver/solveCache.h"
+#include "logic/solver/cache.h"
 #include "config.h"
 
 /**

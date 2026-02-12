@@ -21,7 +21,7 @@ set(SOURCE_FILES
     src/logic/solver/clipped/local.c
     src/logic/solver/clipped/global.c
     src/logic/throughput.c
-    src/logic/solver/solveCache.c
+    src/logic/solver/cache.c
 )
 
 include_directories(include)
