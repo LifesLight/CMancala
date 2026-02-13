@@ -4,6 +4,8 @@
 
  #include "logic/solver/local.h"
 
+static bool lastUsedClip = false;
+
 #define PREFIX LOCAL
 #define IS_CLIPPED 0
 #include "logic/solver/impl/local_template.h"

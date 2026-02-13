@@ -183,9 +183,22 @@ void setCacheNoDepth(bool enable) {
     resetCacheStats();
 }
 
+void invalidateCache() {
+    if (isNoDepthMode) {
+        freeCacheInternal_NO_DEPTH();
+    } else {
+        freeCacheInternal_DEPTH();
+    }
+}
+
 void renderCacheStats() {
     if (cacheSize == 0) {
         renderOutput("  Cache disabled.", CHEAT_PREFIX);
+        return;
+    }
+
+    if (cache_NO_DEPTH == NULL && cache_DEPTH == NULL) {
+        renderOutput("  Cache not initialized yet.", CHEAT_PREFIX);
         return;
     }
 

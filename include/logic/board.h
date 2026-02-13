@@ -13,6 +13,7 @@
 
 #include "config.h"
 #include "containers.h"
+#include "logic/solver/cache.h"
 
 /*
  * Board is constructed like this:

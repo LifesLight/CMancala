@@ -60,6 +60,11 @@
 void startCache(int sizePow);
 
 /**
+ * Cleans cache, needed when changing move function for example.
+ */
+void invalidateCache();
+
+/**
  * Toggles the cache mode.
  * true  = NO_DEPTH mode (smaller memory footprint, ignores depth).
  * false = DEPTH mode (normal behavior).

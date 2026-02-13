@@ -9,7 +9,10 @@
 static MoveFunction activeMoveMode = CLASSIC_MOVE;
 
 void setMoveFunction(MoveFunction moveFunction) {
-    activeMoveMode = moveFunction;
+    if (activeMoveMode != moveFunction) {
+        invalidateCache();
+        activeMoveMode = moveFunction;
+    }
 }
 
 void copyBoard(const Board *board, Board *target) {

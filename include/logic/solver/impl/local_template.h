@@ -189,6 +189,18 @@ void FN(distributionRoot)(Board *board, int *distribution, bool *solved, SolverC
         startCache(NORMAL_CACHE_SIZE);
     }
 
+    // Non clip cache should not cause issues for CLIP cache, but the other way it might
+#if IS_CLIPPED
+    lastUsedClip = true;
+    printf("Hi\n");
+#else 
+    if (lastUsedClip == true) {
+        lastUsedClip = false;
+        printf("Slimed\n");
+        invalidateCache();
+    }
+#endif
+
     const int8_t start = (board->color == 1) ? HBOUND_P1 : HBOUND_P2;
     const int8_t end = (board->color == 1) ? LBOUND_P1 : LBOUND_P2;
     int index = 5;
@@ -202,7 +214,7 @@ void FN(distributionRoot)(Board *board, int *distribution, bool *solved, SolverC
         setCacheNoDepth(false);
     }
 
-#ifdef IS_CLIPPED
+#if IS_CLIPPED
     const int alpha = -1;
     const int beta = 1;
 #else
@@ -242,6 +254,16 @@ void FN(aspirationRoot)(Context* context, SolverConfig *config) {
         renderOutput("Cache is disabled, starting with \"normal\" preset!", CHEAT_PREFIX);
         startCache(NORMAL_CACHE_SIZE);
     }
+
+    // Non clip cache should not cause issues for CLIP cache, but the other way it might
+#if IS_CLIPPED
+    lastUsedClip = true;
+#else 
+    if (lastUsedClip == true) {
+        lastUsedClip = false;
+        invalidateCache();
+    }
+#endif
 
     const int depthStep = 1;
     int currentDepth = 1;
