@@ -192,11 +192,9 @@ void FN(distributionRoot)(Board *board, int *distribution, bool *solved, SolverC
     // Non clip cache should not cause issues for CLIP cache, but the other way it might
 #if IS_CLIPPED
     lastUsedClip = true;
-    printf("Hi\n");
 #else 
     if (lastUsedClip == true) {
         lastUsedClip = false;
-        printf("Slimed\n");
         invalidateCache();
     }
 #endif
