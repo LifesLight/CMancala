@@ -6,7 +6,7 @@ import os
 
 # --- CONFIGURATION ---
 EXECUTABLE_PATH = "./build-pgo/Mancala"
-ITERATIONS = 250
+ITERATIONS = 100
 SOLVER_TYPE = "global"
 STONES = 2
 CACHE_SIZE = 21

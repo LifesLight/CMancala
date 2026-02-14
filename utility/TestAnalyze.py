@@ -7,7 +7,7 @@ import os
 # --- CONFIGURATION ---
 EXECUTABLE_PATH = "./build-pgo/Mancala"
 ITERATIONS = 100
-BASE_DEPTH = 100
+BASE_DEPTH = 0
 DEPTH_VARIATION = 0
 LOG_FILE = "mismatch_log.txt"
 # ---------------------
@@ -56,6 +56,8 @@ def run_test(iteration):
         f"stones 2\n"
         f"distribution random\n"
         f"seed {seed}\n"
+        f"cache 20\n"
+        f"compress true\n"
         f"display\n"
         f"start\n"
         f"analyze --solver global --depth {depth}\n"

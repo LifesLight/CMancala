@@ -133,6 +133,7 @@ void GLOBAL_aspirationRoot(Context* context, SolverConfig *config) {
 
     const int windowSize = 1;
     int window = windowSize;
+
     int alpha = INT32_MIN + 1;
     int beta  = INT32_MAX;
     int windowMisses = 0;
@@ -151,33 +152,40 @@ void GLOBAL_aspirationRoot(Context* context, SolverConfig *config) {
         bool searchValid = false;
 
         if (config->clip) {
-            // Null Window: We check > 0.
+            // Null Window Search (0, 1)
             score = GLOBAL_negamaxWithMove(context->board, &bestMove, 0, 1, currentDepth);
             searchValid = true; 
         } else {
             score = GLOBAL_negamaxWithMove(context->board, &bestMove, alpha, beta, currentDepth);
+
             if (score > alpha && score < beta) {
                 searchValid = true;
                 window = windowSize;
+
+                alpha = score - window;
+                beta  = score + window;
             } else {
+                // Window Miss
                 windowMisses++;
                 window *= 2;
+
                 alpha = score - window;
                 beta  = score + window;
             }
         }
 
         if (searchValid) {
+            // Record Timing
             if (depthTimes != NULL) {
                 double t = (double)(clock() - start) / CLOCKS_PER_SEC;
                 depthTimes[currentDepth] = t - lastTimeCaptured;
                 lastTimeCaptured = t;
             }
 
+            // Check Exit Conditions
             if (solved) break;
             if (config->depth > 0 && currentDepth >= config->depth) break;
-            if (config->timeLimit > 0 &&
-                ((double)(clock() - start) / CLOCKS_PER_SEC) >= config->timeLimit) break;
+            if (config->timeLimit > 0 && ((double)(clock() - start) / CLOCKS_PER_SEC) >= config->timeLimit) break;
 
             currentDepth += depthStep;
         }

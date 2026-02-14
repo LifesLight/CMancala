@@ -164,12 +164,11 @@ void LOCAL_distributionRoot(Board *board, int *distribution, bool *solved, Solve
 }
 
 void LOCAL_aspirationRoot(Context* context, SolverConfig *config) {
-    if (getCacheSize() == 0) startCache(NORMAL_CACHE_SIZE);
-
     const int depthStep = 1;
     int currentDepth = 1;
     bool oneShot = false;
 
+    // Check for No Iterative Deepening
     if (config->timeLimit == 0 && config->depth == 0) {
         currentDepth = MAX_DEPTH;
         oneShot = true;
@@ -199,35 +198,52 @@ void LOCAL_aspirationRoot(Context* context, SolverConfig *config) {
 
     while (true) {
         solved = true;
-        int currentAlpha = config->clip ? 0 : alpha;
-        int currentBeta  = config->clip ? 1 : beta;
+        bool searchValid = false;
 
-        score = LOCAL_negamaxWithMove(context->board, &bestMove, currentAlpha, currentBeta, currentDepth, &solved);
+        if (config->clip) {
+            // Clipped: Null Window (0, 1)
+            score = LOCAL_negamaxWithMove(context->board, &bestMove, 0, 1, currentDepth, &solved);
+            searchValid = true;
+        } else if (oneShot) {
+            score = LOCAL_negamaxWithMove(context->board, &bestMove, INT32_MIN + 1, INT32_MAX, currentDepth, &solved);
+            searchValid = true;
+        } else {
+            score = LOCAL_negamaxWithMove(context->board, &bestMove, alpha, beta, currentDepth, &solved);
 
-        int timeIndex = oneShot ? 1 : currentDepth;
-        if (depthTimes != NULL) {
-            double t = (double)(clock() - start) / CLOCKS_PER_SEC;
-            depthTimes[timeIndex] = t - lastTimeCaptured;
-            lastTimeCaptured = t;
+            if (score > alpha && score < beta) {
+                searchValid = true;
+                window = windowSize;
+
+                alpha = score - window;
+                beta  = score + window;
+            } else {
+                // Window Miss
+                windowMisses++;
+                window *= 2;
+
+                alpha = score - window;
+                beta  = score + window;
+            }
         }
 
         stepCache();
-        if (solved) break;
-        if (config->depth > 0 && currentDepth >= config->depth) break;
-        if (config->timeLimit > 0 && ((double)(clock() - start) / CLOCKS_PER_SEC) >= config->timeLimit) break;
-        if (oneShot) break;
 
-        currentDepth += depthStep;
-
-        if (!config->clip && !oneShot) {
-            if (score <= alpha || score >= beta) {
-                windowMisses++;
-                window *= 2;
-                alpha = score - window;
-                beta  = score + window;
-                continue;
+        if (searchValid) {
+            // Record Timing
+            int timeIndex = oneShot ? 1 : currentDepth;
+            if (depthTimes != NULL) {
+                double t = (double)(clock() - start) / CLOCKS_PER_SEC;
+                depthTimes[timeIndex] = t - lastTimeCaptured;
+                lastTimeCaptured = t;
             }
-            window = windowSize;
+
+            // Check Exit Conditions
+            if (solved) break;
+            if (oneShot) break;
+            if (config->depth > 0 && currentDepth >= config->depth) break;
+            if (config->timeLimit > 0 && ((double)(clock() - start) / CLOCKS_PER_SEC) >= config->timeLimit) break;
+
+            currentDepth += depthStep;
         }
     }
 
