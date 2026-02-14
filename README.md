@@ -56,7 +56,7 @@ All solvers use Negamax with Alpha-Beta pruning. They handle double moves. Commo
 
 * **Double move handling:** Search adjusts when the same player continues or turn switches.
 * **Aspiration windows + iterative deepening:** Enables time-limited searches and better performance.
-* **Clip (WIP):** Changes solver behavior to only search for winning or losing moves. Use with playing solvers only when the AI is in a winning position. In losing positions it treats moves as equally bad if it can't find a win. That often causes the agent to pick the first IDX move and not return to a winning position.
+* **Clip:** Changes solver behavior to only search for winning or losing moves. Only useful when the AI is in a winning position. In losing positions it treats all moves as equally bad if it can't find a win. That often causes the agent to pick the first IDX move and not return to a winning position.
 
 #### Solvers
 

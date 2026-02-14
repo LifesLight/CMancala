@@ -4,11 +4,11 @@
  * Copyright (c) Alexander Kurtz 2026
  */
 
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <stdbool.h>
 
 #include "containers.h"
 #include "logic/board.h"
@@ -19,31 +19,11 @@
 #include "config.h"
 
 /**
- * Negamax algorithm with alpha-beta pruning and best move output.
-*/
-int LOCAL_negamaxWithMove(Board *board, int *bestMove, int alpha, int beta, const int depth, bool *solved);
-
-/**
  * Distribution root
-*/
+ */
 void LOCAL_distributionRoot(Board *board, int *distribution, bool *solved, SolverConfig *config);
 
 /**
  * Aspiration root
-*/
+ */
 void LOCAL_aspirationRoot(Context* context, SolverConfig *config);
-
-/**
- * Negamax algorithm with alpha-beta pruning and best move output.
-*/
-int LOCAL_CLIP_negamaxWithMove(Board *board, int *bestMove, const int depth, bool *solved);
-
-/**
- * Distribution root
-*/
-void LOCAL_CLIP_distributionRoot(Board *board, int *distribution, bool *solved, SolverConfig *config);
-
-/**
- * Aspiration root
-*/
-void LOCAL_CLIP_aspirationRoot(Context* context, SolverConfig *config);
