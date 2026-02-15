@@ -52,19 +52,79 @@ uint64_t indexHash(uint64_t hash) {
     return (((hash * 11400714819323198485ULL) >> (65 - cacheSizePow)) * 2);
 }
 
+#define PACK_VALUE(evaluation, boundType) ((int16_t)(((evaluation) << 2) | ((boundType) & 0x3)))
+#define UNPACK_VALUE(value) ((int16_t)((value) >> 2))
+
+#define UNPACK_BOUND(value) ((value) & 0x3)
+
 // --- Template Instantiation ---
 
-#define PREFIX DEPTH
-#define HAS_DEPTH 1
+// 1) none
+#define PREFIX CACHE
+#define CACHE_DEPTH 0
+#define CACHE_B64 0
+#define CACHE_T32 0
 #include "logic/solver/impl/cache_template.h"
 #undef PREFIX
-#undef HAS_DEPTH
+#undef CACHE_DEPTH
+#undef CACHE_B64
+#undef CACHE_T32
 
-#define PREFIX NO_DEPTH
-#define HAS_DEPTH 0
+// 2) DEPTH
+#define PREFIX CACHE_DEPTH
+#define CACHE_DEPTH 1
+#define CACHE_B64 0
+#define CACHE_T32 0
 #include "logic/solver/impl/cache_template.h"
 #undef PREFIX
-#undef HAS_DEPTH
+#undef CACHE_DEPTH
+#undef CACHE_B64
+#undef CACHE_T32
+
+// 3) T32
+#define PREFIX CACHE_T32
+#define CACHE_DEPTH 0
+#define CACHE_B64 0
+#define CACHE_T32 1
+#include "logic/solver/impl/cache_template.h"
+#undef PREFIX
+#undef CACHE_DEPTH
+#undef CACHE_B64
+#undef CACHE_T32
+
+// 4) DEPTH + T32
+#define PREFIX CACHE_DEPTH_T32
+#define CACHE_DEPTH 1
+#define CACHE_B64 0
+#define CACHE_T32 1
+#include "logic/solver/impl/cache_template.h"
+#undef PREFIX
+#undef CACHE_DEPTH
+#undef CACHE_B64
+#undef CACHE_T32
+
+// 5) DEPTH + B64 + T32
+#define PREFIX CACHE_DEPTH_B64_T32
+#define CACHE_DEPTH 1
+#define CACHE_B64 1
+#define CACHE_T32 1
+#include "logic/solver/impl/cache_template.h"
+#undef PREFIX
+#undef CACHE_DEPTH
+#undef CACHE_B64
+#undef CACHE_T32
+
+// 6) B64 + T32
+#define PREFIX CACHE_B64_T32
+#define CACHE_DEPTH 0
+#define CACHE_B64 1
+#define CACHE_T32 1
+#include "logic/solver/impl/cache_template.h"
+#undef PREFIX
+#undef CACHE_DEPTH
+#undef CACHE_B64
+#undef CACHE_T32
+
 
 // --- Public API ---
 

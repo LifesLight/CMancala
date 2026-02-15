@@ -35,21 +35,15 @@
 
 #define OUTPUT_CHUNK_COUNT 10
 
+// <<-- PACKED BOUND + VAL -->>
+#define CACHE_VAL_UNSET INT16_MAX
+
+#define CACHE_VAL_MIN ((INT16_MIN >> 2) + 2)
+#define CACHE_VAL_MAX (INT16_MAX >> 2)
+
 #define EXACT_BOUND 0
 #define LOWER_BOUND 1
 #define UPPER_BOUND 2
-
-// Max stones per cell for encoding
-#define CACHE_SPC_DEPTH    31
-#define CACHE_SPC_NO_DEPTH 15
-
-#define CACHE_VAL_UNSET INT16_MIN
-#define CACHE_VAL_MIN (INT16_MIN + 1)
-#define CACHE_VAL_MAX INT16_MAX
-
-// Packed values for NO_DEPTH mode (2 bits stolen for bound type)
-#define CACHE_VAL_MAX_PACKED (INT16_MAX >> 2)
-#define CACHE_VAL_MIN_PACKED ((INT16_MIN >> 2) + 2)
 
 #define DEPTH_SOLVED UINT16_MAX
 

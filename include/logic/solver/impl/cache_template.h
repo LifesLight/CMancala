@@ -9,24 +9,21 @@
 
 #define FN(name) CAT(name, PREFIX)
 
-// --- Struct Definition ---
-typedef struct {
-#if HAS_DEPTH
-    uint64_t validation;
+#if CACHE_T32
+#define TAG_TYPE uint32_t
 #else
-    uint32_t validation_low;
-    uint16_t validation_high;
+#define TAG_TYPE uint16_t
 #endif
 
-#if HAS_DEPTH
+// --- Struct Definition ---
+typedef struct {
+    TAG_TYPE tag;
+
+#if CACHE_DEPTH
     uint16_t depth;
 #endif
 
     int16_t value;
-
-#if HAS_DEPTH
-    int8_t boundType;
-#endif
 } FN(Entry);
 
 // --- Unique Global Array ---
@@ -51,13 +48,10 @@ static void FN(initCacheInternal)(uint64_t size) {
 
     for (uint64_t i = 0; i < size; i++) {
         FN(cache)[i].value = CACHE_VAL_UNSET;
-#if HAS_DEPTH
-        FN(cache)[i].boundType = 0;
-        FN(cache)[i].validation = 0;
+        FN(cache)[i].tag = 0;
+
+#if CACHE_DEPTH
         FN(cache)[i].depth = 0;
-#else
-        FN(cache)[i].validation_low = 0;
-        FN(cache)[i].validation_high = 0;
 #endif
     }
 }
@@ -70,7 +64,7 @@ static inline bool FN(translateBoard)(Board* board, uint64_t *code) {
     const int a0 = (board->color == 1) ? 0 : 7;
     const int b0 = (board->color == 1) ? 7 : 0;
 
-#if HAS_DEPTH
+#if CACHE_B64
     // Optimized loop for 5 bits (0x1F)
     for (int i = 0; i < 6; i++) {
         uint8_t v = board->cells[a0 + i];
@@ -100,8 +94,45 @@ static inline bool FN(translateBoard)(Board* board, uint64_t *code) {
     }
 #endif
 
+/**
+ * Mixing here since the board rep is useless without correct mixing
+ */
+
+#if CACHE_B64
+    h ^= h >> 33;
+    h *= 0xff51afd7ed558ccdULL;
+    h ^= h >> 33;
+    h *= 0xc4ceb9fe1a85ec53ULL;
+    h ^= h >> 33;
+#else
+    const uint64_t m = 0xFFFFFFFFFFFFULL;
+
+    h ^= h >> 24;
+    h = (h * 0xfd7ed558ccdULL) & m;
+    h ^= h >> 24;
+    h = (h * 0xfe1a85ec53ULL) & m;
+    h ^= h >> 24;
+#endif
+
     *code = h;
     return true;
+}
+
+static inline void FN(splitBoard)(uint64_t boardRep, int cacheSizePow, uint64_t *index, TAG_TYPE *tag) {
+#if CACHE_B64
+    const int totalBits = 64;
+#else
+    const int totalBits = 48;
+#endif
+
+#if CACHE_T32
+    const int tagBits = 32;
+#else
+    const int tagBits = 16;
+#endif
+
+    *index = boardRep & ((1ULL << cacheSizePow) - 1);
+    *tag   = (TAG_TYPE)(boardRep >> (totalBits - tagBits));
 }
 
 static inline void FN(cacheNode)(Board* board, int evaluation, int boundType, int depth, bool solved) {
@@ -109,68 +140,55 @@ static inline void FN(cacheNode)(Board* board, int evaluation, int boundType, in
     scoreDelta *= board->color;
     evaluation -= scoreDelta;
 
-    uint64_t hashValue;
-    if (!FN(translateBoard)(board, &hashValue)) {
-        failedEncodeStoneCount++;
-        return;
-    }
-
-#if HAS_DEPTH
     if (evaluation > CACHE_VAL_MAX || evaluation < CACHE_VAL_MIN) {
-#else
-    if (evaluation > CACHE_VAL_MAX_PACKED || evaluation < CACHE_VAL_MIN_PACKED) {
-#endif
         failedEncodeValueRange++;
         return;
     }
 
-    const uint64_t base = indexHash(hashValue);
+    uint64_t boardRep;
+    if (!FN(translateBoard)(board, &boardRep)) {
+        failedEncodeStoneCount++;
+        return;
+    }
+
+    const uint64_t base = indexHash(boardRep);
     FN(Entry) *b = &FN(cache)[base];
 
-#if HAS_DEPTH
-    if (solved) depth = DEPTH_SOLVED;
+#if CACHE_DEPTH
+    if (solved) {
+        depth = DEPTH_SOLVED;
+    }
 #else
-    // Prepare split hash parts
-    const uint32_t hLow = (uint32_t)(hashValue);
-    const uint16_t hHigh = (uint16_t)(hashValue >> 32);
-
     (void)depth;
     (void)solved;
 #endif
 
+    // TODO CALCULATE TAG
+    TAG_TYPE tag = 0;
+
+
     // Same-key update
     for (int i = 0; i < 2; i++) {
-#if HAS_DEPTH
-        if (b[i].validation == hashValue) {
+        if (b[i].tag == tag) {
+#if CACHE_DEPTH
+// TODO: Maybe check for exact bounds here
             if (b[i].depth > depth) return;
             b[i].depth = depth;
-            b[i].validation = hashValue;
-            b[i].value = evaluation;
-            b[i].boundType = boundType;
-            sameKeyOverwriteCount++;
-            return;
-        }
-#else
-        if (b[i].validation_low == hLow && b[i].validation_high == hHigh) {
-            b[i].value = (int16_t)((evaluation << 2) | (boundType & 0x3));
-            sameKeyOverwriteCount++;
-            return;
-        }
 #endif
+            b[i].tag = tag;
+            b[i].value = evaluation;
+            sameKeyOverwriteCount++;
+            return;
+        }
     }
 
     // Empty slot
     for (int i = 0; i < 2; i++) {
         if (b[i].value == CACHE_VAL_UNSET) {
-#if HAS_DEPTH
-            b[i].value = evaluation;
-            b[i].boundType = boundType;
-            b[i].validation = hashValue;
+            b[i].value = PACK_VALUE(evaluation, boundType);
+            b[i].tag = tag;
+#if CACHE_DEPTH
             b[i].depth = depth;
-#else
-            b[i].value = (int16_t)((evaluation << 2) | (boundType & 0x3));
-            b[i].validation_low = hLow;
-            b[i].validation_high = hHigh;
 #endif
             return;
         }
@@ -178,30 +196,29 @@ static inline void FN(cacheNode)(Board* board, int evaluation, int boundType, in
 
     // Victim selection
     int victim;
-#if HAS_DEPTH
+
+    // With depth, prioritize higher depth entries
+#if CACHE_DEPTH
     if (b[1].depth != b[0].depth) {
         victim = (b[1].depth < b[0].depth) ? 1 : 0;
     } else {
-        const int zeroExact = (b[0].boundType == EXACT_BOUND);
-        const int oneExact  = (b[1].boundType == EXACT_BOUND);
-        victim = (zeroExact != oneExact) ? (zeroExact ? 1 : 0) : 1;
-    }
-#else
-    const int zeroExact = ((b[0].value & 0x3) == EXACT_BOUND);
-    const int oneExact  = ((b[1].value & 0x3) == EXACT_BOUND);
+#endif
+
+    // Exact is less important than solved, only ciretia for non depth cache (with LRU)
+    const int zeroExact = (UNPACK_BOUND(b[0].value) == EXACT_BOUND);
+    const int oneExact  = (UNPACK_BOUND(b[1].value) == EXACT_BOUND);
     victim = (zeroExact != oneExact) ? (zeroExact ? 1 : 0) : 1;
+
+#if CACHE_DEPTH
+    }
 #endif
 
     victimOverwriteCount++;
-#if HAS_DEPTH
-    b[victim].value = evaluation;
-    b[victim].boundType = boundType;
-    b[victim].validation = hashValue;
+
+    b[victim].value = PACK_VALUE(evaluation, boundType);
+    b[victim].tag = tag;
+#if CACHE_DEPTH
     b[victim].depth = depth;
-#else
-    b[victim].value = (int16_t)((evaluation << 2) | (boundType & 0x3));
-    b[victim].validation_low = hLow;
-    b[victim].validation_high = hHigh;
 #endif
 }
 
@@ -211,7 +228,7 @@ static inline bool FN(getCachedValue)(Board* board, int currentDepth, int *eval,
 
     const uint64_t base = indexHash(hashValue);
 
-#if HAS_DEPTH
+#if CACHE_DEPTH
     if (FN(cache)[base + 0].validation == hashValue) {
         // already MRU
     } else if (FN(cache)[base + 1].validation == hashValue) {
@@ -243,7 +260,7 @@ static inline bool FN(getCachedValue)(Board* board, int currentDepth, int *eval,
     hits++;
     FN(Entry) *e = &FN(cache)[base];
 
-#if HAS_DEPTH
+#if CACHE_DEPTH
     if (e->depth < currentDepth) return false;
     *solved = (e->depth == DEPTH_SOLVED);
 #else
@@ -255,7 +272,7 @@ static inline bool FN(getCachedValue)(Board* board, int currentDepth, int *eval,
 
     int scoreDelta = board->cells[SCORE_P1] - board->cells[SCORE_P2];
     scoreDelta *= board->color;
-#if HAS_DEPTH
+#if CACHE_DEPTH
     *eval = e->value + scoreDelta;
     *boundType = e->boundType;
 #else
@@ -277,7 +294,7 @@ static void FN(renderCacheStatsFull)() {
     uint64_t lowerCount = 0;
     uint64_t upperCount = 0;
 
-#if HAS_DEPTH
+#if CACHE_DEPTH
     uint64_t solvedEntries = 0;
     uint64_t nonSolvedCount = 0;
     uint64_t depthSum = 0;
@@ -289,7 +306,7 @@ static void FN(renderCacheStatsFull)() {
         setEntries++;
 
         int bt;
-#if HAS_DEPTH
+#if CACHE_DEPTH
         bt = FN(cache)[i].boundType;
 #else
         bt = (FN(cache)[i].value & 0x3);
@@ -299,7 +316,7 @@ static void FN(renderCacheStatsFull)() {
         else if (bt == LOWER_BOUND) lowerCount++;
         else if (bt == UPPER_BOUND) upperCount++;
 
-#if HAS_DEPTH
+#if CACHE_DEPTH
         if (FN(cache)[i].depth == DEPTH_SOLVED) {
             solvedEntries++;
         } else {
@@ -310,7 +327,7 @@ static void FN(renderCacheStatsFull)() {
 #endif
     }
 
-#if HAS_DEPTH
+#if CACHE_DEPTH
     renderOutput("  Mode:       16 Byte (Full)", CHEAT_PREFIX);
 #else
     renderOutput("  Mode:       8 Byte  (No Depth)", CHEAT_PREFIX);
@@ -321,7 +338,7 @@ static void FN(renderCacheStatsFull)() {
     snprintf(message, sizeof(message), "  Cache size: %-12"PRIu64" %s (%.2f%% Used)", cacheSize, logBuffer, fillPct);
     renderOutput(message, CHEAT_PREFIX);
 
-#if HAS_DEPTH
+#if CACHE_DEPTH
     const double solvedPct = (setEntries > 0) ? (double)solvedEntries / (double)setEntries * 100.0 : 0.0;
     getLogNotation(logBuffer, solvedEntries);
     snprintf(message, sizeof(message), "  Solved:     %-12"PRIu64" %s (%.2f%% of used)", solvedEntries, logBuffer, solvedPct);
@@ -332,7 +349,7 @@ static void FN(renderCacheStatsFull)() {
     snprintf(message, sizeof(message), "  Hits:       %-12"PRIu64" %s", lastHits, logBuffer);
     renderOutput(message, CHEAT_PREFIX);
 
-#if HAS_DEPTH
+#if CACHE_DEPTH
     const uint64_t badHits = lastHits - lastHitsLegalDepth;
     const double badHitPercent = (lastHits > 0) ? (double)badHits / (double)lastHits * 100.0 : 0.0;
     getLogNotation(logBuffer, badHits);
@@ -374,7 +391,7 @@ static void FN(renderCacheStatsFull)() {
     }
     renderOutput(message, CHEAT_PREFIX);
 
-#if HAS_DEPTH
+#if CACHE_DEPTH
     if (nonSolvedCount > 0) {
         const double avgDepth = (double)depthSum / (double)nonSolvedCount;
         snprintf(message, sizeof(message), "  Depth:      avg %.2f | max %u", avgDepth, (unsigned)maxDepth);
