@@ -65,7 +65,6 @@ static inline bool FN(translateBoard)(Board* board, uint64_t *code) {
     const int b0 = (board->color == 1) ? 7 : 0;
 
 #if CACHE_B64
-    // Optimized loop for 5 bits (0x1F)
     for (int i = 0; i < 6; i++) {
         uint8_t v = board->cells[a0 + i];
         if (v > 31) return false;
@@ -79,7 +78,6 @@ static inline bool FN(translateBoard)(Board* board, uint64_t *code) {
         offset += 5;
     }
 #else
-    // Optimized loop for 4 bits (0x0F)
     for (int i = 0; i < 6; i++) {
         uint8_t v = board->cells[a0 + i];
         if (v > 15) return false;
@@ -131,7 +129,7 @@ static inline void FN(splitBoard)(uint64_t boardRep, uint64_t *index, TAG_TYPE *
     const int tagBits = 16;
 #endif
 
-    *index = boardRep & ((1ULL << cacheSizePow) - 1);
+    *index = boardRep & (cacheSize - 1);
     *tag   = (TAG_TYPE)(boardRep >> (totalBits - tagBits));
 }
 
@@ -174,8 +172,7 @@ static inline void FN(cacheNode)(Board* board, int evaluation, int boundType, in
             if (b[i].depth > depth) return;
             b[i].depth = depth;
 #endif
-            b[i].tag = tag;
-            b[i].value = evaluation;
+            b[i].value = PACK_VALUE(evaluation, boundType);
             sameKeyOverwriteCount++;
             return;
         }
@@ -201,47 +198,53 @@ static inline void FN(cacheNode)(Board* board, int evaluation, int boundType, in
     if (b[1].depth != b[0].depth) {
         victim = (b[1].depth < b[0].depth) ? 1 : 0;
     } else {
-#endif
-
-    // Exact is less important than solved, only ciretia for non depth cache (with LRU)
+        const int zeroExact = (UNPACK_BOUND(b[0].value) == EXACT_BOUND);
+        const int oneExact  = (UNPACK_BOUND(b[1].value) == EXACT_BOUND);
+        victim = (zeroExact != oneExact) ? (zeroExact ? 1 : 0) : 1;
+    }
+#else
     const int zeroExact = (UNPACK_BOUND(b[0].value) == EXACT_BOUND);
     const int oneExact  = (UNPACK_BOUND(b[1].value) == EXACT_BOUND);
     victim = (zeroExact != oneExact) ? (zeroExact ? 1 : 0) : 1;
-
-#if CACHE_DEPTH
-    }
 #endif
 
     victimOverwriteCount++;
-
-    b[victim].value = PACK_VALUE(evaluation, boundType);
     b[victim].tag = tag;
+    b[victim].value = PACK_VALUE(evaluation, boundType);
+
 #if CACHE_DEPTH
     b[victim].depth = depth;
 #endif
 }
 
 static inline bool FN(getCachedValue)(Board* board, int currentDepth, int *eval, int *boundType, bool *solved) {
-    uint64_t boardRep;
-    if (!FN(translateBoard)(board, &boardRep)) return false;
+    uint64_t hashValue;
+    if (!FN(translateBoard)(board, &hashValue)) return false;
 
     uint64_t index;
     TAG_TYPE tag;
-    FN(splitBoard)(boardRep, &index, &tag);
+    FN(splitBoard)(hashValue, &index, &tag);
 
-    if (FN(cache)[index + 0].tag == tag) {
-        // already MRU
-    } else if (FN(cache)[index + 1].tag == tag) {
-        FN(Entry) tmp = FN(cache)[index + 0];
-        FN(cache)[index + 0] = FN(cache)[index + 1];
-        FN(cache)[index + 1] = tmp;
+    FN(Entry) *entryBase = &FN(cache)[index];
+    FN(Entry) *e = NULL;
+
+    if (entryBase[0].tag == tag) {
+        e = &entryBase[0];
+    } else if (entryBase[1].tag == tag) {
+        FN(Entry) tmp = entryBase[0];
+        entryBase[0] = entryBase[1];
+        entryBase[1] = tmp;
+        e = &entryBase[0];
         swapLRUCount++;
     } else {
         return false;
     }
 
+    if (e->value == CACHE_VAL_UNSET) {
+        return false;
+    }
+
     hits++;
-    FN(Entry) *e = &FN(cache)[index];
 
 #if CACHE_DEPTH
     if (e->depth < currentDepth) return false;
@@ -284,12 +287,7 @@ static void FN(renderCacheStatsFull)() {
         if (FN(cache)[i].value == CACHE_VAL_UNSET) continue;
         setEntries++;
 
-        int bt;
-#if CACHE_DEPTH
-        bt = UNPACK_BOUND(FN(cache)[i].value);
-#else
-        bt = UNPACK_VALUE(FN(cache)[i].value);
-#endif
+        int bt = UNPACK_BOUND(FN(cache)[i].value);
 
         if (bt == EXACT_BOUND) exactCount++;
         else if (bt == LOWER_BOUND) lowerCount++;
@@ -330,12 +328,6 @@ static void FN(renderCacheStatsFull)() {
 
     snprintf(modeStr, sizeof(modeStr), "  Mode:       %s / %s / %s (%zu Bytes)", 
              depthStr, keyStr, tagStr, sizeof(FN(Entry)));
-    renderOutput(modeStr, CHEAT_PREFIX);
-
-// ... continue with fillPct ...
-
-    snprintf(modeStr, sizeof(modeStr), "%s / %s / %s", depthStr, keyStr, tagStr);
-    renderOutput("  Mode:       ", CHEAT_PREFIX);
     renderOutput(modeStr, CHEAT_PREFIX);
 
     const double fillPct = (cacheSize > 0) ? (double)setEntries / (double)cacheSize * 100.0 : 0.0;

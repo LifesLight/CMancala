@@ -57,7 +57,7 @@ def run_test(iteration):
         f"distribution random\n"
         f"seed {seed}\n"
         f"cache 32\n"
-        f"compress true\n"
+        f"compress false\n"
         f"start\n"
         f"analyze --solver global --depth {depth}\n"
         f"analyze --solver local --depth {depth}\n"
