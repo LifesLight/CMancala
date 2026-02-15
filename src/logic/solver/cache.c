@@ -265,7 +265,7 @@ static void reconfigureCache() {
 // --- Public API ---
 
 void setCacheMode(bool depth, bool compress) {
-    bool sizeChanged = (configSizePow != cacheSizePow);
+    bool sizeChanged = (configSizePow != (int)cacheSizePow);
     bool modeChanged = (configDepth != depth) || (configCompress != compress);
 
     configDepth = depth;
@@ -304,18 +304,6 @@ bool getCachedValue(Board* board, int currentDepth, int *evaluation, int *boundT
         case MODE_D_B48_T16:  return getCachedValue_CACHE_DEPTH_B48_T16(board, currentDepth, evaluation, boundType, solved);
         case MODE_D_B48_T32:  return getCachedValue_CACHE_DEPTH_B48_T32(board, currentDepth, evaluation, boundType, solved);
         case MODE_D_B64_T32:  return getCachedValue_CACHE_DEPTH_B64_T32(board, currentDepth, evaluation, boundType, solved);
-        default: return false;
-    }
-}
-
-bool translateBoard(Board* board, uint64_t *code) {
-    switch (currentMode) {
-        case MODE_ND_B48_T16: return translateBoard_NOCACHE_B48_T16(board, code);
-        case MODE_ND_B48_T32: return translateBoard_NOCACHE_B48_T32(board, code);
-        case MODE_ND_B64_T32: return translateBoard_NOCACHE_B64_T32(board, code);
-        case MODE_D_B48_T16:  return translateBoard_CACHE_DEPTH_B48_T16(board, code);
-        case MODE_D_B48_T32:  return translateBoard_CACHE_DEPTH_B48_T32(board, code);
-        case MODE_D_B64_T32:  return translateBoard_CACHE_DEPTH_B64_T32(board, code);
         default: return false;
     }
 }

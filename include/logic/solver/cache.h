@@ -36,10 +36,8 @@
 #define OUTPUT_CHUNK_COUNT 10
 
 // <<-- PACKED BOUND + VAL -->>
-// Used to mark an entry as empty
 #define CACHE_VAL_UNSET INT16_MAX
 
-// Constraints for values to fit into packed 14-bit integer
 #define CACHE_VAL_MIN ((INT16_MIN >> 2) + 2)
 #define CACHE_VAL_MAX (INT16_MAX >> 2)
 
@@ -49,73 +47,24 @@
 
 #define DEPTH_SOLVED UINT16_MAX
 
-/**
- * Sets the size of the cache (power of two).
- * If sizePow <= 2, the cache is disabled and memory freed.
- * If the size changes, the cache is cleared and reallocated.
- */
+// Does not allocate yet
 void setCacheSize(int sizePow);
 
-/**
- * Configures the cache operation mode.
- * 
- * @param depth    If true, stores search depth (16 bytes/entry). 
- *                 If false, ignores depth for tighter packing (8 bytes/entry).
- * @param compress If true, uses 4 bits per hole (Max stones 15, Key 48-bit).
- *                 If false, uses 5 bits per hole (Max stones 31, Key 64-bit).
- * 
- * Note: This may trigger a cache reset/reallocation if the mode changes.
- */
+
+// Enable / Disable depth storing (needed for non solving) and can enable 48 bit board representations
 void setCacheMode(bool depth, bool compress);
 
-/**
- * Cleans cache. Needed when changing game rules or cache logic explicitly.
- * Effectively re-initializes the current buffer.
- */
+
 void invalidateCache();
 
-/**
- * Caches a node.
- * Automatically handles replacement strategies (Depth-based or LRU) 
- * depending on the active mode.
- */
 void cacheNode(Board* board, int evaluation, int boundType, int depth, bool solved);
 
-/**
- * Gets the value for the provided board from the cache.
- * Returns true if values were found.
- * Current depth is the depth of the node querying the cache.
- */
 bool getCachedValue(Board* board, int currentDepth, int *evaluation, int *boundType, bool *solved);
 
-/**
- * Translates a board into a hash key.
- * 
- * Encoding depends on compression mode:
- * - Compress (B48): 12 holes * 4 bits = 48 bits. (Max 15 stones/hole)
- * - Standard (B64): 12 holes * 5 bits = 60 bits. (Max 31 stones/hole)
- * 
- * Score cells are not encoded.
- * Returns false if the board cannot be encoded (e.g. too many stones for the selected mode).
- */
-bool translateBoard(Board* board, uint64_t *code);
-
-/**
- * Outputs formatted cache statistics to the render output.
- */
 void renderCacheStats();
 
-/**
- * Resets the hit/miss/collision counters without clearing the actual cache memory.
- */
 void resetCacheStats();
 
-/**
- * Helper step function (reserved for aging or per-turn maintenance).
- */
 void stepCache();
 
-/**
- * Returns the current size of the cache in number of entries.
- */
 uint64_t getCacheSize();
