@@ -170,7 +170,7 @@ void handleConfigInput(bool* requestedStart, Config* config) {
             return;
         }
 
-        startCache(cacheSize);
+        setCacheSize(cacheSize);
 
         if (cacheSize == 0) {
             renderOutput("Disabled cache", CONFIG_PREFIX);

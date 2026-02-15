@@ -6,31 +6,32 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
+#include <inttypes.h>
 
-// --- Global State ---
+// --- Global State & Stats (Shared by templates) ---
 uint64_t cacheSize = 0;
 uint32_t cacheSizePow = 0;
-bool isNoDepthMode = false;
 
-// --- Performance Tracking ---
-uint64_t hits;
-uint64_t hitsLegalDepth;
-uint64_t sameKeyOverwriteCount;
-uint64_t victimOverwriteCount;
-uint64_t swapLRUCount;
-uint64_t failedEncodeStoneCount;
-uint64_t failedEncodeValueRange;
+// Stats counters
+uint64_t hits = 0;
+uint64_t hitsLegalDepth = 0;
+uint64_t sameKeyOverwriteCount = 0;
+uint64_t victimOverwriteCount = 0;
+uint64_t swapLRUCount = 0;
+uint64_t failedEncodeStoneCount = 0;
+uint64_t failedEncodeValueRange = 0;
 
 // Snapshot stats
-uint64_t lastHits;
-uint64_t lastHitsLegalDepth;
-uint64_t lastSameKeyOverwriteCount;
-uint64_t lastVictimOverwriteCount;
-uint64_t lastSwapLRUCount;
-uint64_t lastFailedEncodeStoneCount;
-uint64_t lastFailedEncodeValueRange;
+uint64_t lastHits = 0;
+uint64_t lastHitsLegalDepth = 0;
+uint64_t lastSameKeyOverwriteCount = 0;
+uint64_t lastVictimOverwriteCount = 0;
+uint64_t lastSwapLRUCount = 0;
+uint64_t lastFailedEncodeStoneCount = 0;
+uint64_t lastFailedEncodeValueRange = 0;
 
-// --- Common Helper: Frag Stats ---
+// --- Helper: Frag Stats Utils ---
 typedef struct {
     uint64_t start;
     uint64_t size;
@@ -38,29 +39,30 @@ typedef struct {
 } Chunk;
 
 int compareChunksSize(const void *a, const void *b) {
-    return ((Chunk*)b)->size - ((Chunk*)a)->size;
+    Chunk* cA = (Chunk*)a;
+    Chunk* cB = (Chunk*)b;
+    if (cA->size < cB->size) return 1;
+    if (cA->size > cB->size) return -1;
+    return 0;
 }
 
 int compareChunksStart(const void *a, const void *b) {
-    return ((Chunk*)a)->start - ((Chunk*)b)->start;
+    Chunk* cA = (Chunk*)a;
+    Chunk* cB = (Chunk*)b;
+    if (cA->start > cB->start) return 1;
+    if (cA->start < cB->start) return -1;
+    return 0;
 }
 
-// --- Common Logic ---
+// --- Common Logic Macros ---
+#define PACK_VALUE(eval, bt) ((int16_t)(((eval) << 2) | ((bt) & 0x3)))
+#define UNPACK_VALUE(val) ((int16_t)((val) >> 2))
+#define UNPACK_BOUND(val) ((val) & 0x3)
 
-uint64_t indexHash(uint64_t hash) {
-    // Fibonacci Hash, bucket size 2
-    return (((hash * 11400714819323198485ULL) >> (65 - cacheSizePow)) * 2);
-}
+// --- Template Instantiations ---
 
-#define PACK_VALUE(evaluation, boundType) ((int16_t)(((evaluation) << 2) | ((boundType) & 0x3)))
-#define UNPACK_VALUE(value) ((int16_t)((value) >> 2))
-
-#define UNPACK_BOUND(value) ((value) & 0x3)
-
-// --- Template Instantiation ---
-
-// 1) none
-#define PREFIX CACHE
+// 1. NO DEPTH | 48 BIT KEY | 16 BIT TAG
+#define PREFIX NOCACHE_B48_T16
 #define CACHE_DEPTH 0
 #define CACHE_B64 0
 #define CACHE_T32 0
@@ -70,19 +72,8 @@ uint64_t indexHash(uint64_t hash) {
 #undef CACHE_B64
 #undef CACHE_T32
 
-// 2) DEPTH
-#define PREFIX CACHE_DEPTH
-#define CACHE_DEPTH 1
-#define CACHE_B64 0
-#define CACHE_T32 0
-#include "logic/solver/impl/cache_template.h"
-#undef PREFIX
-#undef CACHE_DEPTH
-#undef CACHE_B64
-#undef CACHE_T32
-
-// 3) T32
-#define PREFIX CACHE_T32
+// 2. NO DEPTH | 48 BIT KEY | 32 BIT TAG
+#define PREFIX NOCACHE_B48_T32
 #define CACHE_DEPTH 0
 #define CACHE_B64 0
 #define CACHE_T32 1
@@ -92,8 +83,30 @@ uint64_t indexHash(uint64_t hash) {
 #undef CACHE_B64
 #undef CACHE_T32
 
-// 4) DEPTH + T32
-#define PREFIX CACHE_DEPTH_T32
+// 3. NO DEPTH | 64 BIT KEY | 32 BIT TAG (B64 requires T32)
+#define PREFIX NOCACHE_B64_T32
+#define CACHE_DEPTH 0
+#define CACHE_B64 1
+#define CACHE_T32 1
+#include "logic/solver/impl/cache_template.h"
+#undef PREFIX
+#undef CACHE_DEPTH
+#undef CACHE_B64
+#undef CACHE_T32
+
+// 4. DEPTH | 48 BIT KEY | 16 BIT TAG
+#define PREFIX CACHE_DEPTH_B48_T16
+#define CACHE_DEPTH 1
+#define CACHE_B64 0
+#define CACHE_T32 0
+#include "logic/solver/impl/cache_template.h"
+#undef PREFIX
+#undef CACHE_DEPTH
+#undef CACHE_B64
+#undef CACHE_T32
+
+// 5. DEPTH | 48 BIT KEY | 32 BIT TAG
+#define PREFIX CACHE_DEPTH_B48_T32
 #define CACHE_DEPTH 1
 #define CACHE_B64 0
 #define CACHE_T32 1
@@ -103,7 +116,7 @@ uint64_t indexHash(uint64_t hash) {
 #undef CACHE_B64
 #undef CACHE_T32
 
-// 5) DEPTH + B64 + T32
+// 6. DEPTH | 64 BIT KEY | 32 BIT TAG
 #define PREFIX CACHE_DEPTH_B64_T32
 #define CACHE_DEPTH 1
 #define CACHE_B64 1
@@ -114,51 +127,51 @@ uint64_t indexHash(uint64_t hash) {
 #undef CACHE_B64
 #undef CACHE_T32
 
-// 6) B64 + T32
-#define PREFIX CACHE_B64_T32
-#define CACHE_DEPTH 0
-#define CACHE_B64 1
-#define CACHE_T32 1
-#include "logic/solver/impl/cache_template.h"
-#undef PREFIX
-#undef CACHE_DEPTH
-#undef CACHE_B64
-#undef CACHE_T32
+// --- Dispatcher Infrastructure ---
 
+typedef enum {
+    MODE_DISABLED = -1,
+    MODE_ND_B48_T16 = 0,
+    MODE_ND_B48_T32,
+    MODE_ND_B64_T32,
+    MODE_D_B48_T16,
+    MODE_D_B48_T32,
+    MODE_D_B64_T32,
+    MODE_COUNT
+} CacheMode;
 
-// --- Public API ---
+typedef struct {
+    void (*init)(uint64_t);
+    void (*freeFunc)(void);
+    void (*cacheNode)(Board*, int, int, int, bool);
+    bool (*getCached)(Board*, int, int*, int*, bool*);
+    bool (*translate)(Board*, uint64_t*);
+    void (*renderStats)(void);
+} CacheInterface;
 
-void cacheNode(Board* board, int evaluation, int boundType, int depth, bool solved) {
-    if (isNoDepthMode) {
-        cacheNode_NO_DEPTH(board, evaluation, boundType, depth, solved);
-    } else {
-        cacheNode_DEPTH(board, evaluation, boundType, depth, solved);
-    }
-}
+// Global Function Pointer Table
+static const CacheInterface dispatchTable[MODE_COUNT] = {
+    // 0: ND_B48_T16
+    { initCacheInternal_NOCACHE_B48_T16, freeCacheInternal_NOCACHE_B48_T16, cacheNode_NOCACHE_B48_T16, getCachedValue_NOCACHE_B48_T16, translateBoard_NOCACHE_B48_T16, renderCacheStatsFull_NOCACHE_B48_T16 },
+    // 1: ND_B48_T32
+    { initCacheInternal_NOCACHE_B48_T32, freeCacheInternal_NOCACHE_B48_T32, cacheNode_NOCACHE_B48_T32, getCachedValue_NOCACHE_B48_T32, translateBoard_NOCACHE_B48_T32, renderCacheStatsFull_NOCACHE_B48_T32 },
+    // 2: ND_B64_T32
+    { initCacheInternal_NOCACHE_B64_T32, freeCacheInternal_NOCACHE_B64_T32, cacheNode_NOCACHE_B64_T32, getCachedValue_NOCACHE_B64_T32, translateBoard_NOCACHE_B64_T32, renderCacheStatsFull_NOCACHE_B64_T32 },
+    // 3: D_B48_T16
+    { initCacheInternal_CACHE_DEPTH_B48_T16, freeCacheInternal_CACHE_DEPTH_B48_T16, cacheNode_CACHE_DEPTH_B48_T16, getCachedValue_CACHE_DEPTH_B48_T16, translateBoard_CACHE_DEPTH_B48_T16, renderCacheStatsFull_CACHE_DEPTH_B48_T16 },
+    // 4: D_B48_T32
+    { initCacheInternal_CACHE_DEPTH_B48_T32, freeCacheInternal_CACHE_DEPTH_B48_T32, cacheNode_CACHE_DEPTH_B48_T32, getCachedValue_CACHE_DEPTH_B48_T32, translateBoard_CACHE_DEPTH_B48_T32, renderCacheStatsFull_CACHE_DEPTH_B48_T32 },
+    // 5: D_B64_T32
+    { initCacheInternal_CACHE_DEPTH_B64_T32, freeCacheInternal_CACHE_DEPTH_B64_T32, cacheNode_CACHE_DEPTH_B64_T32, getCachedValue_CACHE_DEPTH_B64_T32, translateBoard_CACHE_DEPTH_B64_T32, renderCacheStatsFull_CACHE_DEPTH_B64_T32 },
+};
 
-bool getCachedValue(Board* board, int currentDepth, int *evaluation, int *boundType, bool *solved) {
-    if (isNoDepthMode) {
-        return getCachedValue_NO_DEPTH(board, currentDepth, evaluation, boundType, solved);
-    } else {
-        return getCachedValue_DEPTH(board, currentDepth, evaluation, boundType, solved);
-    }
-}
+// Current Configuration
+static CacheMode currentMode = MODE_DISABLED;
+static bool configDepth = true;     // Default: Depth ON
+static bool configCompress = true;  // Default: Compress ON (B48)
+static int configSizePow = 0;       // Default: 0
 
-bool translateBoard(Board* board, uint64_t *code) {
-    if (isNoDepthMode) {
-        return translateBoard_NO_DEPTH(board, code);
-    } else {
-        return translateBoard_DEPTH(board, code);
-    }
-}
-
-uint64_t getCacheSize() {
-    return cacheSize;
-}
-
-void stepCache() {
-    // No aging
-}
+// --- Internal Logic ---
 
 void resetCacheStats() {
     lastHits = hits;
@@ -178,93 +191,148 @@ void resetCacheStats() {
     swapLRUCount = 0;
 }
 
-void startCache(int sizePow) {
-    uint64_t targetSize;
-    uint32_t targetPow;
-
-    if (sizePow <= 2) {
-        targetSize = 0;
-        targetPow = 0;
-    } else {
-        targetSize = pow(2, sizePow);
-        targetPow = sizePow;
+/**
+ * Calculates the required mode based on configuration and allocates memory.
+ * Returns true on success, or quits the game on fatal error.
+ */
+static void reconfigureCache() {
+    // 1. Clean up existing cache
+    if (currentMode != MODE_DISABLED) {
+        dispatchTable[currentMode].freeFunc();
+        currentMode = MODE_DISABLED;
     }
 
-    if (targetSize == cacheSize) {
+    if (configSizePow <= 2) {
+        // Disabled
+        cacheSize = 0;
+        cacheSizePow = 0;
+        return;
+    }
+
+    // 2. Logic to determine implementation
+    // B64 = !compress
+    // B48 = compress
+    
+    int keyBits = configCompress ? 48 : 64;
+    
+    // Check if cache is absurdly large (Index bits > Key bits)
+    if (configSizePow >= keyBits) {
+        char err[128];
+        snprintf(err, sizeof(err), "Fatal: Cache size 2^%d too large for %d-bit keys.", configSizePow, keyBits);
+        renderOutput(err, CONFIG_PREFIX);
+        quitGame();
+        return;
+    }
+
+    int tagBitsNeeded = keyBits - configSizePow;
+    bool useT32 = false;
+
+    // Check bounds
+    if (tagBitsNeeded > 32) {
+        char err[128];
+        snprintf(err, sizeof(err), "Fatal: Cache size 2^%d too small. Tags need %d bits (>32). Enable compression or increase size.", configSizePow, tagBitsNeeded);
+        renderOutput(err, CONFIG_PREFIX);
+        quitGame();
+        return;
+    } 
+    else if (tagBitsNeeded > 16) {
+        useT32 = true;
+    } 
+    else {
+        // Fits in 16 bits, but B64+T16 is explicitly disabled per requirements
+        if (!configCompress) {
+            useT32 = true;
+        } else {
+            useT32 = false; // B48 + T16 is allowed
+        }
+    }
+
+    // 3. Select Enum
+    if (configDepth) {
+        if (!configCompress) {
+             currentMode = MODE_D_B64_T32;
+        } else {
+             currentMode = useT32 ? MODE_D_B48_T32 : MODE_D_B48_T16;
+        }
+    } else {
+        if (!configCompress) {
+             currentMode = MODE_ND_B64_T32;
+        } else {
+             currentMode = useT32 ? MODE_ND_B48_T32 : MODE_ND_B48_T16;
+        }
+    }
+
+    // 4. Allocate
+    cacheSize = (uint64_t)1 << configSizePow;
+    cacheSizePow = configSizePow;
+
+    dispatchTable[currentMode].init(cacheSize);
+    resetCacheStats();
+}
+
+// --- Public API ---
+
+void setCacheMode(bool depth, bool compress) {
+    if (configDepth == depth && configCompress == compress) return;
+
+    configDepth = depth;
+    configCompress = compress;
+
+    // Only reconfigure if we actually have a size set
+    if (configSizePow > 0) {
+        reconfigureCache();
+    }
+}
+
+void setCacheSize(int sizePow) {
+    if (configSizePow == sizePow) {
         resetCacheStats();
         return;
     }
 
-    freeCacheInternal_DEPTH();
-    freeCacheInternal_NO_DEPTH();
-
-    cacheSize = targetSize;
-    cacheSizePow = targetPow;
-
-    resetCacheStats();
-    lastHits = 0; lastHitsLegalDepth = 0; lastSameKeyOverwriteCount = 0;
-    lastVictimOverwriteCount = 0; lastFailedEncodeStoneCount = 0;
-    lastFailedEncodeValueRange = 0; lastSwapLRUCount = 0;
+    configSizePow = sizePow;
 }
 
-void setCacheNoDepth(bool enable) {
-    // 1. Check if we are already in the correct state and allocated
-    if (enable) {
-        if (isNoDepthMode && cache_NO_DEPTH != NULL) return;
-    } else {
-        if (!isNoDepthMode && cache_DEPTH != NULL) return;
+void cacheNode(Board* board, int evaluation, int boundType, int depth, bool solved) {
+    if (currentMode != MODE_DISABLED) {
+        dispatchTable[currentMode].cacheNode(board, evaluation, boundType, depth, solved);
     }
+}
 
-    if (isNoDepthMode) {
-        freeCacheInternal_NO_DEPTH();
-    } else {
-        freeCacheInternal_DEPTH();
+bool getCachedValue(Board* board, int currentDepth, int *evaluation, int *boundType, bool *solved) {
+    if (currentMode != MODE_DISABLED) {
+        return dispatchTable[currentMode].getCached(board, currentDepth, evaluation, boundType, solved);
     }
+    return false;
+}
 
-    isNoDepthMode = enable;
-
-    // 4. Allocate new mode
-    if (cacheSize > 0) {
-        if (isNoDepthMode) {
-            initCacheInternal_NO_DEPTH(cacheSize);
-            if (cache_NO_DEPTH == NULL) {
-                 renderOutput("Fatal: Failed to allocate NO_DEPTH cache!", CONFIG_PREFIX);
-                 quitGame();
-            }
-        } else {
-            initCacheInternal_DEPTH(cacheSize);
-            if (cache_DEPTH == NULL) {
-                 renderOutput("Fatal: Failed to allocate DEPTH cache!", CONFIG_PREFIX);
-                 quitGame();
-            }
-        }
+bool translateBoard(Board* board, uint64_t *code) {
+    if (currentMode != MODE_DISABLED) {
+        return dispatchTable[currentMode].translate(board, code);
     }
+    return false;
+}
 
-    resetCacheStats();
+uint64_t getCacheSize() {
+    return cacheSize;
+}
+
+void stepCache() {
+    // No aging implemented yet
 }
 
 void invalidateCache() {
-    if (isNoDepthMode) {
-        freeCacheInternal_NO_DEPTH();
-    } else {
-        freeCacheInternal_DEPTH();
+    // Re-init effectively clears it
+    if (currentMode != MODE_DISABLED && cacheSize > 0) {
+        dispatchTable[currentMode].init(cacheSize);
+        resetCacheStats();
     }
 }
 
 void renderCacheStats() {
-    if (cacheSize == 0) {
+    if (currentMode == MODE_DISABLED || cacheSize == 0) {
         renderOutput("  Cache disabled.", CHEAT_PREFIX);
         return;
     }
-
-    if (cache_NO_DEPTH == NULL && cache_DEPTH == NULL) {
-        renderOutput("  Cache not initialized yet.", CHEAT_PREFIX);
-        return;
-    }
-
-    if (isNoDepthMode) {
-        renderCacheStatsFull_NO_DEPTH();
-    } else {
-        renderCacheStatsFull_DEPTH();
-    }
+    dispatchTable[currentMode].renderStats();
 }

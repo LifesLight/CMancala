@@ -47,7 +47,7 @@ void runBenchmark() {
     // ---------------------------------------------------------
     printf("Running: LOCAL SOLVER (Unclipped, 3 stones, Classic)...\n");
     setMoveFunction(CLASSIC_MOVE);
-    startCache(BENCHMARK_CACHE_POW);
+    setCacheSize(BENCHMARK_CACHE_POW);
 
     memset(&board, 0, sizeof(Board));
     configBoard(&board, 3);
@@ -69,7 +69,7 @@ void runBenchmark() {
     // ---------------------------------------------------------
     printf("Running: LOCAL SOLVER (Clipped, 3 stones, Classic)...\n");
     setMoveFunction(CLASSIC_MOVE);
-    startCache(BENCHMARK_CACHE_POW);
+    invalidateCache();
 
     memset(&board, 0, sizeof(Board));
     configBoard(&board, 3);
@@ -130,7 +130,7 @@ void runBenchmark() {
     // ---------------------------------------------------------
     printf("Running: LOCAL SOLVER (Unclipped, 2 stones, Avalanche)...\n");
     setMoveFunction(AVALANCHE_MOVE);
-    startCache(BENCHMARK_CACHE_POW);
+    invalidateCache();
 
     memset(&board, 0, sizeof(Board));
     configBoard(&board, 2);
@@ -151,7 +151,7 @@ void runBenchmark() {
     // ---------------------------------------------------------
     printf("Running: LOCAL SOLVER (Clipped, 2 stones, Avalanche)...\n");
     setMoveFunction(AVALANCHE_MOVE);
-    startCache(BENCHMARK_CACHE_POW);
+    invalidateCache();
 
     memset(&board, 0, sizeof(Board));
     configBoard(&board, 2);
@@ -172,7 +172,7 @@ void runBenchmark() {
     // ---------------------------------------------------------
     printf("Running: LOCAL SOLVER (Unclipped, 3 stones, Classic, depth 40)...\n");
     setMoveFunction(CLASSIC_MOVE);
-    startCache(BENCHMARK_CACHE_POW);
+    invalidateCache();
 
     memset(&board, 0, sizeof(Board));
     configBoard(&board, 3);
@@ -191,7 +191,7 @@ void runBenchmark() {
     // ---------------------------------------------------------
     printf("Running: LOCAL SOLVER (Clipped, 3 stones, Classic, depth 40)...\n");
     setMoveFunction(CLASSIC_MOVE);
-    startCache(BENCHMARK_CACHE_POW);
+    invalidateCache();
 
     memset(&board, 0, sizeof(Board));
     configBoard(&board, 3);

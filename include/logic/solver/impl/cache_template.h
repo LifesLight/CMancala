@@ -118,7 +118,7 @@ static inline bool FN(translateBoard)(Board* board, uint64_t *code) {
     return true;
 }
 
-static inline void FN(splitBoard)(uint64_t boardRep, int cacheSizePow, uint64_t *index, TAG_TYPE *tag) {
+static inline void FN(splitBoard)(uint64_t boardRep, uint64_t *index, TAG_TYPE *tag) {
 #if CACHE_B64
     const int totalBits = 64;
 #else
@@ -151,8 +151,11 @@ static inline void FN(cacheNode)(Board* board, int evaluation, int boundType, in
         return;
     }
 
-    const uint64_t base = indexHash(boardRep);
-    FN(Entry) *b = &FN(cache)[base];
+    uint64_t index;
+    TAG_TYPE tag;
+    FN(splitBoard)(boardRep, &index, &tag);
+
+    FN(Entry) *b = &FN(cache)[index];
 
 #if CACHE_DEPTH
     if (solved) {
@@ -162,10 +165,6 @@ static inline void FN(cacheNode)(Board* board, int evaluation, int boundType, in
     (void)depth;
     (void)solved;
 #endif
-
-    // TODO CALCULATE TAG
-    TAG_TYPE tag = 0;
-
 
     // Same-key update
     for (int i = 0; i < 2; i++) {
@@ -223,42 +222,26 @@ static inline void FN(cacheNode)(Board* board, int evaluation, int boundType, in
 }
 
 static inline bool FN(getCachedValue)(Board* board, int currentDepth, int *eval, int *boundType, bool *solved) {
-    uint64_t hashValue;
-    if (!FN(translateBoard)(board, &hashValue)) return false;
+    uint64_t boardRep;
+    if (!FN(translateBoard)(board, &boardRep)) return false;
 
-    const uint64_t base = indexHash(hashValue);
+    uint64_t index;
+    TAG_TYPE tag;
+    FN(splitBoard)(boardRep, &index, &tag);
 
-#if CACHE_DEPTH
-    if (FN(cache)[base + 0].validation == hashValue) {
+    if (FN(cache)[index + 0].tag == tag) {
         // already MRU
-    } else if (FN(cache)[base + 1].validation == hashValue) {
-        FN(Entry) tmp = FN(cache)[base + 0];
-        FN(cache)[base + 0] = FN(cache)[base + 1];
-        FN(cache)[base + 1] = tmp;
+    } else if (FN(cache)[index + 1].tag == tag) {
+        FN(Entry) tmp = FN(cache)[index + 0];
+        FN(cache)[index + 0] = FN(cache)[index + 1];
+        FN(cache)[index + 1] = tmp;
         swapLRUCount++;
     } else {
         return false;
     }
-#else
-    const uint32_t hLow = (uint32_t)(hashValue);
-    const uint16_t hHigh = (uint16_t)(hashValue >> 32);
-
-    if (FN(cache)[base + 0].validation_low == hLow && 
-        FN(cache)[base + 0].validation_high == hHigh) {
-        // already MRU
-    } else if (FN(cache)[base + 1].validation_low == hLow && 
-               FN(cache)[base + 1].validation_high == hHigh) {
-        FN(Entry) tmp = FN(cache)[base + 0];
-        FN(cache)[base + 0] = FN(cache)[base + 1];
-        FN(cache)[base + 1] = tmp;
-        swapLRUCount++;
-    } else {
-        return false;
-    }
-#endif
 
     hits++;
-    FN(Entry) *e = &FN(cache)[base];
+    FN(Entry) *e = &FN(cache)[index];
 
 #if CACHE_DEPTH
     if (e->depth < currentDepth) return false;
@@ -272,13 +255,9 @@ static inline bool FN(getCachedValue)(Board* board, int currentDepth, int *eval,
 
     int scoreDelta = board->cells[SCORE_P1] - board->cells[SCORE_P2];
     scoreDelta *= board->color;
-#if CACHE_DEPTH
-    *eval = e->value + scoreDelta;
-    *boundType = e->boundType;
-#else
-    *eval = (e->value >> 2) + scoreDelta;
-    *boundType = (e->value & 0x3);
-#endif
+
+    *eval = UNPACK_VALUE(e->value) + scoreDelta;
+    *boundType = UNPACK_BOUND(e->value);
 
     return true;
 }
@@ -307,9 +286,9 @@ static void FN(renderCacheStatsFull)() {
 
         int bt;
 #if CACHE_DEPTH
-        bt = FN(cache)[i].boundType;
+        bt = UNPACK_BOUND(FN(cache)[i].value);
 #else
-        bt = (FN(cache)[i].value & 0x3);
+        bt = UNPACK_VALUE(FN(cache)[i].value);
 #endif
 
         if (bt == EXACT_BOUND) exactCount++;
@@ -327,11 +306,37 @@ static void FN(renderCacheStatsFull)() {
 #endif
     }
 
+    char modeStr[128];
+    const char* depthStr = 
 #if CACHE_DEPTH
-    renderOutput("  Mode:       16 Byte (Full)", CHEAT_PREFIX);
+        "Depth";
 #else
-    renderOutput("  Mode:       8 Byte  (No Depth)", CHEAT_PREFIX);
+        "No Depth";
 #endif
+
+    const char* keyStr = 
+#if CACHE_B64
+        "64-bit Key";
+#else
+        "48-bit Key";
+#endif
+
+    const char* tagStr = 
+#if CACHE_T32
+        "32-bit Tag";
+#else
+        "16-bit Tag";
+#endif
+
+    snprintf(modeStr, sizeof(modeStr), "  Mode:       %s / %s / %s (%zu Bytes)", 
+             depthStr, keyStr, tagStr, sizeof(FN(Entry)));
+    renderOutput(modeStr, CHEAT_PREFIX);
+
+// ... continue with fillPct ...
+
+    snprintf(modeStr, sizeof(modeStr), "%s / %s / %s", depthStr, keyStr, tagStr);
+    renderOutput("  Mode:       ", CHEAT_PREFIX);
+    renderOutput(modeStr, CHEAT_PREFIX);
 
     const double fillPct = (cacheSize > 0) ? (double)setEntries / (double)cacheSize * 100.0 : 0.0;
     getLogNotation(logBuffer, cacheSize);
@@ -477,3 +482,5 @@ static void FN(renderCacheStatsFull)() {
     if (topCount == OUTPUT_CHUNK_COUNT) renderOutput("  ...", CHEAT_PREFIX);
     renderOutput("  --------------------------------------------", CHEAT_PREFIX);
 }
+
+#undef TAG_TYPE
