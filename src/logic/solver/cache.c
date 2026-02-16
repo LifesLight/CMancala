@@ -196,7 +196,8 @@ static void reconfigureCache() {
     }
     int keyBits = configCompress ? 48 : 64;
 
-    // Check if too large cache
+    // Check if too large cache (highly unlikely on modern systems, but safety check)
+    // We reserve at least 1 bit for index, so sizePow < keyBits
     if (configSizePow >= keyBits) {
         char err[128];
         snprintf(err, sizeof(err), "Fatal: Cache size 2^%d too large for %d-bit keys.", configSizePow, keyBits);
@@ -205,14 +206,22 @@ static void reconfigureCache() {
         return;
     }
 
-    int tagBitsNeeded = keyBits - configSizePow;
+    // Bucket Logic: We have 2 entries per bucket.
+    // Addressable Buckets = (1 << configSizePow) / 2 = 1 << (configSizePow - 1).
+    // Index Bits = configSizePow - 1.
+    int indexBits = configSizePow - 1;
+    int tagBitsNeeded = keyBits - indexBits;
+    
     bool useT32 = false;
 
     // Check bounds
     if (tagBitsNeeded > 32) {
+        // Because the cache size determines the index bits, a small cache requires a large tag.
+        // For 64-bit keys (B64), we need a very large cache to fit the rest into 32 bits.
+        // indexBits must be >= 32, so SizePow >= 33.
         char err[128];
-        snprintf(err, sizeof(err), "Fatal: Cache size 2^%d too small for %d-bit keys. Tag would require %d bits (32 max, need %d more cache size).", 
-                 configSizePow, keyBits, tagBitsNeeded, tagBitsNeeded - 32);
+        snprintf(err, sizeof(err), "Fatal: Cache size 2^%d too small for %d-bit keys. Tag would require %d bits (32 max, need 2^%d min cache).", 
+                 configSizePow, keyBits, tagBitsNeeded, keyBits - 32 + 1);
         renderOutput(err, CONFIG_PREFIX);
         quitGame();
         return;
@@ -221,10 +230,13 @@ static void reconfigureCache() {
         useT32 = true;
     }
     else {
-        // Fallback because we don't compile B64 T16
+        // Fallback or preference
+        // If we don't compile B64 T16, we force T32 for B64 even if it fit (it won't fit usually).
+        // But for B48, if it fits in 16, we can use T16.
         if (configCompress) {
             useT32 = false;
         } else {
+            // Non-compressed (B64) always uses T32 because we don't instantiate B64_T16
             useT32 = true;
         }
     }

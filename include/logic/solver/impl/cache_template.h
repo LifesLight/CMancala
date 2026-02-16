@@ -161,36 +161,15 @@ static inline Board FN(untranslateBoard)(uint64_t code) {
 }
 
 static inline void FN(splitBoard)(uint64_t boardRep, uint64_t *index, TAG_TYPE *tag) {
-#if CACHE_B64
-    const int totalBits = 64;
-#else
-    const int totalBits = 48;
-#endif
+    uint64_t bucketMask = (cacheSize >> 1) - 1;
+    uint64_t bucketIndex = boardRep & bucketMask;
 
-#if CACHE_T32
-    const int tagBits = 32;
-#else
-    const int tagBits = 16;
-#endif
-
-    *index = boardRep & (cacheSize - 1);
-    *tag   = (TAG_TYPE)(boardRep >> (totalBits - tagBits));
+    *tag = (TAG_TYPE)(boardRep >> (cacheSizePow - 1));
+    *index = bucketIndex << 1;
 }
 
 static inline uint64_t FN(mergeBoard)(uint64_t index, TAG_TYPE tag) {
-#if CACHE_B64
-    const int totalBits = 64;
-#else
-    const int totalBits = 48;
-#endif
-
-#if CACHE_T32
-    const int tagBits = 32;
-#else
-    const int tagBits = 16;
-#endif
-
-    return ((uint64_t)tag << (totalBits - tagBits)) | index;
+    return ((uint64_t)tag << (cacheSizePow - 1)) | index;
 }
 
 static inline void FN(cacheNode)(Board* board, int evaluation, int boundType, int depth, bool solved) {
@@ -213,6 +192,7 @@ static inline void FN(cacheNode)(Board* board, int evaluation, int boundType, in
     TAG_TYPE tag;
     FN(splitBoard)(boardRep, &index, &tag);
 
+    // index points to the start of the bucket (2 entries)
     FN(Entry) *b = &FN(cache)[index];
 
 #if CACHE_DEPTH
@@ -224,7 +204,7 @@ static inline void FN(cacheNode)(Board* board, int evaluation, int boundType, in
     (void)solved;
 #endif
 
-    // Same-key update
+    // Same-key update (check both slots in the bucket)
     for (int i = 0; i < 2; i++) {
         if (b[i].tag == tag) {
 #if CACHE_DEPTH
@@ -285,12 +265,14 @@ static inline bool FN(getCachedValue)(Board* board, int currentDepth, int *eval,
     TAG_TYPE tag;
     FN(splitBoard)(hashValue, &index, &tag);
 
+    // index points to start of bucket
     FN(Entry) *entryBase = &FN(cache)[index];
     FN(Entry) *e = NULL;
 
     if (entryBase[0].tag == tag) {
         e = &entryBase[0];
     } else if (entryBase[1].tag == tag) {
+        // LRU Swap: Move slot 1 to slot 0 (MRU)
         FN(Entry) tmp = entryBase[0];
         entryBase[0] = entryBase[1];
         entryBase[1] = tmp;
@@ -326,6 +308,57 @@ static inline bool FN(getCachedValue)(Board* board, int currentDepth, int *eval,
 }
 
 // --- Stats ---
+
+static void FN(renderStatBoardHelper)(const char* title, const double* data, const char* fmtString) {
+    char line[512];
+    int off = 0;
+
+    // Title
+    snprintf(line, sizeof(line), "  %s:", title);
+    renderOutput(line, CHEAT_PREFIX);
+
+    // Top Border
+    off = snprintf(line, sizeof(line), "    %s", TL);
+    for (int j = 0; j < 6; j++) {
+        // 7 HL chars to match cell width
+        off += snprintf(line + off, sizeof(line) - off, "%s%s%s%s%s%s%s", HL, HL, HL, HL, HL, HL, HL);
+        if (j < 5) off += snprintf(line + off, sizeof(line) - off, "%s", HL);
+    }
+    off += snprintf(line + off, sizeof(line) - off, "%s", TR);
+    renderOutput(line, CHEAT_PREFIX);
+
+    // Row 2 (Opponent: Indices 12 -> 7)
+    off = snprintf(line, sizeof(line), " OP %s", VL);
+    for (int j = 12; j >= 7; j--) {
+        off += snprintf(line + off, sizeof(line) - off, fmtString, data[j], VL);
+    }
+    renderOutput(line, CHEAT_PREFIX);
+
+    // Middle Separator
+    off = snprintf(line, sizeof(line), "    %s", VL);
+    for (int j = 0; j < 6; j++) {
+        off += snprintf(line + off, sizeof(line) - off, "%s%s%s%s%s%s%s", HL, HL, HL, HL, HL, HL, HL);
+        if (j < 5) off += snprintf(line + off, sizeof(line) - off, "%s", CR);
+        else       off += snprintf(line + off, sizeof(line) - off, "%s", VL);
+    }
+    renderOutput(line, CHEAT_PREFIX);
+
+    // Row 1 (Player: Indices 0 -> 5)
+    off = snprintf(line, sizeof(line), " PL %s", VL);
+    for (int j = 0; j < 6; j++) {
+        off += snprintf(line + off, sizeof(line) - off, fmtString, data[j], VL);
+    }
+    renderOutput(line, CHEAT_PREFIX);
+
+    // Bottom Border
+    off = snprintf(line, sizeof(line), "    %s", BL);
+    for (int j = 0; j < 6; j++) {
+        off += snprintf(line + off, sizeof(line) - off, "%s%s%s%s%s%s%s", HL, HL, HL, HL, HL, HL, HL);
+        if (j < 5) off += snprintf(line + off, sizeof(line) - off, "%s", HL);
+    }
+    off += snprintf(line + off, sizeof(line) - off, "%s", BR);
+    renderOutput(line, CHEAT_PREFIX);
+}
 
 static void FN(renderCacheStatsFull)() {
     char message[256];
@@ -447,6 +480,79 @@ static void FN(renderCacheStatsFull)() {
         snprintf(message, sizeof(message), "  Bounds:     E 0.00%% | L 0.00%% | U 0.00%%");
     }
     renderOutput(message, CHEAT_PREFIX);
+
+    if (setEntries > 0) {
+        // --- 1. Data Collection ---
+        uint64_t hist[14][32]; 
+        memset(hist, 0, sizeof(hist));
+
+#if CACHE_B64
+        const int cap = 31;
+#else
+        const int cap = 15;
+#endif
+        const int riskThreshold = (int)(cap * 0.80);
+
+        for (uint64_t i = 0; i < cacheSize; i++) {
+            if (FN(cache)[i].value == CACHE_VAL_UNSET) continue;
+
+            TAG_TYPE tag = FN(cache)[i].tag;
+
+            // Reconstruct the board from the Bucket Index.
+            // i is the array index.
+            // bucketIndex = i / 2 (or i >> 1).
+            uint64_t bucketIndex = i >> 1;
+            uint64_t code = FN(mergeBoard)(bucketIndex, tag);
+            Board b = FN(untranslateBoard)(code);
+
+            for (int k = 0; k < 14; k++) {
+                if (k == 6 || k == 13) continue;
+                uint8_t stones = b.cells[k];
+                if (stones > cap) stones = cap;
+                hist[k][stones]++;
+            }
+        }
+
+        // --- 2. Statistics Calculation ---
+        double valsAvg[14] = {0};
+        double valsMax[14] = {0};
+        double valsRisk[14] = {0};
+
+        for (int k = 0; k < 14; k++) {
+            if (k == 6 || k == 13) continue;
+
+            uint64_t sum = 0;
+            uint64_t count = 0;
+            int max = 0;
+            uint64_t riskCount = 0;
+            
+            for (int s = 0; s <= cap; s++) {
+                if (hist[k][s] > 0) {
+                    uint64_t n = hist[k][s];
+                    sum += (s * n);
+                    count += n;
+                    if (s > max) max = s;
+                    if (s > riskThreshold) riskCount += n;
+                }
+            }
+            
+            if (count > 0) {
+                valsAvg[k] = (double)sum / (double)count;
+                valsMax[k] = (double)max;
+                valsRisk[k] = (double)riskCount / (double)count * 100.0;
+            }
+        }
+
+        // --- 3. Output ---
+        FN(renderStatBoardHelper)("Average Stones", valsAvg, "%7.1f%s");
+        
+        FN(renderStatBoardHelper)("Maximum Stones", valsMax, "%7.0f%s");
+        
+        char riskTitle[64];
+        snprintf(riskTitle, sizeof(riskTitle), "Saturation Risk (%% > %d)", riskThreshold);
+        FN(renderStatBoardHelper)(riskTitle, valsRisk, "%6.2f%%%s");
+    }
+
 
 #if CACHE_DEPTH
     if (nonSolvedCount > 0) {
