@@ -349,13 +349,19 @@ void renderCacheStats() {
         renderOutput("  Cache disabled.", CHEAT_PREFIX);
         return;
     }
+
+    CacheStats stats;
+    memset(&stats, 0, sizeof(CacheStats));
+
     switch (currentMode) {
-        case MODE_ND_B48_T16: renderCacheStatsFull_NOCACHE_B48_T16(); break;
-        case MODE_ND_B48_T32: renderCacheStatsFull_NOCACHE_B48_T32(); break;
-        case MODE_ND_B64_T32: renderCacheStatsFull_NOCACHE_B64_T32(); break;
-        case MODE_D_B48_T16:  renderCacheStatsFull_CACHE_DEPTH_B48_T16(); break;
-        case MODE_D_B48_T32:  renderCacheStatsFull_CACHE_DEPTH_B48_T32(); break;
-        case MODE_D_B64_T32:  renderCacheStatsFull_CACHE_DEPTH_B64_T32(); break;
+        case MODE_ND_B48_T16: collectCacheStats_NOCACHE_B48_T16(&stats); break;
+        case MODE_ND_B48_T32: collectCacheStats_NOCACHE_B48_T32(&stats); break;
+        case MODE_ND_B64_T32: collectCacheStats_NOCACHE_B64_T32(&stats); break;
+        case MODE_D_B48_T16:  collectCacheStats_CACHE_DEPTH_B48_T16(&stats); break;
+        case MODE_D_B48_T32:  collectCacheStats_CACHE_DEPTH_B48_T32(&stats); break;
+        case MODE_D_B64_T32:  collectCacheStats_CACHE_DEPTH_B64_T32(&stats); break;
         default: break;
     }
+
+    renderCacheOverview(&stats);
 }

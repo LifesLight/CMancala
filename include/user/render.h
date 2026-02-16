@@ -7,6 +7,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
+#include <inttypes.h>
 
 #include "containers.h"
 
@@ -44,6 +46,7 @@
  * Renders the board to the console.
 */
 void renderBoard(const Board *board, const char* prefix, const GameSettings* settings);
-void renderCustomBoard(const int *cells, const int8_t color, const char* prefix, const GameSettings* settings);
+void renderCustomBoard(const int32_t *cells, const int8_t color, const char* prefix, const GameSettings* settings);
+void renderCacheOverview(const CacheStats* stats);
 void renderWelcome();
 void renderOutput(const char* message, const char* prefix);

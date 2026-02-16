@@ -33,8 +33,6 @@
 #define LARGE_CACHE_SIZE    26
 #define EXTREME_CACHE_SIZE  28
 
-#define OUTPUT_CHUNK_COUNT 10
-
 // <<-- PACKED BOUND + VAL -->>
 #define CACHE_VAL_UNSET INT16_MAX
 

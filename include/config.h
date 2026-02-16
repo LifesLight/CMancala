@@ -4,6 +4,8 @@
  * Copyright (c) Alexander Kurtz 2026
  */
 
+#define OUTPUT_CHUNK_COUNT 10
+
 /*
  * Board is constructed like this:
  * Score cells are 6 and 13
