@@ -61,6 +61,7 @@ static void FN(initCacheInternal)(uint64_t size) {
 static inline bool FN(translateBoard)(Board* board, uint64_t *code) {
     uint64_t h = 0;
     int offset = 0;
+
     const int a0 = (board->color == 1) ? 0 : 7;
     const int b0 = (board->color == 1) ? 7 : 0;
 
@@ -77,6 +78,14 @@ static inline bool FN(translateBoard)(Board* board, uint64_t *code) {
         h |= (uint64_t)(v & 0x1F) << offset;
         offset += 5;
     }
+
+    // MurmurHash3-style 64-bit mixer (Bijective)
+    h ^= h >> 33;
+    h *= 0xff51afd7ed558ccdULL;
+    h ^= h >> 33;
+    h *= 0xc4ceb9fe1a85ec53ULL;
+    h ^= h >> 33;
+
 #else
     for (int i = 0; i < 6; i++) {
         uint8_t v = board->cells[a0 + i];
@@ -90,19 +99,8 @@ static inline bool FN(translateBoard)(Board* board, uint64_t *code) {
         h |= (uint64_t)(v & 0x0F) << offset;
         offset += 4;
     }
-#endif
 
-/**
- * Mixing here since the board rep is useless without correct mixing
- */
-
-#if CACHE_B64
-    h ^= h >> 33;
-    h *= 0xff51afd7ed558ccdULL;
-    h ^= h >> 33;
-    h *= 0xc4ceb9fe1a85ec53ULL;
-    h ^= h >> 33;
-#else
+    // 48-bit mixer (Bijective on 48 bits)
     const uint64_t m = 0xFFFFFFFFFFFFULL;
 
     h ^= h >> 24;
@@ -114,6 +112,52 @@ static inline bool FN(translateBoard)(Board* board, uint64_t *code) {
 
     *code = h;
     return true;
+}
+
+static inline Board FN(untranslateBoard)(uint64_t code) {
+    Board board = {0};
+    board.color = 1;
+    uint64_t h = code;
+    int offset = 0;
+
+#if CACHE_B64
+    // Reverse 64-bit mixer
+    h ^= h >> 33;
+    h *= 0x9cb4b2f8129337dbULL;
+    h ^= h >> 33;
+    h *= 0x4f74430c22a54005ULL;
+    h ^= h >> 33;
+
+    for (int i = 0; i < 6; i++) {
+        board.cells[i] = (uint8_t)((h >> offset) & 0x1F);
+        offset += 5;
+    }
+    for (int i = 0; i < 6; i++) {
+        board.cells[7 + i] = (uint8_t)((h >> offset) & 0x1F);
+        offset += 5;
+    }
+
+#else
+    // Reverse 48-bit mixer
+    const uint64_t m = 0xFFFFFFFFFFFFULL;
+
+    h ^= h >> 24;
+    h = (h * 0x3f8129337dbULL) & m;
+    h ^= h >> 24;
+    h = (h * 0xe30c22a54005ULL) & m;
+    h ^= h >> 24;
+
+    for (int i = 0; i < 6; i++) {
+        board.cells[i] = (uint8_t)((h >> offset) & 0x0F);
+        offset += 4;
+    }
+    for (int i = 0; i < 6; i++) {
+        board.cells[7 + i] = (uint8_t)((h >> offset) & 0x0F);
+        offset += 4;
+    }
+#endif
+
+    return board;
 }
 
 static inline void FN(splitBoard)(uint64_t boardRep, uint64_t *index, TAG_TYPE *tag) {
@@ -131,6 +175,22 @@ static inline void FN(splitBoard)(uint64_t boardRep, uint64_t *index, TAG_TYPE *
 
     *index = boardRep & (cacheSize - 1);
     *tag   = (TAG_TYPE)(boardRep >> (totalBits - tagBits));
+}
+
+static inline uint64_t FN(mergeBoard)(uint64_t index, TAG_TYPE tag) {
+#if CACHE_B64
+    const int totalBits = 64;
+#else
+    const int totalBits = 48;
+#endif
+
+#if CACHE_T32
+    const int tagBits = 32;
+#else
+    const int tagBits = 16;
+#endif
+
+    return ((uint64_t)tag << (totalBits - tagBits)) | index;
 }
 
 static inline void FN(cacheNode)(Board* board, int evaluation, int boundType, int depth, bool solved) {
