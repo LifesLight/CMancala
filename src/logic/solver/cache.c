@@ -64,67 +64,67 @@ int compareChunksStart(const void *a, const void *b) {
 // 1. NO DEPTH | 48 BIT KEY | 16 BIT TAG
 #define PREFIX NOCACHE_B48_T16
 #define CACHE_DEPTH 0
-#define CACHE_B64 0
+#define CACHE_B60 0
 #define CACHE_T32 0
 #include "logic/solver/impl/cache_template.h"
 #undef PREFIX
 #undef CACHE_DEPTH
-#undef CACHE_B64
+#undef CACHE_B60
 #undef CACHE_T32
 
 // 2. NO DEPTH | 48 BIT KEY | 32 BIT TAG
 #define PREFIX NOCACHE_B48_T32
 #define CACHE_DEPTH 0
-#define CACHE_B64 0
+#define CACHE_B60 0
 #define CACHE_T32 1
 #include "logic/solver/impl/cache_template.h"
 #undef PREFIX
 #undef CACHE_DEPTH
-#undef CACHE_B64
+#undef CACHE_B60
 #undef CACHE_T32
 
-// 3. NO DEPTH | 64 BIT KEY | 32 BIT TAG (B64 requires T32)
-#define PREFIX NOCACHE_B64_T32
+// 3. NO DEPTH | 60 BIT KEY | 32 BIT TAG (B60 requires T32 usually)
+#define PREFIX NOCACHE_B60_T32
 #define CACHE_DEPTH 0
-#define CACHE_B64 1
+#define CACHE_B60 1
 #define CACHE_T32 1
 #include "logic/solver/impl/cache_template.h"
 #undef PREFIX
 #undef CACHE_DEPTH
-#undef CACHE_B64
+#undef CACHE_B60
 #undef CACHE_T32
 
 // 4. DEPTH | 48 BIT KEY | 16 BIT TAG
 #define PREFIX CACHE_DEPTH_B48_T16
 #define CACHE_DEPTH 1
-#define CACHE_B64 0
+#define CACHE_B60 0
 #define CACHE_T32 0
 #include "logic/solver/impl/cache_template.h"
 #undef PREFIX
 #undef CACHE_DEPTH
-#undef CACHE_B64
+#undef CACHE_B60
 #undef CACHE_T32
 
 // 5. DEPTH | 48 BIT KEY | 32 BIT TAG
 #define PREFIX CACHE_DEPTH_B48_T32
 #define CACHE_DEPTH 1
-#define CACHE_B64 0
+#define CACHE_B60 0
 #define CACHE_T32 1
 #include "logic/solver/impl/cache_template.h"
 #undef PREFIX
 #undef CACHE_DEPTH
-#undef CACHE_B64
+#undef CACHE_B60
 #undef CACHE_T32
 
-// 6. DEPTH | 64 BIT KEY | 32 BIT TAG
-#define PREFIX CACHE_DEPTH_B64_T32
+// 6. DEPTH | 60 BIT KEY | 32 BIT TAG
+#define PREFIX CACHE_DEPTH_B60_T32
 #define CACHE_DEPTH 1
-#define CACHE_B64 1
+#define CACHE_B60 1
 #define CACHE_T32 1
 #include "logic/solver/impl/cache_template.h"
 #undef PREFIX
 #undef CACHE_DEPTH
-#undef CACHE_B64
+#undef CACHE_B60
 #undef CACHE_T32
 
 // --- Dispatcher ---
@@ -133,10 +133,10 @@ typedef enum {
     MODE_DISABLED = -1,
     MODE_ND_B48_T16 = 0,
     MODE_ND_B48_T32,
-    MODE_ND_B64_T32,
+    MODE_ND_B60_T32,
     MODE_D_B48_T16,
     MODE_D_B48_T32,
-    MODE_D_B64_T32,
+    MODE_D_B60_T32,
     MODE_COUNT
 } CacheMode;
 
@@ -170,10 +170,10 @@ static void freeCurrentCache() {
     switch (currentMode) {
         case MODE_ND_B48_T16: freeCacheInternal_NOCACHE_B48_T16(); break;
         case MODE_ND_B48_T32: freeCacheInternal_NOCACHE_B48_T32(); break;
-        case MODE_ND_B64_T32: freeCacheInternal_NOCACHE_B64_T32(); break;
+        case MODE_ND_B60_T32: freeCacheInternal_NOCACHE_B60_T32(); break;
         case MODE_D_B48_T16:  freeCacheInternal_CACHE_DEPTH_B48_T16(); break;
         case MODE_D_B48_T32:  freeCacheInternal_CACHE_DEPTH_B48_T32(); break;
-        case MODE_D_B64_T32:  freeCacheInternal_CACHE_DEPTH_B64_T32(); break;
+        case MODE_D_B60_T32:  freeCacheInternal_CACHE_DEPTH_B60_T32(); break;
         default: break;
     }
     currentMode = MODE_DISABLED;
@@ -194,7 +194,7 @@ static void reconfigureCache() {
         cacheSizePow = 0;
         return;
     }
-    int keyBits = configCompress ? 48 : 64;
+    int keyBits = configCompress ? 48 : 60; // 60-bit (B60) or 48-bit (B48)
 
     // Check if too large cache (highly unlikely on modern systems, but safety check)
     // We reserve at least 1 bit for index, so sizePow < keyBits
@@ -211,14 +211,14 @@ static void reconfigureCache() {
     // Index Bits = configSizePow - 1.
     int indexBits = configSizePow - 1;
     int tagBitsNeeded = keyBits - indexBits;
-    
+
     bool useT32 = false;
 
     // Check bounds
     if (tagBitsNeeded > 32) {
         // Because the cache size determines the index bits, a small cache requires a large tag.
-        // For 64-bit keys (B64), we need a very large cache to fit the rest into 32 bits.
-        // indexBits must be >= 32, so SizePow >= 33.
+        // For 60-bit keys (B60), we need a larger cache to fit the rest into 32 bits.
+        // indexBits must be >= 28, so SizePow >= 29.
         char err[128];
         snprintf(err, sizeof(err), "Fatal: Cache size 2^%d too small for %d-bit keys. Tag would require %d bits (32 max, need 2^%d min cache).", 
                  configSizePow, keyBits, tagBitsNeeded, keyBits - 32 + 1);
@@ -231,12 +231,12 @@ static void reconfigureCache() {
     }
     else {
         // Fallback or preference
-        // If we don't compile B64 T16, we force T32 for B64 even if it fit (it won't fit usually).
+        // If we don't compile B60 T16, we force T32 for B60 even if it fit (it won't fit usually).
         // But for B48, if it fits in 16, we can use T16.
         if (configCompress) {
             useT32 = false;
         } else {
-            // Non-compressed (B64) always uses T32 because we don't instantiate B64_T16
+            // Non-compressed (B60) always uses T32 because we don't instantiate B60_T16
             useT32 = true;
         }
     }
@@ -244,13 +244,13 @@ static void reconfigureCache() {
     // Select Mode
     if (configDepth) {
         if (!configCompress) {
-             currentMode = MODE_D_B64_T32;
+             currentMode = MODE_D_B60_T32;
         } else {
              currentMode = useT32 ? MODE_D_B48_T32 : MODE_D_B48_T16;
         }
     } else {
         if (!configCompress) {
-             currentMode = MODE_ND_B64_T32;
+             currentMode = MODE_ND_B60_T32;
         } else {
              currentMode = useT32 ? MODE_ND_B48_T32 : MODE_ND_B48_T16;
         }
@@ -264,10 +264,10 @@ static void reconfigureCache() {
     switch (currentMode) {
         case MODE_ND_B48_T16: initCacheInternal_NOCACHE_B48_T16(cacheSize); break;
         case MODE_ND_B48_T32: initCacheInternal_NOCACHE_B48_T32(cacheSize); break;
-        case MODE_ND_B64_T32: initCacheInternal_NOCACHE_B64_T32(cacheSize); break;
+        case MODE_ND_B60_T32: initCacheInternal_NOCACHE_B60_T32(cacheSize); break;
         case MODE_D_B48_T16:  initCacheInternal_CACHE_DEPTH_B48_T16(cacheSize); break;
         case MODE_D_B48_T32:  initCacheInternal_CACHE_DEPTH_B48_T32(cacheSize); break;
-        case MODE_D_B64_T32:  initCacheInternal_CACHE_DEPTH_B64_T32(cacheSize); break;
+        case MODE_D_B60_T32:  initCacheInternal_CACHE_DEPTH_B60_T32(cacheSize); break;
         default: break;
     }
 
@@ -300,10 +300,10 @@ void cacheNode(Board* board, int evaluation, int boundType, int depth, bool solv
     switch (currentMode) {
         case MODE_ND_B48_T16: cacheNode_NOCACHE_B48_T16(board, evaluation, boundType, depth, solved); break;
         case MODE_ND_B48_T32: cacheNode_NOCACHE_B48_T32(board, evaluation, boundType, depth, solved); break;
-        case MODE_ND_B64_T32: cacheNode_NOCACHE_B64_T32(board, evaluation, boundType, depth, solved); break;
+        case MODE_ND_B60_T32: cacheNode_NOCACHE_B60_T32(board, evaluation, boundType, depth, solved); break;
         case MODE_D_B48_T16:  cacheNode_CACHE_DEPTH_B48_T16(board, evaluation, boundType, depth, solved); break;
         case MODE_D_B48_T32:  cacheNode_CACHE_DEPTH_B48_T32(board, evaluation, boundType, depth, solved); break;
-        case MODE_D_B64_T32:  cacheNode_CACHE_DEPTH_B64_T32(board, evaluation, boundType, depth, solved); break;
+        case MODE_D_B60_T32:  cacheNode_CACHE_DEPTH_B60_T32(board, evaluation, boundType, depth, solved); break;
         default: break;
     }
 }
@@ -312,10 +312,10 @@ bool getCachedValue(Board* board, int currentDepth, int *evaluation, int *boundT
     switch (currentMode) {
         case MODE_ND_B48_T16: return getCachedValue_NOCACHE_B48_T16(board, currentDepth, evaluation, boundType, solved);
         case MODE_ND_B48_T32: return getCachedValue_NOCACHE_B48_T32(board, currentDepth, evaluation, boundType, solved);
-        case MODE_ND_B64_T32: return getCachedValue_NOCACHE_B64_T32(board, currentDepth, evaluation, boundType, solved);
+        case MODE_ND_B60_T32: return getCachedValue_NOCACHE_B60_T32(board, currentDepth, evaluation, boundType, solved);
         case MODE_D_B48_T16:  return getCachedValue_CACHE_DEPTH_B48_T16(board, currentDepth, evaluation, boundType, solved);
         case MODE_D_B48_T32:  return getCachedValue_CACHE_DEPTH_B48_T32(board, currentDepth, evaluation, boundType, solved);
-        case MODE_D_B64_T32:  return getCachedValue_CACHE_DEPTH_B64_T32(board, currentDepth, evaluation, boundType, solved);
+        case MODE_D_B60_T32:  return getCachedValue_CACHE_DEPTH_B60_T32(board, currentDepth, evaluation, boundType, solved);
         default: return false;
     }
 }
@@ -334,10 +334,10 @@ void invalidateCache() {
         switch (currentMode) {
             case MODE_ND_B48_T16: initCacheInternal_NOCACHE_B48_T16(cacheSize); break;
             case MODE_ND_B48_T32: initCacheInternal_NOCACHE_B48_T32(cacheSize); break;
-            case MODE_ND_B64_T32: initCacheInternal_NOCACHE_B64_T32(cacheSize); break;
+            case MODE_ND_B60_T32: initCacheInternal_NOCACHE_B60_T32(cacheSize); break;
             case MODE_D_B48_T16:  initCacheInternal_CACHE_DEPTH_B48_T16(cacheSize); break;
             case MODE_D_B48_T32:  initCacheInternal_CACHE_DEPTH_B48_T32(cacheSize); break;
-            case MODE_D_B64_T32:  initCacheInternal_CACHE_DEPTH_B64_T32(cacheSize); break;
+            case MODE_D_B60_T32:  initCacheInternal_CACHE_DEPTH_B60_T32(cacheSize); break;
             default: break;
         }
         resetCacheStats();
@@ -356,10 +356,10 @@ void renderCacheStats() {
     switch (currentMode) {
         case MODE_ND_B48_T16: collectCacheStats_NOCACHE_B48_T16(&stats); break;
         case MODE_ND_B48_T32: collectCacheStats_NOCACHE_B48_T32(&stats); break;
-        case MODE_ND_B64_T32: collectCacheStats_NOCACHE_B64_T32(&stats); break;
+        case MODE_ND_B60_T32: collectCacheStats_NOCACHE_B60_T32(&stats); break;
         case MODE_D_B48_T16:  collectCacheStats_CACHE_DEPTH_B48_T16(&stats); break;
         case MODE_D_B48_T32:  collectCacheStats_CACHE_DEPTH_B48_T32(&stats); break;
-        case MODE_D_B64_T32:  collectCacheStats_CACHE_DEPTH_B64_T32(&stats); break;
+        case MODE_D_B60_T32:  collectCacheStats_CACHE_DEPTH_B60_T32(&stats); break;
         default: break;
     }
 

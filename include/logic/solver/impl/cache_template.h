@@ -65,7 +65,7 @@ static inline bool FN(translateBoard)(Board* board, uint64_t *code) {
     const int a0 = (board->color == 1) ? 0 : 7;
     const int b0 = (board->color == 1) ? 7 : 0;
 
-#if CACHE_B64
+#if CACHE_B60
     for (int i = 0; i < 6; i++) {
         uint8_t v = board->cells[a0 + i];
         if (v > 31) return false;
@@ -79,12 +79,14 @@ static inline bool FN(translateBoard)(Board* board, uint64_t *code) {
         offset += 5;
     }
 
-    // MurmurHash3-style 64-bit mixer (Bijective)
-    h ^= h >> 33;
-    h *= 0xff51afd7ed558ccdULL;
-    h ^= h >> 33;
-    h *= 0xc4ceb9fe1a85ec53ULL;
-    h ^= h >> 33;
+    // 60-bit mixer (Bijective on 60 bits)
+    const uint64_t m = 0x0FFFFFFFFFFFFFFFULL;
+
+    h ^= h >> 30;
+    h = (h * 0xff51afd7ed558ccdULL) & m;
+    h ^= h >> 30;
+    h = (h * 0xc4ceb9fe1a85ec53ULL) & m;
+    h ^= h >> 30;
 
 #else
     for (int i = 0; i < 6; i++) {
@@ -120,13 +122,15 @@ static inline Board FN(untranslateBoard)(uint64_t code) {
     uint64_t h = code;
     int offset = 0;
 
-#if CACHE_B64
-    // Reverse 64-bit mixer
-    h ^= h >> 33;
-    h *= 0x9cb4b2f8129337dbULL;
-    h ^= h >> 33;
-    h *= 0x4f74430c22a54005ULL;
-    h ^= h >> 33;
+#if CACHE_B60
+    // Reverse 60-bit mixer
+    const uint64_t m = 0x0FFFFFFFFFFFFFFFULL;
+
+    h ^= h >> 30;
+    h = (h * 0x0cb4b2f8129337dbULL) & m;
+    h ^= h >> 30;
+    h = (h * 0x0f74430c22a54005ULL) & m;
+    h ^= h >> 30;
 
     for (int i = 0; i < 6; i++) {
         board.cells[i] = (uint8_t)((h >> offset) & 0x1F);
@@ -337,7 +341,7 @@ static void FN(collectCacheStats)(CacheStats* stats) {
 
     // Config String
     const char* depthStr = CACHE_DEPTH ? "Depth" : "No Depth";
-    const char* keyStr = CACHE_B64 ? "64-bit Key" : "48-bit Key";
+    const char* keyStr = CACHE_B60 ? "60-bit Key" : "48-bit Key";
     const char* tagStr = CACHE_T32 ? "32-bit Tag" : "16-bit Tag";
     snprintf(stats->modeStr, sizeof(stats->modeStr), "  Mode:       %s / %s / %s (%zu Bytes)", 
              depthStr, keyStr, tagStr, sizeof(FN(Entry)));
@@ -378,7 +382,7 @@ static void FN(collectCacheStats)(CacheStats* stats) {
 
         // --- Stats ---
         if (FN(cache)[i].value == CACHE_VAL_UNSET) continue;
-        
+
         stats->setEntries++;
         int bt = UNPACK_BOUND(FN(cache)[i].value);
         if (bt == EXACT_BOUND) stats->exactCount++;
@@ -405,11 +409,11 @@ static void FN(collectCacheStats)(CacheStats* stats) {
         for (int k = 0; k < 14; k++) {
             if (k == 6 || k == 13) continue;
             uint8_t stones = b.cells[k];
-            
+
             sumStones[k] += stones;
             countStones[k]++;
             if (stones > maxStones[k]) maxStones[k] = stones;
-            
+
             if (stones > 7) countOver7[k]++;
             if (stones > 15) countOver15[k]++;
         }
@@ -424,7 +428,7 @@ static void FN(collectCacheStats)(CacheStats* stats) {
         for (int k = 1; k < topCount; k++) if (stats->topChunks[k].size < stats->topChunks[minIdx].size) minIdx = k;
         if (c.size > stats->topChunks[minIdx].size) stats->topChunks[minIdx] = c;
     }
-    
+
     // Sort chunks by start index
     qsort(stats->topChunks, topCount, sizeof(CacheChunk), compareChunksStart);
     stats->chunkCount = topCount;
@@ -435,12 +439,12 @@ static void FN(collectCacheStats)(CacheStats* stats) {
         const uint32_t span = (uint32_t)stats->maxDepth + 1;
         enum { DEPTH_BINS = 8 };
         const uint32_t binW = (span + DEPTH_BINS - 1) / DEPTH_BINS;
-        
+
         // Pass 2 for histogram
         for (uint64_t i = 0; i < cacheSize; i++) {
             if (FN(cache)[i].value == CACHE_VAL_UNSET) continue;
             if (FN(cache)[i].depth == DEPTH_SOLVED) continue;
-            
+
             uint32_t bi = FN(cache)[i].depth / binW;
             if (bi >= DEPTH_BINS) bi = DEPTH_BINS - 1;
             stats->depthBins[bi]++;
@@ -461,7 +465,7 @@ static void FN(collectCacheStats)(CacheStats* stats) {
         if (countStones[k] > 0) {
             stats->avgStones[k] = (double)sumStones[k] / (double)countStones[k];
             stats->maxStones[k] = (double)maxStones[k];
-            
+
             // Log10 of count (handle 0 case)
             stats->over7[k]  = (countOver7[k] > 0)  ? log10((double)countOver7[k])  : 0.0;
             stats->over15[k] = (countOver15[k] > 0) ? log10((double)countOver15[k]) : 0.0;
