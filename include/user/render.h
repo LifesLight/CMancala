@@ -11,6 +11,7 @@
 #include <inttypes.h>
 
 #include "containers.h"
+#include "logic/utility.h"
 
 #ifdef _WIN32
 // Windows cant always render unicode

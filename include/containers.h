@@ -120,7 +120,8 @@ typedef struct {
     // Board Visualization Data (Arrays of 14)
     double avgStones[14];
     double maxStones[14];
-    double riskStones[14];
+    double over7[14];
+    double over15[14];
     int riskThreshold;
     
     // Fragmentation

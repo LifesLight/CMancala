@@ -343,15 +343,11 @@ static void FN(collectCacheStats)(CacheStats* stats) {
              depthStr, keyStr, tagStr, sizeof(FN(Entry)));
 
     // Data Collection for Visualization
-    uint64_t hist[14][32]; 
-    memset(hist, 0, sizeof(hist));
-    
-#if CACHE_B64
-    const int cap = 31;
-#else
-    const int cap = 15;
-#endif
-    stats->riskThreshold = (int)(cap * 0.80);
+    uint64_t sumStones[14] = {0};
+    uint64_t countStones[14] = {0};
+    uint64_t maxStones[14] = {0};
+    uint64_t countOver7[14] = {0};
+    uint64_t countOver15[14] = {0};
 
     // Fragmentation tracking
     int topCount = 0;
@@ -409,8 +405,13 @@ static void FN(collectCacheStats)(CacheStats* stats) {
         for (int k = 0; k < 14; k++) {
             if (k == 6 || k == 13) continue;
             uint8_t stones = b.cells[k];
-            if (stones > cap) stones = cap;
-            hist[k][stones]++;
+            
+            sumStones[k] += stones;
+            countStones[k]++;
+            if (stones > maxStones[k]) maxStones[k] = stones;
+            
+            if (stones > 7) countOver7[k]++;
+            if (stones > 15) countOver15[k]++;
         }
     }
 
@@ -447,33 +448,28 @@ static void FN(collectCacheStats)(CacheStats* stats) {
     }
 #endif
 
-    // Calculate Board Vis Aggregates
+    // Calculate Board Vis Aggregates and Logs
     for (int k = 0; k < 14; k++) {
-        if (k == 6 || k == 13) continue;
-
-        uint64_t sum = 0;
-        uint64_t count = 0;
-        int max = 0;
-        uint64_t riskCount = 0;
-        
-        for (int s = 0; s <= cap; s++) {
-            if (hist[k][s] > 0) {
-                uint64_t n = hist[k][s];
-                sum += (s * n);
-                count += n;
-                if (s > max) max = s;
-                if (s > stats->riskThreshold) riskCount += n;
-            }
+        if (k == 6 || k == 13) {
+            stats->avgStones[k] = 0;
+            stats->maxStones[k] = 0;
+            stats->over7[k] = 0;
+            stats->over15[k] = 0;
+            continue;
         }
-        
-        if (count > 0) {
-            stats->avgStones[k] = (double)sum / (double)count;
-            stats->maxStones[k] = (double)max;
-            stats->riskStones[k] = (double)riskCount / (double)count * 100.0;
+
+        if (countStones[k] > 0) {
+            stats->avgStones[k] = (double)sumStones[k] / (double)countStones[k];
+            stats->maxStones[k] = (double)maxStones[k];
+            
+            // Log10 of count (handle 0 case)
+            stats->over7[k]  = (countOver7[k] > 0)  ? log10((double)countOver7[k])  : 0.0;
+            stats->over15[k] = (countOver15[k] > 0) ? log10((double)countOver15[k]) : 0.0;
         } else {
             stats->avgStones[k] = 0;
             stats->maxStones[k] = 0;
-            stats->riskStones[k] = 0;
+            stats->over7[k] = 0;
+            stats->over15[k] = 0;
         }
     }
 }

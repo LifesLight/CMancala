@@ -4,18 +4,6 @@
 
 #include "user/render.h"
 
-static void getLogNotation(char* buffer, uint64_t value) {
-    if (value >= 1000000000) {
-        snprintf(buffer, 32, "%.2fG", (double)value / 1000000000.0);
-    } else if (value >= 1000000) {
-        snprintf(buffer, 32, "%.2fM", (double)value / 1000000.0);
-    } else if (value >= 1000) {
-        snprintf(buffer, 32, "%.2fk", (double)value / 1000.0);
-    } else {
-        snprintf(buffer, 32, "%" PRIu64, value);
-    }
-}
-
 void renderCustomBoard(const int32_t *cells, const int8_t color, const char* prefix, const GameSettings* settings) {
     char* playerDescriptor = "Unknown";
     if (color == 1) {
@@ -192,49 +180,49 @@ void renderCacheOverview(const CacheStats* stats) {
 
     const double fillPct = (stats->cacheSize > 0) ? (double)stats->setEntries / (double)stats->cacheSize * 100.0 : 0.0;
     getLogNotation(logBuffer, stats->cacheSize);
-    snprintf(message, sizeof(message), "  Cache size: %-12s (%.2f%% Used)", logBuffer, fillPct);
+    snprintf(message, sizeof(message), "  Cache size: %-12"PRIu64" %s (%.2f%% Used)", stats->cacheSize, logBuffer, fillPct);
     renderOutput(message, CHEAT_PREFIX);
 
     if (stats->hasDepth) {
         const double solvedPct = (stats->setEntries > 0) ? (double)stats->solvedEntries / (double)stats->setEntries * 100.0 : 0.0;
         getLogNotation(logBuffer, stats->solvedEntries);
-        snprintf(message, sizeof(message), "  Solved:     %-12s (%.2f%% of used)", logBuffer, solvedPct);
+        snprintf(message, sizeof(message), "  Solved:     %-12"PRIu64" %s (%.2f%% of used)", stats->solvedEntries, logBuffer, solvedPct);
         renderOutput(message, CHEAT_PREFIX);
     }
 
     getLogNotation(logBuffer, stats->hits);
-    snprintf(message, sizeof(message), "  Hits:       %-12s", logBuffer);
+    snprintf(message, sizeof(message), "  Hits:       %-12"PRIu64" %s", stats->hits, logBuffer);
     renderOutput(message, CHEAT_PREFIX);
 
     if (stats->hasDepth) {
         const uint64_t badHits = stats->hits - stats->hitsLegal;
         const double badHitPercent = (stats->hits > 0) ? (double)badHits / (double)stats->hits * 100.0 : 0.0;
         getLogNotation(logBuffer, badHits);
-        snprintf(message, sizeof(message), "    Shallow:  %-12s (%.2f%%)", logBuffer, badHitPercent);
+        snprintf(message, sizeof(message), "    Shallow:  %-12"PRIu64" %s (%.2f%%)", badHits, logBuffer, badHitPercent);
         renderOutput(message, CHEAT_PREFIX);
     }
 
     const double swapPct = (stats->hits > 0) ? (double)stats->lruSwaps / (double)stats->hits * 100.0 : 0.0;
     getLogNotation(logBuffer, stats->lruSwaps);
-    snprintf(message, sizeof(message), "    LRU Swap: %-12s (%.2f%%)", logBuffer, swapPct);
+    snprintf(message, sizeof(message), "    LRU Swap: %-12"PRIu64" %s (%.2f%%)", stats->lruSwaps, logBuffer, swapPct);
     renderOutput(message, CHEAT_PREFIX);
 
     renderOutput("  Cache Overwrites:", CHEAT_PREFIX);
     getLogNotation(logBuffer, stats->overwriteImprove);
-    snprintf(message, sizeof(message), "    Improve:  %-12s", logBuffer);
+    snprintf(message, sizeof(message), "    Improve:  %-12"PRIu64" %s", stats->overwriteImprove, logBuffer);
     renderOutput(message, CHEAT_PREFIX);
 
     getLogNotation(logBuffer, stats->overwriteEvict);
-    snprintf(message, sizeof(message), "    Evict:    %-12s", logBuffer);
+    snprintf(message, sizeof(message), "    Evict:    %-12"PRIu64" %s", stats->overwriteEvict, logBuffer);
     renderOutput(message, CHEAT_PREFIX);
 
     if (stats->failStones > 0 || stats->failRange > 0) {
         renderOutput("  Encoding Fail Counts:", CHEAT_PREFIX);
         getLogNotation(logBuffer, stats->failStones);
-        snprintf(message, sizeof(message), "    Stones:   %-12s", logBuffer);
+        snprintf(message, sizeof(message), "    Stones:   %-12"PRIu64" %s", stats->failStones, logBuffer);
         renderOutput(message, CHEAT_PREFIX);
         getLogNotation(logBuffer, stats->failRange);
-        snprintf(message, sizeof(message), "    Value:    %-12s", logBuffer);
+        snprintf(message, sizeof(message), "    Value:    %-12"PRIu64" %s", stats->failRange, logBuffer);
         renderOutput(message, CHEAT_PREFIX);
     }
 
@@ -252,9 +240,9 @@ void renderCacheOverview(const CacheStats* stats) {
         renderStatBoard(stats->avgStones, "Average Stones", "%7.1f", CHEAT_PREFIX);
         renderStatBoard(stats->maxStones, "Maximum Stones", "%7.0f", CHEAT_PREFIX);
         
-        char riskTitle[64];
-        snprintf(riskTitle, sizeof(riskTitle), "Saturation Risk (%% > %d)", stats->riskThreshold);
-        renderStatBoard(stats->riskStones, riskTitle, "%6.2f%%", CHEAT_PREFIX);
+        // Render the two new log-scale frequency boards
+        renderStatBoard(stats->over7,  "Freq > 7  (log10)", "%7.2f", CHEAT_PREFIX);
+        renderStatBoard(stats->over15, "Freq > 15 (log10)", "%7.2f", CHEAT_PREFIX);
     }
 
     if (stats->hasDepth) {
