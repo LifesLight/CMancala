@@ -15,8 +15,8 @@ void renderConfigHelp() {
     renderOutput("  depth [number >= 0]              : Set depth limit for AI, if 0 solve mode", CONFIG_PREFIX);
     renderOutput("  solver [global|local]            : Set default solver for AI", CONFIG_PREFIX);
     renderOutput("  clip [true|false]                : Set clip on/off, clip only computes if a move is winning or losing", CONFIG_PREFIX);
-    renderOutput("  cache [t|s|n|l|e|number]         : Set cache size as power of two. Can be a custom value or preset", CONFIG_PREFIX);
-    renderOutput("  compress [true|false]            : Allows half sized cache entries. Only applies if time = depth = 0", CONFIG_PREFIX);
+    renderOutput("  cache [number >= 17]             : Set cache size as power of two. If compression is off number needs to be >= 29", CONFIG_PREFIX);
+    renderOutput("  compress [true|false]            : Allows for smaller cache sizes + less memory per entry but decreases performance for 4+ stones.", CONFIG_PREFIX);
     renderOutput("  starting [1|2]                   : Configure starting player", CONFIG_PREFIX);
     renderOutput("  player [1|2] [human|random|ai]   : Configure player", CONFIG_PREFIX);
     renderOutput("  display                          : Display current configuration", CONFIG_PREFIX);
@@ -83,7 +83,7 @@ void printConfig(Config* config) {
         renderOutput(message, CONFIG_PREFIX);
     }
 
-    snprintf(message, sizeof(message), "  Compress: %s", config->solverConfig.allowCompressedCache ? "true" : "false");
+    snprintf(message, sizeof(message), "  Compress: %s", config->solverConfig.compressCache ? "true" : "false");
     renderOutput(message, CONFIG_PREFIX);
 
     snprintf(message, sizeof(message), "  Starting: %d", config->gameSettings.startColor == 1 ? 1 : 2);
@@ -144,26 +144,6 @@ void handleConfigInput(bool* requestedStart, Config* config) {
 
     if (strncmp(input, "cache ", 6) == 0) {
         int cacheSize = atoi(input + 6);
-        bool preset = true;
-
-        if (strcmp(input + 6, "t") == 0) {
-            cacheSize = TINY_CACHE_SIZE;
-            renderOutput("Updated cache size to tiny", CONFIG_PREFIX);
-        } else if (strcmp(input + 6, "s") == 0) {
-            cacheSize = SMALL_CACHE_SIZE;
-            renderOutput("Updated cache size to small", CONFIG_PREFIX);
-        } else if (strcmp(input + 6, "n") == 0) {
-            cacheSize = NORMAL_CACHE_SIZE;
-            renderOutput("Updated cache size to normal", CONFIG_PREFIX);
-        } else if (strcmp(input + 6, "l") == 0) {
-            cacheSize = LARGE_CACHE_SIZE;
-            renderOutput("Updated cache size to large", CONFIG_PREFIX);
-        } else if (strcmp(input + 6, "e") == 0) {
-            cacheSize = EXTREME_CACHE_SIZE;
-            renderOutput("Updated cache size to extreme", CONFIG_PREFIX);
-        } else {
-            preset = false;
-        }
 
         if (cacheSize < 0) {
             renderOutput("Invalid cache size", CONFIG_PREFIX);
@@ -174,7 +154,7 @@ void handleConfigInput(bool* requestedStart, Config* config) {
 
         if (cacheSize == 0) {
             renderOutput("Disabled cache", CONFIG_PREFIX);
-        } else if (!preset) {
+        } else {
             char message[256];
             snprintf(message, sizeof(message), "Updated cache size to %d", cacheSize);
             renderOutput(message, CONFIG_PREFIX);
@@ -184,10 +164,10 @@ void handleConfigInput(bool* requestedStart, Config* config) {
     }
 
     if (strncmp(input, "compress ", 9) == 0) {
-        bool originalCompress = config->solverConfig.allowCompressedCache;
+        bool originalCompress = config->solverConfig.compressCache;
 
         if (strcmp(input + 9, "true") == 0 || strcmp(input + 9, "1") == 0) {
-            config->solverConfig.allowCompressedCache = true;
+            config->solverConfig.compressCache = true;
             if (originalCompress) {
                 renderOutput("Compress already enabled", CONFIG_PREFIX);
                 return;
@@ -195,7 +175,7 @@ void handleConfigInput(bool* requestedStart, Config* config) {
             renderOutput("Enabled compress", CONFIG_PREFIX);
             return;
         } else if (strcmp(input + 9, "false") == 0 || strcmp(input + 9, "0") == 0) {
-            config->solverConfig.allowCompressedCache = false;
+            config->solverConfig.compressCache = false;
             if (!originalCompress) {
                 renderOutput("Compress already disabled", CONFIG_PREFIX);
                 return;

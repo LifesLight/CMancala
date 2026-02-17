@@ -36,7 +36,7 @@ typedef struct {
     int depth;
     double timeLimit;
     bool clip;
-    bool allowCompressedCache;
+    bool compressCache;
 } SolverConfig;
 
 typedef struct {
@@ -94,20 +94,20 @@ typedef struct {
     uint64_t cacheSize;
     size_t entrySize;
     bool hasDepth;
-    
+
     // Usage Stats
     uint64_t setEntries;
     uint64_t exactCount;
     uint64_t lowerCount;
     uint64_t upperCount;
-    
+
     // Depth Stats
     uint64_t solvedEntries;
     uint64_t nonSolvedCount;
     uint64_t depthSum;
     uint16_t maxDepth;
     uint64_t depthBins[8];
-    
+
     // Performance Counters (Snapshots)
     uint64_t hits;
     uint64_t hitsLegal;
@@ -116,16 +116,15 @@ typedef struct {
     uint64_t overwriteEvict;
     uint64_t failStones;
     uint64_t failRange;
-    
+
     // Board Visualization Data (Arrays of 14)
     double avgStones[14];
     double maxStones[14];
     double over7[14];
     double over15[14];
     int riskThreshold;
-    
+
     // Fragmentation
     CacheChunk topChunks[OUTPUT_CHUNK_COUNT];
     int chunkCount;
-    
 } CacheStats;

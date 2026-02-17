@@ -277,6 +277,8 @@ static void reconfigureCache() {
 // --- Public API ---
 
 void setCacheMode(bool depth, bool compress) {
+    if (getCacheSize() == 0) setCacheSize(DEFAULT_CACHES_SIZE);
+
     bool sizeChanged = (configSizePow != (int)cacheSizePow);
     bool modeChanged = (configDepth != depth) || (configCompress != compress);
 

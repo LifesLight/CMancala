@@ -44,7 +44,7 @@ def run_test(iteration):
         f"stones 2\n"
         f"time 0\n"
         f"depth 100\n"
-        f"cache 20\n"
+        f"cache 17\n"
         f"compress true\n"
         f"distribution random\n"
         f"seed {seed}\n"

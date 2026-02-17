@@ -27,11 +27,7 @@
 #include "logic/utility.h"
 #include "user/render.h"
 
-#define TINY_CACHE_SIZE     20
-#define SMALL_CACHE_SIZE    22
-#define NORMAL_CACHE_SIZE   24
-#define LARGE_CACHE_SIZE    26
-#define EXTREME_CACHE_SIZE  28
+#define DEFAULT_CACHES_SIZE 24
 
 // <<-- PACKED BOUND + VAL -->>
 #define CACHE_VAL_UNSET INT16_MAX

@@ -17,17 +17,27 @@
 
 // --- Struct Definition ---
 typedef struct {
-    TAG_TYPE tag;
+    TAG_TYPE tag_0;
 
 #if CACHE_DEPTH
-    uint16_t depth;
+    uint16_t depth_0;
 #endif
 
-    int16_t value;
-} FN(Entry);
+    int16_t value_0;
+
+    int16_t value_1;
+
+#if CACHE_DEPTH
+    uint16_t depth_1;
+#endif
+
+    TAG_TYPE tag_1;
+
+} FN(Bucket);
 
 // --- Unique Global Array ---
-static FN(Entry)* FN(cache) = NULL;
+
+static FN(Bucket)* FN(cache) = NULL;
 
 // --- Memory Management Helpers ---
 
@@ -42,16 +52,23 @@ static void FN(initCacheInternal)(uint64_t size) {
     FN(freeCacheInternal)();
     if (size == 0) return;
 
-    FN(cache) = malloc(sizeof(FN(Entry)) * size);
+    // Allocate half the number of structs, as each holds 2 entries
+    uint64_t bucketCount = size >> 1;
+    if (bucketCount == 0) bucketCount = 1;
+
+    FN(cache) = malloc(sizeof(FN(Bucket)) * bucketCount);
 
     if (FN(cache) == NULL) return;
 
-    for (uint64_t i = 0; i < size; i++) {
-        FN(cache)[i].value = CACHE_VAL_UNSET;
-        FN(cache)[i].tag = 0;
+    for (uint64_t i = 0; i < bucketCount; i++) {
+        FN(cache)[i].value_0 = CACHE_VAL_UNSET;
+        FN(cache)[i].tag_0   = 0;
+        FN(cache)[i].value_1 = CACHE_VAL_UNSET;
+        FN(cache)[i].tag_1   = 0;
 
 #if CACHE_DEPTH
-        FN(cache)[i].depth = 0;
+        FN(cache)[i].depth_0 = 0;
+        FN(cache)[i].depth_1 = 0;
 #endif
     }
 }
@@ -169,10 +186,12 @@ static inline void FN(splitBoard)(uint64_t boardRep, uint64_t *index, TAG_TYPE *
     uint64_t bucketIndex = boardRep & bucketMask;
 
     *tag = (TAG_TYPE)(boardRep >> (cacheSizePow - 1));
+    // Index returned is the Logical Index start (bucketIndex * 2)
     *index = bucketIndex << 1;
 }
 
 static inline uint64_t FN(mergeBoard)(uint64_t index, TAG_TYPE tag) {
+    // index here is the bucketIndex (which is logical_index >> 1)
     return ((uint64_t)tag << (cacheSizePow - 1)) | index;
 }
 
@@ -196,8 +215,8 @@ static inline void FN(cacheNode)(Board* board, int evaluation, int boundType, in
     TAG_TYPE tag;
     FN(splitBoard)(boardRep, &index, &tag);
 
-    // index points to the start of the bucket (2 entries)
-    FN(Entry) *b = &FN(cache)[index];
+    // Retrieve the bucket (index is logical start, so >> 1 for bucket index)
+    FN(Bucket) *b = &FN(cache)[index >> 1];
 
 #if CACHE_DEPTH
     if (solved) {
@@ -208,57 +227,79 @@ static inline void FN(cacheNode)(Board* board, int evaluation, int boundType, in
     (void)solved;
 #endif
 
-    // Same-key update (check both slots in the bucket)
-    for (int i = 0; i < 2; i++) {
-        if (b[i].tag == tag) {
+    // --- Same-key update ---
+    // Slot 0
+    if (b->tag_0 == tag) {
 #if CACHE_DEPTH
-// TODO: Maybe check for exact bounds here
-            if (b[i].depth > depth) return;
-            b[i].depth = depth;
+        if (b->depth_0 > depth) return;
+        b->depth_0 = depth;
 #endif
-            b[i].value = PACK_VALUE(evaluation, boundType);
-            sameKeyOverwriteCount++;
-            return;
-        }
+        b->value_0 = PACK_VALUE(evaluation, boundType);
+        sameKeyOverwriteCount++;
+        return;
+    }
+    // Slot 1
+    if (b->tag_1 == tag) {
+#if CACHE_DEPTH
+        if (b->depth_1 > depth) return;
+        b->depth_1 = depth;
+#endif
+        b->value_1 = PACK_VALUE(evaluation, boundType);
+        sameKeyOverwriteCount++;
+        return;
     }
 
-    // Empty slot
-    for (int i = 0; i < 2; i++) {
-        if (b[i].value == CACHE_VAL_UNSET) {
-            b[i].value = PACK_VALUE(evaluation, boundType);
-            b[i].tag = tag;
+    // --- Empty slot ---
+    if (b->value_0 == CACHE_VAL_UNSET) {
+        b->value_0 = PACK_VALUE(evaluation, boundType);
+        b->tag_0 = tag;
 #if CACHE_DEPTH
-            b[i].depth = depth;
+        b->depth_0 = depth;
 #endif
-            return;
-        }
+        return;
+    }
+    if (b->value_1 == CACHE_VAL_UNSET) {
+        b->value_1 = PACK_VALUE(evaluation, boundType);
+        b->tag_1 = tag;
+#if CACHE_DEPTH
+        b->depth_1 = depth;
+#endif
+        return;
     }
 
-    // Victim selection
+    // --- Victim selection ---
+    // 0 = evict slot 0, 1 = evict slot 1
     int victim;
 
-    // With depth, prioritize higher depth entries
 #if CACHE_DEPTH
-    if (b[1].depth != b[0].depth) {
-        victim = (b[1].depth < b[0].depth) ? 1 : 0;
+    if (b->depth_1 != b->depth_0) {
+        victim = (b->depth_1 < b->depth_0) ? 1 : 0;
     } else {
-        const int zeroExact = (UNPACK_BOUND(b[0].value) == EXACT_BOUND);
-        const int oneExact  = (UNPACK_BOUND(b[1].value) == EXACT_BOUND);
+        const int zeroExact = (UNPACK_BOUND(b->value_0) == EXACT_BOUND);
+        const int oneExact  = (UNPACK_BOUND(b->value_1) == EXACT_BOUND);
         victim = (zeroExact != oneExact) ? (zeroExact ? 1 : 0) : 1;
     }
 #else
-    const int zeroExact = (UNPACK_BOUND(b[0].value) == EXACT_BOUND);
-    const int oneExact  = (UNPACK_BOUND(b[1].value) == EXACT_BOUND);
+    const int zeroExact = (UNPACK_BOUND(b->value_0) == EXACT_BOUND);
+    const int oneExact  = (UNPACK_BOUND(b->value_1) == EXACT_BOUND);
     victim = (zeroExact != oneExact) ? (zeroExact ? 1 : 0) : 1;
 #endif
 
     victimOverwriteCount++;
-    b[victim].tag = tag;
-    b[victim].value = PACK_VALUE(evaluation, boundType);
 
+    if (victim == 0) {
+        b->tag_0 = tag;
+        b->value_0 = PACK_VALUE(evaluation, boundType);
 #if CACHE_DEPTH
-    b[victim].depth = depth;
+        b->depth_0 = depth;
 #endif
+    } else {
+        b->tag_1 = tag;
+        b->value_1 = PACK_VALUE(evaluation, boundType);
+#if CACHE_DEPTH
+        b->depth_1 = depth;
+#endif
+    }
 }
 
 static inline bool FN(getCachedValue)(Board* board, int currentDepth, int *eval, int *boundType, bool *solved) {
@@ -269,32 +310,35 @@ static inline bool FN(getCachedValue)(Board* board, int currentDepth, int *eval,
     TAG_TYPE tag;
     FN(splitBoard)(hashValue, &index, &tag);
 
-    // index points to start of bucket
-    FN(Entry) *entryBase = &FN(cache)[index];
-    FN(Entry) *e = NULL;
+    FN(Bucket) *b = &FN(cache)[index >> 1];
 
-    if (entryBase[0].tag == tag) {
-        e = &entryBase[0];
-    } else if (entryBase[1].tag == tag) {
-        // LRU Swap: Move slot 1 to slot 0 (MRU)
-        FN(Entry) tmp = entryBase[0];
-        entryBase[0] = entryBase[1];
-        entryBase[1] = tmp;
-        e = &entryBase[0];
+    // We determine which slot (0 or 1) matches, or -1 if none
+    int matchSlot = -1;
+
+    if (b->tag_0 == tag) matchSlot = 0;
+    else if (b->tag_1 == tag) matchSlot = 1;
+    else return false;
+
+    // Check unset
+    int16_t valToCheck = (matchSlot == 0) ? b->value_0 : b->value_1;
+    if (valToCheck == CACHE_VAL_UNSET) return false;
+
+    // LRU Swap: If match is in slot 1, swap to slot 0 (MRU)
+    if (matchSlot == 1) {
+        TAG_TYPE t = b->tag_0; b->tag_0 = b->tag_1; b->tag_1 = t;
+        int16_t v = b->value_0; b->value_0 = b->value_1; b->value_1 = v;
+#if CACHE_DEPTH
+        uint16_t d = b->depth_0; b->depth_0 = b->depth_1; b->depth_1 = d;
+#endif
         swapLRUCount++;
-    } else {
-        return false;
     }
 
-    if (e->value == CACHE_VAL_UNSET) {
-        return false;
-    }
-
+    // Now data is in slot 0
     hits++;
 
 #if CACHE_DEPTH
-    if (e->depth < currentDepth) return false;
-    *solved = (e->depth == DEPTH_SOLVED);
+    if (b->depth_0 < currentDepth) return false;
+    *solved = (b->depth_0 == DEPTH_SOLVED);
 #else
     (void)currentDepth;
     *solved = true; 
@@ -305,8 +349,8 @@ static inline bool FN(getCachedValue)(Board* board, int currentDepth, int *eval,
     int scoreDelta = board->cells[SCORE_P1] - board->cells[SCORE_P2];
     scoreDelta *= board->color;
 
-    *eval = UNPACK_VALUE(e->value) + scoreDelta;
-    *boundType = UNPACK_BOUND(e->value);
+    *eval = UNPACK_VALUE(b->value_0) + scoreDelta;
+    *boundType = UNPACK_BOUND(b->value_0);
 
     return true;
 }
@@ -315,7 +359,8 @@ static inline bool FN(getCachedValue)(Board* board, int currentDepth, int *eval,
 
 static void FN(collectCacheStats)(CacheStats* stats) {
     stats->cacheSize = cacheSize;
-    stats->entrySize = sizeof(FN(Entry));
+    // Report size per logical entry (total struct size / 2)
+    stats->entrySize = sizeof(FN(Bucket)) / 2;
     stats->setEntries = 0;
     stats->exactCount = 0;
     stats->lowerCount = 0;
@@ -343,8 +388,8 @@ static void FN(collectCacheStats)(CacheStats* stats) {
     const char* depthStr = CACHE_DEPTH ? "Depth" : "No Depth";
     const char* keyStr = CACHE_B60 ? "60-bit Key" : "48-bit Key";
     const char* tagStr = CACHE_T32 ? "32-bit Tag" : "16-bit Tag";
-    snprintf(stats->modeStr, sizeof(stats->modeStr), "  Mode:       %s / %s / %s (%zu Bytes)", 
-             depthStr, keyStr, tagStr, sizeof(FN(Entry)));
+    snprintf(stats->modeStr, sizeof(stats->modeStr), "  Mode:       %s / %s / %s (Packed %zu B)", 
+             depthStr, keyStr, tagStr, stats->entrySize);
 
     // Data Collection for Visualization
     uint64_t sumStones[14] = {0};
@@ -355,14 +400,30 @@ static void FN(collectCacheStats)(CacheStats* stats) {
 
     // Fragmentation tracking
     int topCount = 0;
-    int currentType = (FN(cache)[0].value != CACHE_VAL_UNSET);
-    uint64_t chunkStart = 0;
-    uint64_t chunkSize2 = 1;
 
+    // Check first logical entry (index 0 is bucket 0, slot 0)
+    int currentType = (FN(cache)[0].value_0 != CACHE_VAL_UNSET);
+    uint64_t chunkStart = 0;
+    uint64_t chunkSize2 = 0; // Incremented immediately in loop
+
+    // Iterate Logical entries (0 to cacheSize-1)
     for (uint64_t i = 0; i < cacheSize; i++) {
+        uint64_t bucketIdx = i >> 1;
+        int slot = i & 1;
+        FN(Bucket)* b = &FN(cache)[bucketIdx];
+
+        // Extract logical fields
+        int16_t val = (slot == 0) ? b->value_0 : b->value_1;
+        TAG_TYPE tag = (slot == 0) ? b->tag_0 : b->tag_1;
+#if CACHE_DEPTH
+        uint16_t depth = (slot == 0) ? b->depth_0 : b->depth_1;
+#endif
+
         // --- Fragmentation ---
-        if (i > 0) {
-             const int t = (FN(cache)[i].value != CACHE_VAL_UNSET);
+        int t = (val != CACHE_VAL_UNSET);
+        if (i == 0) {
+            chunkSize2 = 1;
+        } else {
              if (t == currentType) {
                  chunkSize2++;
              } else {
@@ -381,34 +442,32 @@ static void FN(collectCacheStats)(CacheStats* stats) {
         }
 
         // --- Stats ---
-        if (FN(cache)[i].value == CACHE_VAL_UNSET) continue;
+        if (val == CACHE_VAL_UNSET) continue;
 
         stats->setEntries++;
-        int bt = UNPACK_BOUND(FN(cache)[i].value);
+        int bt = UNPACK_BOUND(val);
         if (bt == EXACT_BOUND) stats->exactCount++;
         else if (bt == LOWER_BOUND) stats->lowerCount++;
         else if (bt == UPPER_BOUND) stats->upperCount++;
 
 #if CACHE_DEPTH
-        if (FN(cache)[i].depth == DEPTH_SOLVED) {
+        if (depth == DEPTH_SOLVED) {
             stats->solvedEntries++;
         } else {
             stats->nonSolvedCount++;
-            stats->depthSum += FN(cache)[i].depth;
-            if (FN(cache)[i].depth > stats->maxDepth) stats->maxDepth = FN(cache)[i].depth;
+            stats->depthSum += depth;
+            if (depth > stats->maxDepth) stats->maxDepth = depth;
         }
 #endif
 
         // --- Board Vis ---
-        TAG_TYPE tag = FN(cache)[i].tag;
-        // Reconstruct from bucket index
-        uint64_t bucketIndex = i >> 1;
-        uint64_t code = FN(mergeBoard)(bucketIndex, tag);
-        Board b = FN(untranslateBoard)(code);
+        // Reconstruct from bucket index and slot
+        uint64_t code = FN(mergeBoard)(bucketIdx, tag);
+        Board brd = FN(untranslateBoard)(code);
 
         for (int k = 0; k < 14; k++) {
             if (k == 6 || k == 13) continue;
-            uint8_t stones = b.cells[k];
+            uint8_t stones = brd.cells[k];
 
             sumStones[k] += stones;
             countStones[k]++;
@@ -435,24 +494,30 @@ static void FN(collectCacheStats)(CacheStats* stats) {
 
 #if CACHE_DEPTH
     if (stats->nonSolvedCount > 0) {
-        // Bin calculation depends on maxDepth found
         const uint32_t span = (uint32_t)stats->maxDepth + 1;
         enum { DEPTH_BINS = 8 };
         const uint32_t binW = (span + DEPTH_BINS - 1) / DEPTH_BINS;
 
         // Pass 2 for histogram
         for (uint64_t i = 0; i < cacheSize; i++) {
-            if (FN(cache)[i].value == CACHE_VAL_UNSET) continue;
-            if (FN(cache)[i].depth == DEPTH_SOLVED) continue;
+            uint64_t bucketIdx = i >> 1;
+            int slot = i & 1;
+            FN(Bucket)* b = &FN(cache)[bucketIdx];
 
-            uint32_t bi = FN(cache)[i].depth / binW;
+            int16_t val = (slot == 0) ? b->value_0 : b->value_1;
+            if (val == CACHE_VAL_UNSET) continue;
+
+            uint16_t depth = (slot == 0) ? b->depth_0 : b->depth_1;
+            if (depth == DEPTH_SOLVED) continue;
+
+            uint32_t bi = depth / binW;
             if (bi >= DEPTH_BINS) bi = DEPTH_BINS - 1;
             stats->depthBins[bi]++;
         }
     }
 #endif
 
-    // Calculate Board Vis Aggregates and Logs
+    // Calculate Board Vis Aggregates
     for (int k = 0; k < 14; k++) {
         if (k == 6 || k == 13) {
             stats->avgStones[k] = 0;
@@ -466,7 +531,6 @@ static void FN(collectCacheStats)(CacheStats* stats) {
             stats->avgStones[k] = (double)sumStones[k] / (double)countStones[k];
             stats->maxStones[k] = (double)maxStones[k];
 
-            // Log10 of count (handle 0 case)
             stats->over7[k]  = (countOver7[k] > 0)  ? log10((double)countOver7[k])  : 0.0;
             stats->over15[k] = (countOver15[k] > 0) ? log10((double)countOver15[k]) : 0.0;
         } else {

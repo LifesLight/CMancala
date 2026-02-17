@@ -115,8 +115,6 @@ int LOCAL_negamaxWithMove(Board *board, int *bestMove, int alpha, int beta, cons
 }
 
 void LOCAL_distributionRoot(Board *board, int *distribution, bool *solved, SolverConfig *config) {
-    if (getCacheSize() == 0) setCacheSize(NORMAL_CACHE_SIZE);
-
     const int8_t start = (board->color == 1) ? HBOUND_P1 : HBOUND_P2;
     const int8_t end = (board->color == 1) ? LBOUND_P1 : LBOUND_P2;
     int index = 5;
@@ -125,9 +123,9 @@ void LOCAL_distributionRoot(Board *board, int *distribution, bool *solved, Solve
     int depth = config->depth;
     if (config->depth == 0) {
         depth = MAX_DEPTH;
-        setCacheMode(false, config->allowCompressedCache);
+        setCacheMode(false, config->compressCache);
     } else {
-        setCacheMode(true, config->allowCompressedCache);
+        setCacheMode(true, config->compressCache);
     }
 
     const int alpha = config->clip ? 0 : INT32_MIN + 1;
@@ -172,9 +170,9 @@ void LOCAL_aspirationRoot(Context* context, SolverConfig *config) {
     if (config->timeLimit == 0 && config->depth == 0) {
         currentDepth = MAX_DEPTH;
         oneShot = true;
-        setCacheMode(false, config->allowCompressedCache);
+        setCacheMode(false, config->compressCache);
     } else {
-        setCacheMode(true, config->allowCompressedCache);
+        setCacheMode(true, config->compressCache);
     }
 
     int bestMove = -1;

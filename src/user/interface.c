@@ -15,7 +15,7 @@ void startInterface() {
         .depth = 0,
         .timeLimit = 5.0,
         .clip = false,
-        .allowCompressedCache = false
+        .compressCache = true
     };
 
     GameSettings gameSettings = {
