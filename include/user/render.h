@@ -9,12 +9,12 @@
 #include <string.h>
 #include <math.h>
 #include <inttypes.h>
+#include <time.h>
 
 #include "containers.h"
 #include "logic/utility.h"
 
 #ifdef _WIN32
-// Windows cant always render unicode
 #define HL "-"
 #define VL "|"
 #define TL "+"
@@ -27,27 +27,37 @@
 #define EB "+"
 #define CR "+"
 #define PLAYER_INDICATOR "|-> "
+#define BAR_FILL "#"
+#define BAR_EMPTY "-"
+#define BAR_CAP_L "["
+#define BAR_CAP_R "]"
+#define STAT_SEP "|"
 #else
-// Unicode characters for rendering
-#define VL "│"  // Vertical Line
-#define HL "─"  // Horizontal Line
-#define TL "┌"  // Top Left Corner
-#define TR "┐"  // Top Right Corner
-#define BL "└"  // Bottom Left Corner
-#define BR "┘"  // Bottom Right Corner
-#define EL "├"  // Edge Left
-#define ER "┤"  // Edge Right
-#define ET "┬"  // Edge Top
-#define EB "┴"  // Edge Bottom
-#define CR "┼"  // Cross
+#define VL "│"
+#define HL "─"
+#define TL "┌"
+#define TR "┐"
+#define BL "└"
+#define BR "┘"
+#define EL "├"
+#define ER "┤"
+#define ET "┬"
+#define EB "┴"
+#define CR "┼"
 #define PLAYER_INDICATOR "┠─▶ "
+#define BAR_FILL "█"
+#define BAR_EMPTY "░"
+#define BAR_CAP_L "▐"
+#define BAR_CAP_R "▌"
+#define STAT_SEP "│"
 #endif
 
-/**
- * Renders the board to the console.
-*/
 void renderBoard(const Board *board, const char* prefix, const GameSettings* settings);
 void renderCustomBoard(const int32_t *cells, const int8_t color, const char* prefix, const GameSettings* settings);
 void renderCacheOverview(const CacheStats* stats);
 void renderWelcome();
 void renderOutput(const char* message, const char* prefix);
+
+void startProgress(const SolverConfig* config, const char* prefix);
+void updateProgress(int currentDepth, int bestMove, int score, uint64_t nodeCount);
+void finishProgress();

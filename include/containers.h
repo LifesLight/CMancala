@@ -37,6 +37,7 @@ typedef struct {
     double timeLimit;
     bool clip;
     bool compressCache;
+    bool progressBar;
 } SolverConfig;
 
 typedef struct {

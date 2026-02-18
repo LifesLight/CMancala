@@ -29,7 +29,7 @@ static void runTest(
     configBoard(context->board, stones);
     context->board->color = 1;
 
-    SolverConfig config = { LOCAL_SOLVER, depthConfig, 0, false, compress };
+    SolverConfig config = { LOCAL_SOLVER, depthConfig, 0, false, compress, false };
 
     double start = currentTimeMs();
     LOCAL_aspirationRoot(context, &config);
@@ -58,7 +58,7 @@ static void runGlobalTest(
     context->board->color = 1;
 
     // Global solver config
-    SolverConfig config = { GLOBAL_SOLVER, 0, 0, false, true };
+    SolverConfig config = { GLOBAL_SOLVER, 0, 0, false, true, false };
 
     double start = currentTimeMs();
     GLOBAL_aspirationRoot(context, &config);

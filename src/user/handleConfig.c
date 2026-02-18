@@ -20,6 +20,7 @@ void renderConfigHelp() {
     renderOutput("  starting [1|2]                   : Configure starting player", CONFIG_PREFIX);
     renderOutput("  player [1|2] [human|random|ai]   : Configure player", CONFIG_PREFIX);
     renderOutput("  display                          : Display current configuration", CONFIG_PREFIX);
+    renderOutput("  progress [true|false]            : Configure progress bar visibility during iterative deepening.", CONFIG_PREFIX);
     renderOutput("  autoplay [true|false]            : If enabled the game loop will automatically continue", CONFIG_PREFIX);
     renderOutput("  help                             : Print this help message", CONFIG_PREFIX);
     renderOutput("  quit                             : Quit the application", CONFIG_PREFIX);
@@ -316,6 +317,33 @@ void handleConfigInput(bool* requestedStart, Config* config) {
         } else {
             char message[256];
             snprintf(message, sizeof(message), "Invalid autoplay \"%.200s\"", input + 9);
+            renderOutput(message, CONFIG_PREFIX);
+            return;
+        }
+    }
+
+    if (strncmp(input, "progress ", 9) == 0) {
+        bool original = config->solverConfig.progressBar;
+
+        if (strcmp(input + 9, "true") == 0 || strcmp(input + 9, "1") == 0) {
+            config->solverConfig.progressBar = true;
+            if (original) {
+                renderOutput("Progress bar already enabled", CONFIG_PREFIX);
+                return;
+            }
+            renderOutput("Enabled progress bar", CONFIG_PREFIX);
+            return;
+        } else if (strcmp(input + 9, "false") == 0 || strcmp(input + 9, "0") == 0) {
+            config->solverConfig.progressBar = false;
+            if (!original) {
+                renderOutput("Progress bar already disabled", CONFIG_PREFIX);
+                return;
+            }
+            renderOutput("Disabled progress bar", CONFIG_PREFIX);
+            return;
+        } else {
+            char message[256];
+            snprintf(message, sizeof(message), "Invalid progress \"%.200s\"", input + 9);
             renderOutput(message, CONFIG_PREFIX);
             return;
         }

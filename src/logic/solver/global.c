@@ -147,6 +147,8 @@ void GLOBAL_aspirationRoot(Context* context, SolverConfig *config) {
     }
     double lastTimeCaptured = 0.0;
 
+    startProgress(config, PLAY_PREFIX);
+
     while (true) {
         solved = true;
         bool searchValid = false;
@@ -154,9 +156,13 @@ void GLOBAL_aspirationRoot(Context* context, SolverConfig *config) {
         if (config->clip) {
             // Null Window Search (0, 1)
             score = GLOBAL_negamaxWithMove(context->board, &bestMove, 0, 1, currentDepth);
+
+            updateProgress(currentDepth, bestMove, score, nodeCount);
             searchValid = true; 
         } else {
             score = GLOBAL_negamaxWithMove(context->board, &bestMove, alpha, beta, currentDepth);
+
+            updateProgress(currentDepth, bestMove, score, nodeCount);
 
             if (score > alpha && score < beta) {
                 searchValid = true;
@@ -190,6 +196,8 @@ void GLOBAL_aspirationRoot(Context* context, SolverConfig *config) {
             currentDepth += depthStep;
         }
     }
+
+    finishProgress();
 
     if (config->clip && score > 1) score = 1;
 

@@ -175,6 +175,8 @@ void LOCAL_aspirationRoot(Context* context, SolverConfig *config) {
         setCacheMode(true, config->compressCache);
     }
 
+    startProgress(config, PLAY_PREFIX);
+
     int bestMove = -1;
     int score = 0;
     bool solved = false;
@@ -235,6 +237,8 @@ void LOCAL_aspirationRoot(Context* context, SolverConfig *config) {
                 lastTimeCaptured = t;
             }
 
+            updateProgress(currentDepth, bestMove, score, nodeCount);
+
             // Check Exit Conditions
             if (solved) break;
             if (oneShot) break;
@@ -244,6 +248,8 @@ void LOCAL_aspirationRoot(Context* context, SolverConfig *config) {
             currentDepth += depthStep;
         }
     }
+
+    finishProgress();
 
     if (config->clip && score > 1) score = 1;
 
