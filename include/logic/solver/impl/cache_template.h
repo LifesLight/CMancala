@@ -353,23 +353,23 @@ static inline bool FN(getCachedValue)(Board* board, int currentDepth, int *eval,
 
 static void FN(collectCacheStats)(CacheStats* stats) {
     stats->cacheSize = cacheSize;
-    // Report size per logical entry (total struct size / 2)
     stats->entrySize = sizeof(FN(Bucket)) / 2;
-    stats->setEntries = 0;
-    stats->exactCount = 0;
-    stats->lowerCount = 0;
-    stats->upperCount = 0;
 
-    stats->hasDepth = CACHE_DEPTH;
+    uint64_t setEntries = 0;
+    uint64_t exactCount = 0;
+    uint64_t lowerCount = 0;
+    uint64_t upperCount = 0;
+
 #if CACHE_DEPTH
-    stats->solvedEntries = 0;
-    stats->nonSolvedCount = 0;
-    stats->depthSum = 0;
-    stats->maxDepth = 0;
+    uint64_t solvedEntries = 0;
+    uint64_t nonSolvedCount = 0;
+    uint64_t depthSum = 0;
+    uint16_t maxDepth = 0;
     memset(stats->depthBins, 0, sizeof(stats->depthBins));
 #endif
 
-    // Perf counters from global
+    stats->hasDepth = CACHE_DEPTH;
+
     stats->hits = lastHits;
     stats->hitsLegal = lastHitsLegalDepth;
     stats->lruSwaps = lastSwapLRUCount;
@@ -378,56 +378,40 @@ static void FN(collectCacheStats)(CacheStats* stats) {
     stats->failStones = lastFailedEncodeStoneCount;
     stats->failRange = lastFailedEncodeValueRange;
 
-    // Config String
     const char* depthStr = CACHE_DEPTH ? "Depth" : "No Depth";
     const char* keyStr = CACHE_B60 ? "60-bit Key" : "48-bit Key";
     const char* tagStr = CACHE_T32 ? "32-bit Tag" : "16-bit Tag";
-    snprintf(stats->modeStr, sizeof(stats->modeStr), "  Mode:       %s / %s / %s (%zu Bytes)", 
-             depthStr, keyStr, tagStr, stats->entrySize);
+    snprintf(stats->modeStr, sizeof(stats->modeStr), "  Mode:       %s / %s / %s (%zu Bytes)", depthStr, keyStr, tagStr, stats->entrySize);
 
-    // Data Collection for Visualization
     uint64_t sumStones[14] = {0};
     uint64_t countStones[14] = {0};
     uint64_t maxStones[14] = {0};
     uint64_t countOver7[14] = {0};
     uint64_t countOver15[14] = {0};
 
-    // Fragmentation tracking
     int topCount = 0;
-    
-    // Check first logical entry (index 0 is bucket 0, slot 0)
-    int currentType = (FN(cache)[0].value_0 != CACHE_VAL_UNSET);
     uint64_t chunkStart = 0;
-    uint64_t chunkSize2 = 0; 
-    
-    // We iterate over physical buckets (0 to logicalSize/2)
+    uint64_t chunkSize = 0; 
+
+    int currentType = (FN(cache)[0].value_0 != CACHE_VAL_UNSET);
+
     uint64_t bucketCount = cacheSize >> 1;
 
     for (uint64_t i = 0; i < bucketCount; i++) {
         FN(Bucket)* b = &FN(cache)[i];
 
-        // Process this physical bucket twice: once for Slot 0, once for Slot 1
-        // This simulates iterating over logical indices 0..N
         for (int slot = 0; slot < 2; slot++) {
 
-            // Reconstruct logical index for chunks
-            uint64_t logicalIndex = (i << 1) + slot;
-
             int16_t val = (slot == 0) ? b->value_0 : b->value_1;
-            TAG_TYPE tag = (slot == 0) ? b->tag_0 : b->tag_1;
-#if CACHE_DEPTH
-            uint16_t depth = (slot == 0) ? b->depth_0 : b->depth_1;
-#endif
+            int type = (val != CACHE_VAL_UNSET);
 
-            // --- Fragmentation ---
-            int t = (val != CACHE_VAL_UNSET);
-            if (logicalIndex == 0) {
-                chunkSize2 = 1;
+            if (i == 0 && slot == 0) {
+                chunkSize = 1;
             } else {
-                if (t == currentType) {
-                    chunkSize2++;
+                if (type == currentType) {
+                    chunkSize++;
                 } else {
-                    CacheChunk c = { chunkStart, chunkSize2, currentType };
+                    CacheChunk c = { chunkStart, chunkSize, currentType };
                     if (topCount < OUTPUT_CHUNK_COUNT) {
                         stats->topChunks[topCount++] = c;
                     } else {
@@ -435,52 +419,61 @@ static void FN(collectCacheStats)(CacheStats* stats) {
                         for (int k = 1; k < topCount; k++) if (stats->topChunks[k].size < stats->topChunks[minIdx].size) minIdx = k;
                         if (c.size > stats->topChunks[minIdx].size) stats->topChunks[minIdx] = c;
                     }
-                    currentType = t;
-                    chunkStart = logicalIndex;
-                    chunkSize2 = 1;
+                    currentType = type;
+                    chunkStart = (i << 1) + slot;
+                    chunkSize = 1;
                 }
             }
 
-            // --- Stats ---
-            if (val == CACHE_VAL_UNSET) continue;
-            
-            stats->setEntries++;
+            if (!type) continue;
+
+            setEntries++;
             int bt = UNPACK_BOUND(val);
-            if (bt == EXACT_BOUND) stats->exactCount++;
-            else if (bt == LOWER_BOUND) stats->lowerCount++;
-            else if (bt == UPPER_BOUND) stats->upperCount++;
+            if (bt == EXACT_BOUND) exactCount++;
+            else if (bt == LOWER_BOUND) lowerCount++;
+            else upperCount++;
+
+            TAG_TYPE tag = (slot == 0) ? b->tag_0 : b->tag_1;
 
 #if CACHE_DEPTH
-            if (depth == DEPTH_SOLVED) {
-                stats->solvedEntries++;
+            uint16_t d = (slot == 0) ? b->depth_0 : b->depth_1;
+            if (d == DEPTH_SOLVED) {
+                solvedEntries++;
             } else {
-                stats->nonSolvedCount++;
-                stats->depthSum += depth;
-                if (depth > stats->maxDepth) stats->maxDepth = depth;
+                nonSolvedCount++;
+                depthSum += d;
+                if (d > maxDepth) maxDepth = d;
             }
 #endif
 
-            // --- Board Vis ---
-            // i is physical bucket index
             uint64_t code = FN(mergeBoard)(i, tag);
             Board brd = FN(untranslateBoard)(code);
 
             for (int k = 0; k < 14; k++) {
                 if (k == 6 || k == 13) continue;
-                uint8_t stones = brd.cells[k];
-
-                sumStones[k] += stones;
+                uint8_t s = brd.cells[k];
+                sumStones[k] += s;
                 countStones[k]++;
-                if (stones > maxStones[k]) maxStones[k] = stones;
-
-                if (stones > 7) countOver7[k]++;
-                if (stones > 15) countOver15[k]++;
+                if (s > maxStones[k]) maxStones[k] = s;
+                if (s > 7) countOver7[k]++;
+                if (s > 15) countOver15[k]++;
             }
         }
     }
 
-    // Final chunk
-    CacheChunk c = { chunkStart, chunkSize2, currentType };
+    stats->setEntries = setEntries;
+    stats->exactCount = exactCount;
+    stats->lowerCount = lowerCount;
+    stats->upperCount = upperCount;
+
+#if CACHE_DEPTH
+    stats->solvedEntries = solvedEntries;
+    stats->nonSolvedCount = nonSolvedCount;
+    stats->depthSum = depthSum;
+    stats->maxDepth = maxDepth;
+#endif
+
+    CacheChunk c = { chunkStart, chunkSize, currentType };
     if (topCount < OUTPUT_CHUNK_COUNT) {
         stats->topChunks[topCount++] = c;
     } else {
@@ -488,18 +481,16 @@ static void FN(collectCacheStats)(CacheStats* stats) {
         for (int k = 1; k < topCount; k++) if (stats->topChunks[k].size < stats->topChunks[minIdx].size) minIdx = k;
         if (c.size > stats->topChunks[minIdx].size) stats->topChunks[minIdx] = c;
     }
-    
-    // Sort chunks by start index
+
     qsort(stats->topChunks, topCount, sizeof(CacheChunk), compareChunksStart);
     stats->chunkCount = topCount;
 
 #if CACHE_DEPTH
-    if (stats->nonSolvedCount > 0) {
-        const uint32_t span = (uint32_t)stats->maxDepth + 1;
+    if (nonSolvedCount > 0) {
+        const uint32_t span = (uint32_t)maxDepth + 1;
         enum { DEPTH_BINS = 8 };
         const uint32_t binW = (span + DEPTH_BINS - 1) / DEPTH_BINS;
 
-        // Pass 2 for histogram
         for (uint64_t i = 0; i < bucketCount; i++) {
             FN(Bucket)* b = &FN(cache)[i];
 
@@ -507,10 +498,10 @@ static void FN(collectCacheStats)(CacheStats* stats) {
                 int16_t val = (slot == 0) ? b->value_0 : b->value_1;
                 if (val == CACHE_VAL_UNSET) continue;
 
-                uint16_t depth = (slot == 0) ? b->depth_0 : b->depth_1;
-                if (depth == DEPTH_SOLVED) continue;
+                uint16_t d = (slot == 0) ? b->depth_0 : b->depth_1;
+                if (d == DEPTH_SOLVED) continue;
 
-                uint32_t bi = depth / binW;
+                uint32_t bi = d / binW;
                 if (bi >= DEPTH_BINS) bi = DEPTH_BINS - 1;
                 stats->depthBins[bi]++;
             }
@@ -518,7 +509,6 @@ static void FN(collectCacheStats)(CacheStats* stats) {
     }
 #endif
 
-    // Calculate Board Vis Aggregates
     for (int k = 0; k < 14; k++) {
         if (k == 6 || k == 13) {
             stats->avgStones[k] = 0;
@@ -531,7 +521,6 @@ static void FN(collectCacheStats)(CacheStats* stats) {
         if (countStones[k] > 0) {
             stats->avgStones[k] = (double)sumStones[k] / (double)countStones[k];
             stats->maxStones[k] = (double)maxStones[k];
-
             stats->over7[k]  = (countOver7[k] > 0)  ? log10((double)countOver7[k])  : 0.0;
             stats->over15[k] = (countOver15[k] > 0) ? log10((double)countOver15[k]) : 0.0;
         } else {

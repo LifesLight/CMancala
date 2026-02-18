@@ -3,13 +3,72 @@
  */
 
 #include "user/runBenchmark.h"
+#include "logic/solver/cache.h" 
 
 static double currentTimeMs() {
     return (double)clock() * 1000.0 / CLOCKS_PER_SEC;
 }
 
+static void runTest(
+    Context* context, 
+    int stones, 
+    int sizePow, 
+    bool compress, 
+    int depthConfig, 
+    const char* label
+) {
+    printf("----------------------------------------------------------------\n");
+    printf("Benchmarking: %s\n", label);
+    printf("Config: Stones=%d, Cache=2^%d, Compress=%s, Mode=%s\n", 
+           stones, sizePow, compress ? "True (B48)" : "False (B60)", 
+           depthConfig == 0 ? "NODEPTH" : "DEPTH");
+
+    setCacheSize(sizePow);
+
+    memset(context->board, 0, sizeof(Board));
+    configBoard(context->board, stones);
+    context->board->color = 1;
+
+    SolverConfig config = { LOCAL_SOLVER, depthConfig, 0, false, compress };
+
+    double start = currentTimeMs();
+    LOCAL_aspirationRoot(context, &config);
+    double elapsed = currentTimeMs() - start;
+
+    printf("Result: %.2f ms | Eval: %d | Nodes: %" PRIu64 "\n", elapsed, context->metadata.lastEvaluation, context->metadata.lastNodes);
+
+    renderCacheStats(); 
+}
+
+// Separate helper for Global Solver tests (No Cache Stats)
+static void runGlobalTest(
+    Context* context,
+    int stones,
+    int sizePow,
+    const char* label
+) {
+    printf("----------------------------------------------------------------\n");
+    printf("Benchmarking: %s\n", label);
+    printf("Config: Stones=%d, Cache=2^%d, GLOBAL SOLVER\n", stones, sizePow);
+
+    setCacheSize(sizePow);
+
+    memset(context->board, 0, sizeof(Board));
+    configBoard(context->board, stones);
+    context->board->color = 1;
+
+    // Global solver config
+    SolverConfig config = { GLOBAL_SOLVER, 0, 0, false, true };
+
+    double start = currentTimeMs();
+    GLOBAL_aspirationRoot(context, &config);
+    double elapsed = currentTimeMs() - start;
+
+    printf("Result: %.2f ms | Eval: %d | Nodes: %" PRIu64 "\n", elapsed, context->metadata.lastEvaluation, context->metadata.lastNodes);
+}
+
 void runBenchmark() {
-    printf("Starting Benchmark Mode...\n");
+    printf("Starting Coverage Benchmark...\n");
 
     Board board;
     Board lastBoard;
@@ -22,234 +81,65 @@ void runBenchmark() {
     context.board = &board;
     context.lastBoard = &lastBoard;
 
-    double timings[MAX_DEPTH];
-    SolverConfig config;
+    // Sizes based on index bits required for Tag size
+    const int SIZE_T32_B48 = 24; 
+    const int SIZE_T32_B60 = 29; 
+    const int SIZE_T16_B48 = 33; 
 
-    typedef struct {
-        const char* name;
-        double timeMs;
-    } BenchmarkSummary;
-
-    BenchmarkSummary summary[64];
-    int summaryCount = 0;
-    double totalTime = 0.0;
-
-#define ADD_SUMMARY(label, ms) \
-    do { \
-        summary[summaryCount++] = (BenchmarkSummary){label, ms}; \
-        totalTime += ms; \
-    } while (0)
-
-    double start, elapsed;
-
-    // ---------------------------------------------------------
-    // 1. LOCAL SOLVER (Unclipped, 3 stones, Classic)
-    // ---------------------------------------------------------
-    printf("Running: LOCAL SOLVER (Unclipped, 3 stones, Classic)...\n");
-    setMoveFunction(CLASSIC_MOVE);
-    setCacheSize(BENCHMARK_CACHE_POW);
-
-    memset(&board, 0, sizeof(Board));
-    configBoard(&board, 3);
-    board.color = 1;
-
-    // config: solver, depth, time, clip, compressedCache
-    config = (SolverConfig){ LOCAL_SOLVER, 0, 0, false, true };
-
-    start = currentTimeMs();
-    LOCAL_aspirationRoot(&context, &config);
-    elapsed = currentTimeMs() - start;
-
-    memcpy(timings, context.metadata.lastDepthTimes, MAX_DEPTH * sizeof(double));
-    storeBenchmarkData("benchmark/local_3_normal", timings);
-    ADD_SUMMARY("Local, Unclipped, 3 stones, Classic, Depth 0", elapsed);
-
-    // ---------------------------------------------------------
-    // 2. LOCAL SOLVER (Clipped, 3 stones, Classic)
-    // ---------------------------------------------------------
-    printf("Running: LOCAL SOLVER (Clipped, 3 stones, Classic)...\n");
-    setMoveFunction(CLASSIC_MOVE);
-    invalidateCache();
-
-    memset(&board, 0, sizeof(Board));
-    configBoard(&board, 3);
-    board.color = 1;
-
-    config = (SolverConfig){ LOCAL_SOLVER, 0, 0, true, true };
-
-    start = currentTimeMs();
-    LOCAL_aspirationRoot(&context, &config);
-    elapsed = currentTimeMs() - start;
-
-    memcpy(timings, context.metadata.lastDepthTimes, MAX_DEPTH * sizeof(double));
-    storeBenchmarkData("benchmark/local_clipped_3_normal", timings);
-    ADD_SUMMARY("Local, Clipped, 3 stones, Classic, Depth 0", elapsed);
-
-    // ---------------------------------------------------------
-    // 3. GLOBAL SOLVER (Unclipped, 2 stones, Classic)
-    // ---------------------------------------------------------
-    printf("Running: GLOBAL SOLVER (Unclipped, 2 stones, Classic)...\n");
     setMoveFunction(CLASSIC_MOVE);
 
-    memset(&board, 0, sizeof(Board));
-    configBoard(&board, 2);
-    board.color = 1;
+    // ---------------------------------------------------------
+    // 1. T32 MODES (Standard RAM)
+    // ---------------------------------------------------------
 
-    config = (SolverConfig){ GLOBAL_SOLVER, 0, 0, false, true };
+    // MODE_ND_B48_T32
+    runTest(&context, 2, SIZE_T32_B48, true, 0, "MODE_ND_B48_T32");
 
-    start = currentTimeMs();
-    GLOBAL_aspirationRoot(&context, &config);
-    elapsed = currentTimeMs() - start;
+    // MODE_D_B48_T32
+    runTest(&context, 2, SIZE_T32_B48, true, 999, "MODE_D_B48_T32");
 
-    memcpy(timings, context.metadata.lastDepthTimes, MAX_DEPTH * sizeof(double));
-    storeBenchmarkData("benchmark/global_2_normal", timings);
-    ADD_SUMMARY("Global, Unclipped, 2 stones, Classic, Depth 0", elapsed);
+    // MODE_ND_B60_T32 (Requires ~4GB)
+    runTest(&context, 2, SIZE_T32_B60, false, 0, "MODE_ND_B60_T32");
+
+    // MODE_D_B60_T32 (Requires ~4GB)
+    runTest(&context, 2, SIZE_T32_B60, false, 999, "MODE_D_B60_T32");
 
     // ---------------------------------------------------------
-    // 4. GLOBAL SOLVER (Clipped, 2 stones, Classic)
+    // 2. T16 MODES (High RAM: ~48GB)
     // ---------------------------------------------------------
-    printf("Running: GLOBAL SOLVER (Clipped, 2 stones, Classic)...\n");
-    setMoveFunction(CLASSIC_MOVE);
 
-    memset(&board, 0, sizeof(Board));
-    configBoard(&board, 2);
-    board.color = 1;
+    // MODE_ND_B48_T16
+    runTest(&context, 2, SIZE_T16_B48, true, 0, "MODE_ND_B48_T16");
 
-    config = (SolverConfig){ GLOBAL_SOLVER, 0, 0, true, true };
-
-    start = currentTimeMs();
-    GLOBAL_aspirationRoot(&context, &config);
-    elapsed = currentTimeMs() - start;
-
-    memcpy(timings, context.metadata.lastDepthTimes, MAX_DEPTH * sizeof(double));
-    storeBenchmarkData("benchmark/global_clipped_2_normal", timings);
-    ADD_SUMMARY("Global, Clipped, 2 stones, Classic, Depth 0", elapsed);
+    // MODE_D_B48_T16
+    runTest(&context, 2, SIZE_T16_B48, true, 999, "MODE_D_B48_T16");
 
     // ---------------------------------------------------------
-    // 5. LOCAL SOLVER (Unclipped, 2 stones, Avalanche)
+    // 3. AVALANCHE (Functionality Check)
     // ---------------------------------------------------------
-    printf("Running: LOCAL SOLVER (Unclipped, 2 stones, Avalanche)...\n");
     setMoveFunction(AVALANCHE_MOVE);
-    invalidateCache();
-
-    memset(&board, 0, sizeof(Board));
-    configBoard(&board, 2);
-    board.color = 1;
-
-    config = (SolverConfig){ LOCAL_SOLVER, 0, 0, false, true };
-
-    start = currentTimeMs();
-    LOCAL_aspirationRoot(&context, &config);
-    elapsed = currentTimeMs() - start;
-
-    memcpy(timings, context.metadata.lastDepthTimes, MAX_DEPTH * sizeof(double));
-    storeBenchmarkData("benchmark/local_2_avalanche", timings);
-    ADD_SUMMARY("Local, Unclipped, 2 stones, Avalanche, Depth 0", elapsed);
+    runTest(&context, 2, SIZE_T32_B48, true, 999, "Avalanche (D_B48_T32)");
 
     // ---------------------------------------------------------
-    // 6. LOCAL SOLVER (Clipped, 2 stones, Avalanche)
+    // 4. 3-STONE COMPARISON (Performance Check)
     // ---------------------------------------------------------
-    printf("Running: LOCAL SOLVER (Clipped, 2 stones, Avalanche)...\n");
+    setMoveFunction(CLASSIC_MOVE);
+
+    // Compressed (B48)
+    runTest(&context, 3, 24, true, 0, "3-Stone B48 (Size 24)");
+
+    // Uncompressed (B60) - Must use Size 29+
+    runTest(&context, 3, 29, false, 0, "3-Stone B60 (Size 29)");
+
+    // ---------------------------------------------------------
+    // 5. GLOBAL SOLVER
+    // ---------------------------------------------------------
+    setMoveFunction(CLASSIC_MOVE);
+    runGlobalTest(&context, 2, 0, "GLOBAL SOLVER - Classic (2 Stones)");
+
     setMoveFunction(AVALANCHE_MOVE);
-    invalidateCache();
+    runGlobalTest(&context, 1, 0, "GLOBAL SOLVER - Avalanche (1 Stone)");
 
-    memset(&board, 0, sizeof(Board));
-    configBoard(&board, 2);
-    board.color = 1;
-
-    config = (SolverConfig){ LOCAL_SOLVER, 0, 0, true, true };
-
-    start = currentTimeMs();
-    LOCAL_aspirationRoot(&context, &config);
-    elapsed = currentTimeMs() - start;
-
-    memcpy(timings, context.metadata.lastDepthTimes, MAX_DEPTH * sizeof(double));
-    storeBenchmarkData("benchmark/local_clipped_2_avalanche", timings);
-    ADD_SUMMARY("Local, Clipped, 2 stones, Avalanche, Depth 0", elapsed);
-
-    // ---------------------------------------------------------
-    // 7. LOCAL SOLVER (Unclipped, 3 stones, Classic, depth 40)
-    // ---------------------------------------------------------
-    printf("Running: LOCAL SOLVER (Unclipped, 3 stones, Classic, depth 40)...\n");
-    setMoveFunction(CLASSIC_MOVE);
-    invalidateCache();
-
-    memset(&board, 0, sizeof(Board));
-    configBoard(&board, 3);
-    board.color = 1;
-
-    config = (SolverConfig){ LOCAL_SOLVER, 40, 0, false, true };
-
-    start = currentTimeMs();
-    LOCAL_aspirationRoot(&context, &config);
-    elapsed = currentTimeMs() - start;
-
-    ADD_SUMMARY("Local, Unclipped, 3 stones, Classic, Depth 40", elapsed);
-
-    // ---------------------------------------------------------
-    // 8. LOCAL SOLVER (Clipped, 3 stones, Classic, depth 40)
-    // ---------------------------------------------------------
-    printf("Running: LOCAL SOLVER (Clipped, 3 stones, Classic, depth 40)...\n");
-    setMoveFunction(CLASSIC_MOVE);
-    invalidateCache();
-
-    memset(&board, 0, sizeof(Board));
-    configBoard(&board, 3);
-    board.color = 1;
-
-    config = (SolverConfig){ LOCAL_SOLVER, 40, 0, true, true };
-
-    start = currentTimeMs();
-    LOCAL_aspirationRoot(&context, &config);
-    elapsed = currentTimeMs() - start;
-
-    ADD_SUMMARY("Local, Clipped, 3 stones, Classic, Depth 40", elapsed);
-
-    // ---------------------------------------------------------
-    // 9. GLOBAL SOLVER (Unclipped, 2 stones, Classic, depth 30)
-    // ---------------------------------------------------------
-    printf("Running: GLOBAL SOLVER (Unclipped, 2 stones, Classic, depth 30)...\n");
-    setMoveFunction(CLASSIC_MOVE);
-
-    memset(&board, 0, sizeof(Board));
-    configBoard(&board, 2);
-    board.color = 1;
-
-    config = (SolverConfig){ GLOBAL_SOLVER, 30, 0, false, true };
-
-    start = currentTimeMs();
-    GLOBAL_aspirationRoot(&context, &config);
-    elapsed = currentTimeMs() - start;
-
-    ADD_SUMMARY("Global, Unclipped, 2 stones, Classic, Depth 30", elapsed);
-
-    // ---------------------------------------------------------
-    // 10. GLOBAL SOLVER (Clipped, 2 stones, Classic, depth 30)
-    // ---------------------------------------------------------
-    printf("Running: GLOBAL SOLVER (Clipped, 2 stones, Classic, depth 30)...\n");
-    setMoveFunction(CLASSIC_MOVE);
-
-    memset(&board, 0, sizeof(Board));
-    configBoard(&board, 2);
-    board.color = 1;
-
-    config = (SolverConfig){ GLOBAL_SOLVER, 30, 0, true, true };
-
-    start = currentTimeMs();
-    GLOBAL_aspirationRoot(&context, &config);
-    elapsed = currentTimeMs() - start;
-
-    ADD_SUMMARY("Global, Clipped, 2 stones, Classic, Depth 30", elapsed);
-
-
-    printf("\n=== BENCHMARK SUMMARY ===\n");
-
-    for (int i = 0; i < summaryCount; i++) {
-        printf("%s: %.0fms\n", summary[i].name, summary[i].timeMs);
-    }
-
-    printf("Total Time: %.0fms\n", totalTime);
-    printf("(Depth 0 = infinite depth)\n");
-
-    printf("Benchmark complete.\n");
+    printf("----------------------------------------------------------------\n");
+    printf("Benchmark Complete.\n");
 }
