@@ -123,6 +123,10 @@ void updateProgress(int currentDepth, int bestMove, int score, uint64_t nodeCoun
 
     printf(" " STAT_SEP " ");
 
+    if (bestMove > 6) {
+        bestMove = 13 - bestMove;
+    }
+
     // M: move
     printf("M:%d", bestMove);
 
