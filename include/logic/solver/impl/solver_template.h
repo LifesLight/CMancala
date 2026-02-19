@@ -3,6 +3,36 @@
  */
 
 #include "logic/solver/impl/macros.h"
+#include "logic/utility.h"
+
+
+
+static inline int FN(key)(Board* board, int color1) {
+    int res = color1 * getBoardEvaluation(board);
+    if(color1 == board->color) res += 1000;
+    return res;
+}
+
+static inline void FN(sort)(int *a, int n, Board* allBoards, int color1) {
+    int keys[6];   // or MAX_MOVES
+
+    for (int i = 0; i < n; i++) {
+        keys[i] = FN(key)(&allBoards[a[i]], color1);
+    }
+
+    for (int i = 1; i < n; i++) {
+        int x = a[i];
+        int j = i - 1;
+
+
+        while (j >= 0 && keys[j] < keys[i]) {
+            a[j + 1] = a[j];
+            j--;
+        }
+        a[j + 1] = x;
+    }
+}
+
 
 // --- Helper: Negamax ---
 
@@ -44,22 +74,55 @@ static int FN(negamax)(Board *board, int alpha, int beta, const int depth, bool 
     nodeCount++;
 
     bool nodeSolved = true;
-    Board boardCopy;
     int score;
 
-    const int8_t start = (board->color == 1) ? HBOUND_P1 : HBOUND_P2;
-    const int8_t end   = (board->color == 1) ? LBOUND_P1 : LBOUND_P2;
+    const int start = (board->color == 1) ? HBOUND_P1 : HBOUND_P2;
+    const int end   = (board->color == 1) ? LBOUND_P1 : LBOUND_P2;
 
-    for (int8_t i = start; i >= end; i--) {
-        if (board->cells[i] == 0) continue;
-        copyBoard(board, &boardCopy);
-        makeMoveFunction(&boardCopy, i);
+    Board allMoves[6];
+    int order[6];
+    int keys[6];
+
+    int valid = 0;
+
+    for (int i = 0; i < 6; i++) {
+        allMoves[i] = *board;
+
+        if (board->cells[start - i] == 0) {
+            continue;
+        }
+        order[valid++] = i;
+
+        // Make copied board with move made
+        makeMoveFunction(&allMoves[i], start - i);
+        keys[i] = FN(key)(&allMoves[i], board->color);
+    }
+
+    for (int i = 0; i < valid; i++) {
+        int best = i;
+        int best_key = keys[order[i]];
+
+        for (int j = i + 1; j < valid; j++) {
+
+            int k = keys[order[j]];
+            if (k > best_key) {
+                best_key = k;
+                best = j;
+            }
+        }
+
+        if(best != i){
+            int temp = order[i];
+            order[i] = order[best];
+            order[best] = temp;
+        }
+
 
         bool childSolved;
-        if (board->color == boardCopy.color) {
-            score = FN(negamax)(&boardCopy, alpha, beta, depth - 1, &childSolved);
+        if (board->color == allMoves[order[i]].color) {
+            score = FN(negamax)(&allMoves[order[i]], alpha, beta, depth - 1, &childSolved);
         } else {
-            score = -FN(negamax)(&boardCopy, -beta, -alpha, depth - 1, &childSolved);
+            score = -FN(negamax)(&allMoves[order[i]], -beta, -alpha, depth - 1, &childSolved);
         }
         nodeSolved = nodeSolved && childSolved;
 
@@ -96,29 +159,62 @@ static int FN(negamaxWithMove)(Board *board, int *bestMove, int alpha, int beta,
     nodeCount++;
     int reference = INT32_MIN;
     int score;
-    Board boardCopy;
     *bestMove = -1;
     bool nodeSolved = true;
 
-    const int8_t start = (board->color == 1)  ? HBOUND_P1 : HBOUND_P2;
-    const int8_t end = (board->color == 1)    ? LBOUND_P1 : LBOUND_P2;
+    const int start = (board->color == 1)  ? HBOUND_P1 : HBOUND_P2;
+    const int end = (board->color == 1)    ? LBOUND_P1 : LBOUND_P2;
 
-    for (int8_t i = start; i >= end; i--) {
-        if (board->cells[i] == 0) continue;
-        copyBoard(board, &boardCopy);
-        makeMoveFunction(&boardCopy, i);
+    Board allMoves[6];
+    int order[6];
+    int keys[6];
+    int valid = 0;
 
+    for (int i = 0; i < 6; i++) {
+        allMoves[i] = *board;
+
+        if (board->cells[start - i] == 0) {
+            continue;
+        }
+        order[valid++] = i;
+
+        // Make copied board with move made
+        makeMoveFunction(&allMoves[i], start - i);
+        keys[i] = FN(key)(&allMoves[i], board->color);
+    }
+
+    for (int i = 0; i < valid; i++) {
+        int best = i;
+        int best_key = keys[order[i]];
+
+        for (int j = i + 1; j < valid; j++) {
+
+            int k = keys[order[j]];
+            if (k > best_key) {
+                best_key = k;
+                best = j;
+            }
+        }
+
+        if(best != i){
+            int temp = order[i];
+            order[i] = order[best];
+            order[best] = temp;
+        }
+
+
+        // Make copied board with move made
         bool childSolved;
-        if (board->color == boardCopy.color) {
-            score = FN(negamax)(&boardCopy, alpha, beta, depth - 1, &childSolved);
+        if (board->color == allMoves[order[i]].color) {
+            score = FN(negamax)(&allMoves[order[i]], alpha, beta, depth - 1, &childSolved);
         } else {
-            score = -FN(negamax)(&boardCopy, -beta, -alpha, depth - 1, &childSolved);
+            score = -FN(negamax)(&allMoves[order[i]], -beta, -alpha, depth - 1, &childSolved);
         }
         nodeSolved = nodeSolved && childSolved;
 
         if (score > reference) {
             reference = score;
-            *bestMove = i;
+            *bestMove = start - order[i];
         }
 
         alpha = max(alpha, reference);
