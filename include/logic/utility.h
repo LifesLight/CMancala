@@ -26,6 +26,15 @@ int min(const int a, const int b);
 int max(const int a, const int b);
 #endif
 
+#ifndef max
+#define max(a,b) ((a) > (b) ? (a) : (b))
+#endif
+
+#ifndef min
+#define min(a,b) ((a) < (b) ? (a) : (b))
+#endif
+
+
 void getInput(char* input, const char* prefix);
 void initializeBoardFromConfig(Board* board, Config* config);
 void quitGame();

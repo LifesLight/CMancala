@@ -2,23 +2,22 @@
  * Copyright (c) Alexander Kurtz 2026
  */
 
-#include "logic/solver/local.h"
-#define max(a,b) (((a) > (b)) ? (a) : (b))
-#define min(a,b) (((a) < (b)) ? (a) : (b))
+#include "logic/solver/impl/macros.h"
+#include "logic/utility.h"
 
 
 
-static inline int key(Board* board, int color1) {
+static inline int FN(key)(Board* board, int color1) {
     int res = color1 * getBoardEvaluation(board);
     if(color1 == board->color) res += 1000;
     return res;
 }
 
-static inline void sort(int *a, int n, Board* allBoards, int color1) {
+static inline void FN(sort)(int *a, int n, Board* allBoards, int color1) {
     int keys[6];   // or MAX_MOVES
 
     for (int i = 0; i < n; i++) {
-        keys[i] = key(&allBoards[a[i]], color1);
+        keys[i] = FN(key)(&allBoards[a[i]], color1);
     }
 
     for (int i = 1; i < n; i++) {
@@ -96,7 +95,7 @@ static int FN(negamax)(Board *board, int alpha, int beta, const int depth, bool 
 
         // Make copied board with move made
         makeMoveFunction(&allMoves[i], start - i);
-        keys[i] = key(&allMoves[i], board->color);
+        keys[i] = FN(key)(&allMoves[i], board->color);
     }
 
     for (int i = 0; i < valid; i++) {
@@ -121,9 +120,9 @@ static int FN(negamax)(Board *board, int alpha, int beta, const int depth, bool 
 
         bool childSolved;
         if (board->color == allMoves[order[i]].color) {
-            score = LOCAL_negamax(&allMoves[order[i]], alpha, beta, depth - 1, &childSolved);
+            score = FN(negamax)(&allMoves[order[i]], alpha, beta, depth - 1, &childSolved);
         } else {
-            score = -LOCAL_negamax(&allMoves[order[i]], -beta, -alpha, depth - 1, &childSolved);
+            score = -FN(negamax)(&allMoves[order[i]], -beta, -alpha, depth - 1, &childSolved);
         }
         nodeSolved = nodeSolved && childSolved;
 
@@ -181,7 +180,7 @@ static int FN(negamaxWithMove)(Board *board, int *bestMove, int alpha, int beta,
 
         // Make copied board with move made
         makeMoveFunction(&allMoves[i], start - i);
-        keys[i] = key(&allMoves[i], board->color);
+        keys[i] = FN(key)(&allMoves[i], board->color);
     }
 
     for (int i = 0; i < valid; i++) {
@@ -207,9 +206,9 @@ static int FN(negamaxWithMove)(Board *board, int *bestMove, int alpha, int beta,
         // Make copied board with move made
         bool childSolved;
         if (board->color == allMoves[order[i]].color) {
-            score = LOCAL_negamax(&allMoves[order[i]], alpha, beta, depth - 1, &childSolved);
+            score = FN(negamax)(&allMoves[order[i]], alpha, beta, depth - 1, &childSolved);
         } else {
-            score = -LOCAL_negamax(&allMoves[order[i]], -beta, -alpha, depth - 1, &childSolved);
+            score = -FN(negamax)(&allMoves[order[i]], -beta, -alpha, depth - 1, &childSolved);
         }
         nodeSolved = nodeSolved && childSolved;
 

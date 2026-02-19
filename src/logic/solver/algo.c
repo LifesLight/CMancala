@@ -3,7 +3,7 @@
  */
 
 
-#include "logic/solver/algo.h"
+#include "logic/solver/solver.h"
 
 void aspirationRoot(Context* context, SolverConfig *config) {
     switch (config->solver) {
