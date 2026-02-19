@@ -2,12 +2,7 @@
  * Copyright (c) Alexander Kurtz 2026
  */
 
-#ifndef TOKEN_PASTE
-#define TOKEN_PASTE(x, y) x ## _ ## y
-#define CAT(x, y) TOKEN_PASTE(x, y)
-#endif
-
-#define FN(name) CAT(name, PREFIX)
+#include "logic/solver/impl/macros.h"
 
 #if CACHE_T32
 #define TAG_TYPE uint32_t

@@ -3,7 +3,6 @@
  */
 
 #include "user/runBenchmark.h"
-#include "logic/solver/cache.h" 
 
 static double currentTimeMs() {
     return (double)clock() * 1000.0 / CLOCKS_PER_SEC;
@@ -13,132 +12,88 @@ static void runTest(
     Context* context, 
     int stones, 
     int sizePow, 
-    bool compress, 
-    int depthConfig, 
+    CacheMode compress, 
+    int depth, 
+    Solver type,
     const char* label
 ) {
     printf("----------------------------------------------------------------\n");
     printf("Benchmarking: %s\n", label);
-    printf("Config: Stones=%d, Cache=2^%d, Compress=%s, Mode=%s\n", 
-           stones, sizePow, compress ? "True (B48)" : "False (B60)", 
-           depthConfig == 0 ? "NODEPTH" : "DEPTH");
 
+    // Setup Board
     setCacheSize(sizePow);
-
     memset(context->board, 0, sizeof(Board));
     configBoard(context->board, stones);
     context->board->color = 1;
 
-    SolverConfig config = { LOCAL_SOLVER, depthConfig, 0, false, compress };
+    // Setup Config
+    SolverConfig config = { type, depth, 0, false, compress, false };
+    
+    // Print Config Details
+    if (type == GLOBAL_SOLVER) {
+        printf("Config: Stones=%d, Cache=GLOBAL\n", stones);
+    } else {
+        printf("Config: Stones=%d, Cache=2^%d, Compress=%s, Mode=%s\n", 
+               stones, sizePow, compress == ALWAYS_COMPRESS ? "True (B48)" : "False (B60)", 
+               depth == 0 ? "NODEPTH" : "DEPTH");
+    }
 
+    // Run & Time
     double start = currentTimeMs();
-    LOCAL_aspirationRoot(context, &config);
+    aspirationRoot(context, &config);
     double elapsed = currentTimeMs() - start;
 
-    printf("Result: %.2f ms | Eval: %d | Nodes: %" PRIu64 "\n", elapsed, context->metadata.lastEvaluation, context->metadata.lastNodes);
+    printf("Result: %.2f ms | Eval: %d | Nodes: %" PRIu64 "\n", 
+           elapsed, context->metadata.lastEvaluation, context->metadata.lastNodes);
 
-    renderCacheStats(); 
-}
-
-// Separate helper for Global Solver tests (No Cache Stats)
-static void runGlobalTest(
-    Context* context,
-    int stones,
-    int sizePow,
-    const char* label
-) {
-    printf("----------------------------------------------------------------\n");
-    printf("Benchmarking: %s\n", label);
-    printf("Config: Stones=%d, Cache=2^%d, GLOBAL SOLVER\n", stones, sizePow);
-
-    setCacheSize(sizePow);
-
-    memset(context->board, 0, sizeof(Board));
-    configBoard(context->board, stones);
-    context->board->color = 1;
-
-    // Global solver config
-    SolverConfig config = { GLOBAL_SOLVER, 0, 0, false, true };
-
-    double start = currentTimeMs();
-    GLOBAL_aspirationRoot(context, &config);
-    double elapsed = currentTimeMs() - start;
-
-    printf("Result: %.2f ms | Eval: %d | Nodes: %" PRIu64 "\n", elapsed, context->metadata.lastEvaluation, context->metadata.lastNodes);
+    // Only render stats for local solver
+    if (type == LOCAL_SOLVER) {
+        renderCacheStats(); 
+    }
 }
 
 void runBenchmark() {
     printf("Starting Coverage Benchmark...\n");
 
-    Board board;
-    Board lastBoard;
-    Context context;
-
-    memset(&board, 0, sizeof(Board));
-    memset(&lastBoard, 0, sizeof(Board));
-    memset(&context, 0, sizeof(Context));
+    Board board = {0};
+    Board lastBoard = {0};
+    Context context = {0};
 
     context.board = &board;
     context.lastBoard = &lastBoard;
 
-    // Sizes based on index bits required for Tag size
-    const int SIZE_T32_B48 = 24; 
-    const int SIZE_T32_B60 = 29; 
-    const int SIZE_T16_B48 = 33; 
+    const int T32_B48 = 24; 
+    const int T32_B60 = 29; 
+    const int T16_B48 = 33; 
 
     setMoveFunction(CLASSIC_MOVE);
 
-    // ---------------------------------------------------------
-    // 1. T32 MODES (Standard RAM)
-    // ---------------------------------------------------------
+    // --- 1. T32 MODES (Standard RAM) ---
+    runTest(&context, 2, T32_B48, ALWAYS_COMPRESS, 0,   LOCAL_SOLVER, "MODE_ND_B48_T32");
+    runTest(&context, 2, T32_B48, ALWAYS_COMPRESS, 999, LOCAL_SOLVER, "MODE_D_B48_T32");
+    runTest(&context, 2, T32_B60, NEVER_COMPRESS, 0,   LOCAL_SOLVER, "MODE_ND_B60_T32");
+    runTest(&context, 2, T32_B60, NEVER_COMPRESS, 999, LOCAL_SOLVER, "MODE_D_B60_T32");
 
-    // MODE_ND_B48_T32
-    runTest(&context, 2, SIZE_T32_B48, true, 0, "MODE_ND_B48_T32");
+    // --- 2. T16 MODES (High RAM) ---
+    runTest(&context, 2, T16_B48, ALWAYS_COMPRESS, 0,   LOCAL_SOLVER, "MODE_ND_B48_T16");
+    runTest(&context, 2, T16_B48, ALWAYS_COMPRESS, 999, LOCAL_SOLVER, "MODE_D_B48_T16");
 
-    // MODE_D_B48_T32
-    runTest(&context, 2, SIZE_T32_B48, true, 999, "MODE_D_B48_T32");
-
-    // MODE_ND_B60_T32 (Requires ~4GB)
-    runTest(&context, 2, SIZE_T32_B60, false, 0, "MODE_ND_B60_T32");
-
-    // MODE_D_B60_T32 (Requires ~4GB)
-    runTest(&context, 2, SIZE_T32_B60, false, 999, "MODE_D_B60_T32");
-
-    // ---------------------------------------------------------
-    // 2. T16 MODES (High RAM: ~48GB)
-    // ---------------------------------------------------------
-
-    // MODE_ND_B48_T16
-    runTest(&context, 2, SIZE_T16_B48, true, 0, "MODE_ND_B48_T16");
-
-    // MODE_D_B48_T16
-    runTest(&context, 2, SIZE_T16_B48, true, 999, "MODE_D_B48_T16");
-
-    // ---------------------------------------------------------
-    // 3. AVALANCHE (Functionality Check)
-    // ---------------------------------------------------------
+    // --- 3. AVALANCHE ---
     setMoveFunction(AVALANCHE_MOVE);
-    runTest(&context, 2, SIZE_T32_B48, true, 999, "Avalanche (D_B48_T32)");
+    runTest(&context, 2, T32_B48, ALWAYS_COMPRESS, 999, LOCAL_SOLVER, "Avalanche (D_B48_T32)");
 
-    // ---------------------------------------------------------
-    // 4. 3-STONE COMPARISON (Performance Check)
-    // ---------------------------------------------------------
+    // --- 4. 3-STONE COMPARISON ---
     setMoveFunction(CLASSIC_MOVE);
+    runTest(&context, 3, 24, ALWAYS_COMPRESS, 0,  LOCAL_SOLVER, "3-Stone B48 (Size 24)");
+    runTest(&context, 3, 29, NEVER_COMPRESS, 0, LOCAL_SOLVER, "3-Stone B60 (Size 29)");
 
-    // Compressed (B48)
-    runTest(&context, 3, 24, true, 0, "3-Stone B48 (Size 24)");
-
-    // Uncompressed (B60) - Must use Size 29+
-    runTest(&context, 3, 29, false, 0, "3-Stone B60 (Size 29)");
-
-    // ---------------------------------------------------------
-    // 5. GLOBAL SOLVER
-    // ---------------------------------------------------------
+    // --- 5. GLOBAL SOLVER ---
+    // Note: Global solver tests imply sizePow=0 and compress=true
     setMoveFunction(CLASSIC_MOVE);
-    runGlobalTest(&context, 2, 0, "GLOBAL SOLVER - Classic (2 Stones)");
+    runTest(&context, 2, 0, ALWAYS_COMPRESS, 0, GLOBAL_SOLVER, "GLOBAL SOLVER - Classic (2 Stones)");
 
     setMoveFunction(AVALANCHE_MOVE);
-    runGlobalTest(&context, 1, 0, "GLOBAL SOLVER - Avalanche (1 Stone)");
+    runTest(&context, 1, 0, ALWAYS_COMPRESS, 0, GLOBAL_SOLVER, "GLOBAL SOLVER - Avalanche (1 Stone)");
 
     printf("----------------------------------------------------------------\n");
     printf("Benchmark Complete.\n");

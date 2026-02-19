@@ -7,6 +7,7 @@
 #include <stdlib.h>
 
 #include "logic/solver/algo.h"
+#include "logic/solver/cache.h" 
 
 #define BENCHMARK_CACHE_POW 24
 

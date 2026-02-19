@@ -95,7 +95,6 @@ int compareChunksStart(const void *a, const void *b) {
 #undef CACHE_T32
 
 // 4. DEPTH | 48 BIT KEY | 16 BIT TAG
-// FIXED: Removed "CACHE_" to match function calls below (DEPTH_B48_T16)
 #define PREFIX DEPTH_B48_T16
 #define CACHE_DEPTH 1
 #define CACHE_B60 0
@@ -107,7 +106,6 @@ int compareChunksStart(const void *a, const void *b) {
 #undef CACHE_T32
 
 // 5. DEPTH | 48 BIT KEY | 32 BIT TAG
-// FIXED: Removed "CACHE_" to match function calls below (DEPTH_B48_T32)
 #define PREFIX DEPTH_B48_T32
 #define CACHE_DEPTH 1
 #define CACHE_B60 0
@@ -119,7 +117,6 @@ int compareChunksStart(const void *a, const void *b) {
 #undef CACHE_T32
 
 // 6. DEPTH | 60 BIT KEY | 32 BIT TAG
-// FIXED: Removed "CACHE_" to match function calls below (DEPTH_B60_T32)
 #define PREFIX DEPTH_B60_T32
 #define CACHE_DEPTH 1
 #define CACHE_B60 1
@@ -141,12 +138,12 @@ typedef enum {
     MODE_D_B48_T32,
     MODE_D_B60_T32,
     MODE_COUNT
-} CacheMode;
+} CacheDispatchMode;
 
 // Current Configuration
-static CacheMode currentMode = MODE_DISABLED;
+static CacheDispatchMode currentMode = MODE_DISABLED;
 static bool configDepth = true;
-static bool configCompress = true;
+static CacheMode configCompressMode = AUTO;
 static int configSizePow = 0;
 
 // --- Internal Logic ---
@@ -196,7 +193,27 @@ static void reconfigureCache() {
         cacheSizePow = 0;
         return;
     }
-    int keyBits = configCompress ? 48 : 60;
+
+    int indexBits = configSizePow - 1;
+    bool useCompress = false;
+
+    // Determine Compression Strategy
+    if (configCompressMode == ALWAYS_COMPRESS) {
+        useCompress = true;
+    } else if (configCompressMode == NEVER_COMPRESS) {
+        useCompress = false;
+    } else {
+        // AUTO: Default to T32/B60 (No Compress) for best collision resistance.
+        // If the table is too small, a 60-bit key leaves a tag > 32 bits, which is impossible.
+        // In that case, we MUST compress.
+        if ((60 - indexBits) > 32) {
+            useCompress = true;
+        } else {
+            useCompress = false;
+        }
+    }
+
+    int keyBits = useCompress ? 48 : 60;
 
     if (configSizePow >= keyBits) {
         char err[128];
@@ -206,9 +223,7 @@ static void reconfigureCache() {
         return;
     }
 
-    int indexBits = configSizePow - 1;
     int tagBitsNeeded = keyBits - indexBits;
-
     bool useT32 = false;
 
     if (tagBitsNeeded > 32) {
@@ -223,7 +238,7 @@ static void reconfigureCache() {
         useT32 = true;
     }
     else {
-        if (configCompress) {
+        if (useCompress) {
             useT32 = false;
         } else {
             useT32 = true;
@@ -231,13 +246,13 @@ static void reconfigureCache() {
     }
 
     if (configDepth) {
-        if (!configCompress) {
+        if (!useCompress) {
              currentMode = MODE_D_B60_T32;
         } else {
              currentMode = useT32 ? MODE_D_B48_T32 : MODE_D_B48_T16;
         }
     } else {
-        if (!configCompress) {
+        if (!useCompress) {
              currentMode = MODE_ND_B60_T32;
         } else {
              currentMode = useT32 ? MODE_ND_B48_T32 : MODE_ND_B48_T16;
@@ -247,7 +262,7 @@ static void reconfigureCache() {
     cacheSize = (uint64_t)1 << configSizePow;
     cacheSizePow = configSizePow;
 
-    // 5. Initialize selected mode
+    // Initialize selected mode
     switch (currentMode) {
         case MODE_ND_B48_T16: initCacheInternal_NODEPTH_B48_T16(cacheSize); break;
         case MODE_ND_B48_T32: initCacheInternal_NODEPTH_B48_T32(cacheSize); break;
@@ -263,14 +278,14 @@ static void reconfigureCache() {
 
 // --- Public API ---
 
-void setCacheMode(bool depth, bool compress) {
+void setCacheMode(bool depth, CacheMode compressMode) {
     if (getCacheSize() == 0) setCacheSize(DEFAULT_CACHES_SIZE);
 
     bool sizeChanged = (configSizePow != (int)cacheSizePow);
-    bool modeChanged = (configDepth != depth) || (configCompress != compress);
+    bool modeChanged = (configDepth != depth) || (configCompressMode != compressMode);
 
     configDepth = depth;
-    configCompress = compress;
+    configCompressMode = compressMode;
 
     if (!sizeChanged && !modeChanged) {
         return;

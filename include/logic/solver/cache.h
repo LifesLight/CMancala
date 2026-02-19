@@ -46,7 +46,7 @@ void setCacheSize(int sizePow);
 
 
 // Enable / Disable depth storing (needed for non solving) and can enable 48 bit board representations
-void setCacheMode(bool depth, bool compress);
+void setCacheMode(bool depth, CacheMode compressMode);
 
 
 void invalidateCache();

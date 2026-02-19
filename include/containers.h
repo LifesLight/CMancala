@@ -31,12 +31,19 @@ typedef enum {
     GLOBAL_SOLVER
 } Solver;
 
+typedef enum {
+    ALWAYS_COMPRESS,
+    NEVER_COMPRESS,
+    AUTO
+} CacheMode;
+
 typedef struct {
     Solver solver;
     int depth;
     double timeLimit;
     bool clip;
-    bool compressCache;
+    CacheMode compressCache;
+    bool progressBar;
 } SolverConfig;
 
 typedef struct {

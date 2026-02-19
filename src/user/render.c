@@ -4,6 +4,149 @@
 
 #include "user/render.h"
 
+static clock_t progressStartTime;
+static const SolverConfig* progressConfig = NULL;
+static const char* progressPrefix = NULL;
+static const int BAR_WIDTH = 40;
+static bool progressFirstUpdate;
+
+static void formatNodeCount(uint64_t nodes, char* buffer, size_t size) {
+    if (nodes < 1000) {
+        snprintf(buffer, size, "%" PRIu64, nodes);
+    } else if (nodes < 1000000) {
+        snprintf(buffer, size, "%.1fk", (double)nodes / 1000.0);
+    } else if (nodes < 1000000000) {
+        snprintf(buffer, size, "%.2fM", (double)nodes / 1000000.0);
+    } else {
+        snprintf(buffer, size, "%.2fG", (double)nodes / 1000000000.0);
+    }
+}
+
+static void formatTimeDuration(double seconds, char* buffer, size_t size) {
+    if (seconds < 60.0) {
+        snprintf(buffer, size, "%.2fs", seconds);
+    } else if (seconds < 3600.0) {
+        int min = (int)(seconds / 60);
+        int sec = (int)(seconds) % 60;
+        snprintf(buffer, size, "%dm %ds", min, sec);
+    } else if (seconds < 86400.0) {
+        int hr = (int)(seconds / 3600);
+        int min = (int)((seconds - (hr * 3600)) / 60);
+        snprintf(buffer, size, "%dh %dm", hr, min);
+    } else {
+        int day = (int)(seconds / 86400);
+        int hr = (int)((seconds - (day * 86400)) / 3600);
+        snprintf(buffer, size, "%dd %dh", day, hr);
+    }
+}
+
+void startProgress(const SolverConfig* config, const char* prefix) {
+    if (!config->progressBar) return;
+    progressConfig = config;
+    progressPrefix = prefix ? prefix : "";
+    progressStartTime = clock();
+    progressFirstUpdate = true;
+}
+
+void updateProgress(int currentDepth, int bestMove, int score, uint64_t nodeCount) {
+    if (!progressConfig) return;
+
+    double elapsed = (double)(clock() - progressStartTime) / CLOCKS_PER_SEC;
+
+    // Bar tracks whichever active limit is closest to terminating the search
+    double percentage = 0.0;
+    bool hasLimit = false;
+
+    if (progressConfig->depth > 0) {
+        double dp = (double)currentDepth / (double)progressConfig->depth;
+        if (dp > percentage) percentage = dp;
+        hasLimit = true;
+    }
+    if (progressConfig->timeLimit > 0) {
+        double tp = elapsed / progressConfig->timeLimit;
+        if (tp > percentage) percentage = tp;
+        hasLimit = true;
+    }
+    if (!hasLimit) percentage = 1.0;
+
+    if (percentage > 1.0) percentage = 1.0;
+    if (percentage < 0.0) percentage = 0.0;
+
+    // Cursor: move up one line to overwrite both lines
+    if (!progressFirstUpdate) {
+        printf("\033[A\r");
+    }
+    progressFirstUpdate = false;
+
+    // --- Line 1: Progress bar ---
+    int filledLen = (int)(percentage * BAR_WIDTH);
+
+    printf("%s>> " BAR_CAP_L, progressPrefix);
+    for (int i = 0; i < BAR_WIDTH; i++) {
+        if (i < filledLen) printf(BAR_FILL);
+        else               printf(BAR_EMPTY);
+    }
+    printf(BAR_CAP_R " %3d%%\033[K\n", (int)(percentage * 100));
+
+    // --- Line 2: Stats  D, T, E, M, N ---
+    printf("%s>>  ", progressPrefix);
+
+    // D: depth
+    if (progressConfig->depth > 0)
+        printf("D:%d/%d", currentDepth, progressConfig->depth);
+    else
+        printf("D:%d", currentDepth);
+
+    printf(" " STAT_SEP " ");
+
+    // T: time
+    char timeStr[32];
+    formatTimeDuration(elapsed, timeStr, sizeof(timeStr));
+    if (progressConfig->timeLimit > 0) {
+        char limitStr[32];
+        formatTimeDuration(progressConfig->timeLimit, limitStr, sizeof(limitStr));
+        printf("T:%s/%s", timeStr, limitStr);
+    } else {
+        printf("T:%s", timeStr);
+    }
+
+    printf(" " STAT_SEP " ");
+
+    // E: eval
+    if (progressConfig->clip) {
+        if (score > 0)       printf("E: WIN");
+        else if (score < 0)  printf("E: LOSS");
+        else                  printf("E: DRAW");
+    } else {
+        printf("E:%+d", score);
+    }
+
+    printf(" " STAT_SEP " ");
+
+    if (bestMove > 6) {
+        bestMove = 13 - bestMove;
+    }
+
+    // M: move
+    printf("M:%d", bestMove);
+
+    printf(" " STAT_SEP " ");
+
+    // N: nodes
+    char nodeStr[32];
+    formatNodeCount(nodeCount, nodeStr, sizeof(nodeStr));
+    printf("N:%s   ", nodeStr);
+
+    printf("\033[K");
+    fflush(stdout);
+}
+
+void finishProgress() {
+    if (!progressConfig) return;
+    progressConfig = NULL;
+    printf("\n");
+}
+
 void renderCustomBoard(const int32_t *cells, const int8_t color, const char* prefix, const GameSettings* settings) {
     char* playerDescriptor = "Unknown";
     if (color == 1) {

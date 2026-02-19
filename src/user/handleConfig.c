@@ -16,10 +16,11 @@ void renderConfigHelp() {
     renderOutput("  solver [global|local]            : Set default solver for AI", CONFIG_PREFIX);
     renderOutput("  clip [true|false]                : Set clip on/off, clip only computes if a move is winning or losing", CONFIG_PREFIX);
     renderOutput("  cache [number >= 17]             : Set cache size as power of two. If compression is off number needs to be >= 29", CONFIG_PREFIX);
-    renderOutput("  compress [true|false]            : Allows for smaller cache sizes + less memory per entry but decreases performance for 4+ stones.", CONFIG_PREFIX);
+    renderOutput("  compress [always|never|auto]     : Configure cache compression. Auto selects best mode for cache size.", CONFIG_PREFIX);
     renderOutput("  starting [1|2]                   : Configure starting player", CONFIG_PREFIX);
     renderOutput("  player [1|2] [human|random|ai]   : Configure player", CONFIG_PREFIX);
     renderOutput("  display                          : Display current configuration", CONFIG_PREFIX);
+    renderOutput("  progress [true|false]            : Configure progress bar visibility during iterative deepening.", CONFIG_PREFIX);
     renderOutput("  autoplay [true|false]            : If enabled the game loop will automatically continue", CONFIG_PREFIX);
     renderOutput("  help                             : Print this help message", CONFIG_PREFIX);
     renderOutput("  quit                             : Quit the application", CONFIG_PREFIX);
@@ -83,7 +84,13 @@ void printConfig(Config* config) {
         renderOutput(message, CONFIG_PREFIX);
     }
 
-    snprintf(message, sizeof(message), "  Compress: %s", config->solverConfig.compressCache ? "true" : "false");
+    const char* compressStr = "unknown";
+    switch (config->solverConfig.compressCache) {
+        case ALWAYS_COMPRESS: compressStr = "always"; break;
+        case NEVER_COMPRESS:  compressStr = "never"; break;
+        case AUTO:            compressStr = "auto"; break;
+    }
+    snprintf(message, sizeof(message), "  Compress: %s", compressStr);
     renderOutput(message, CONFIG_PREFIX);
 
     snprintf(message, sizeof(message), "  Starting: %d", config->gameSettings.startColor == 1 ? 1 : 2);
@@ -164,30 +171,45 @@ void handleConfigInput(bool* requestedStart, Config* config) {
     }
 
     if (strncmp(input, "compress ", 9) == 0) {
-        bool originalCompress = config->solverConfig.compressCache;
+        char* val = input + 9;
+        CacheMode currentMode = config->solverConfig.compressCache;
+        CacheMode newMode = currentMode;
 
-        if (strcmp(input + 9, "true") == 0 || strcmp(input + 9, "1") == 0) {
-            config->solverConfig.compressCache = true;
-            if (originalCompress) {
-                renderOutput("Compress already enabled", CONFIG_PREFIX);
-                return;
-            }
-            renderOutput("Enabled compress", CONFIG_PREFIX);
-            return;
-        } else if (strcmp(input + 9, "false") == 0 || strcmp(input + 9, "0") == 0) {
-            config->solverConfig.compressCache = false;
-            if (!originalCompress) {
-                renderOutput("Compress already disabled", CONFIG_PREFIX);
-                return;
-            }
-            renderOutput("Disabled compress", CONFIG_PREFIX);
-            return;
-        } else {
+        // Map inputs to CacheMode
+        if (strcmp(val, "true") == 0 || strcmp(val, "1") == 0 || strcmp(val, "always") == 0) {
+            newMode = ALWAYS_COMPRESS;
+        } 
+        else if (strcmp(val, "false") == 0 || strcmp(val, "0") == 0 || strcmp(val, "never") == 0) {
+            newMode = NEVER_COMPRESS;
+        } 
+        else if (strcmp(val, "auto") == 0) {
+            newMode = AUTO;
+        } 
+        else {
             char message[256];
-            snprintf(message, sizeof(message), "Invalid compress \"%.200s\"", input + 9);
+            snprintf(message, sizeof(message), "Invalid compress option \"%.200s\"", val);
             renderOutput(message, CONFIG_PREFIX);
             return;
         }
+
+        // Check for state change
+        if (newMode == currentMode) {
+            // Provide feedback based on what it is currently
+            const char* modeStr = (currentMode == ALWAYS_COMPRESS) ? "always" : 
+                                  (currentMode == NEVER_COMPRESS) ? "never" : "auto";
+            char message[256];
+            snprintf(message, sizeof(message), "Compress already set to %s", modeStr);
+            renderOutput(message, CONFIG_PREFIX);
+        } else {
+            config->solverConfig.compressCache = newMode;
+            
+            const char* modeStr = (newMode == ALWAYS_COMPRESS) ? "always" : 
+                                  (newMode == NEVER_COMPRESS) ? "never" : "auto";
+            char message[256];
+            snprintf(message, sizeof(message), "Updated compress to %s", modeStr);
+            renderOutput(message, CONFIG_PREFIX);
+        }
+        return;
     }
 
     if (strncmp(input, "clip ", 5) == 0) {
@@ -316,6 +338,33 @@ void handleConfigInput(bool* requestedStart, Config* config) {
         } else {
             char message[256];
             snprintf(message, sizeof(message), "Invalid autoplay \"%.200s\"", input + 9);
+            renderOutput(message, CONFIG_PREFIX);
+            return;
+        }
+    }
+
+    if (strncmp(input, "progress ", 9) == 0) {
+        bool original = config->solverConfig.progressBar;
+
+        if (strcmp(input + 9, "true") == 0 || strcmp(input + 9, "1") == 0) {
+            config->solverConfig.progressBar = true;
+            if (original) {
+                renderOutput("Progress bar already enabled", CONFIG_PREFIX);
+                return;
+            }
+            renderOutput("Enabled progress bar", CONFIG_PREFIX);
+            return;
+        } else if (strcmp(input + 9, "false") == 0 || strcmp(input + 9, "0") == 0) {
+            config->solverConfig.progressBar = false;
+            if (!original) {
+                renderOutput("Progress bar already disabled", CONFIG_PREFIX);
+                return;
+            }
+            renderOutput("Disabled progress bar", CONFIG_PREFIX);
+            return;
+        } else {
+            char message[256];
+            snprintf(message, sizeof(message), "Invalid progress \"%.200s\"", input + 9);
             renderOutput(message, CONFIG_PREFIX);
             return;
         }
