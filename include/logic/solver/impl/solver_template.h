@@ -2,16 +2,18 @@
  * Copyright (c) Alexander Kurtz 2026
  */
 
-#include "logic/solver/local.h"
+#include "logic/solver/impl/macros.h"
 
-static int LOCAL_negamax(Board *board, int alpha, int beta, const int depth, bool *solved) {
+// --- Helper: Negamax ---
+
+static int FN(negamax)(Board *board, int alpha, int beta, const int depth, bool *solved) {
     if (processBoardTerminal(board)) {
         *solved = true;
         return board->color * getBoardEvaluation(board);
     }
 
-    int cachedValue;
-    int boundType;
+#if SOLVER_USE_CACHE
+    int cachedValue, boundType;
     bool cachedSolved;
     if (getCachedValue(board, depth, &cachedValue, &boundType, &cachedSolved)) {
         if (boundType == EXACT_BOUND) {
@@ -26,6 +28,7 @@ static int LOCAL_negamax(Board *board, int alpha, int beta, const int depth, boo
             return cachedValue;
         }
     }
+#endif
 
     if (depth == 0) {
         *solved = false;
@@ -33,8 +36,13 @@ static int LOCAL_negamax(Board *board, int alpha, int beta, const int depth, boo
     }
 
     int reference = INT32_MIN;
+
+#if SOLVER_USE_CACHE
     const int alphaOriginal = alpha;
+#endif
+
     nodeCount++;
+
     bool nodeSolved = true;
     Board boardCopy;
     int score;
@@ -49,9 +57,9 @@ static int LOCAL_negamax(Board *board, int alpha, int beta, const int depth, boo
 
         bool childSolved;
         if (board->color == boardCopy.color) {
-            score = LOCAL_negamax(&boardCopy, alpha, beta, depth - 1, &childSolved);
+            score = FN(negamax)(&boardCopy, alpha, beta, depth - 1, &childSolved);
         } else {
-            score = -LOCAL_negamax(&boardCopy, -beta, -alpha, depth - 1, &childSolved);
+            score = -FN(negamax)(&boardCopy, -beta, -alpha, depth - 1, &childSolved);
         }
         nodeSolved = nodeSolved && childSolved;
 
@@ -60,16 +68,22 @@ static int LOCAL_negamax(Board *board, int alpha, int beta, const int depth, boo
         if (alpha >= beta) break;
     }
 
-    if (reference <= alphaOriginal) boundType = UPPER_BOUND;
-    else if (reference >= beta) boundType = LOWER_BOUND;
-    else boundType = EXACT_BOUND;
+#if SOLVER_USE_CACHE
+    int saveBoundType;
+    if (reference <= alphaOriginal) saveBoundType = UPPER_BOUND;
+    else if (reference >= beta) saveBoundType = LOWER_BOUND;
+    else saveBoundType = EXACT_BOUND;
 
-    cacheNode(board, reference, boundType, depth, nodeSolved);
+    cacheNode(board, reference, saveBoundType, depth, nodeSolved);
+#endif
+
     *solved = nodeSolved;
     return reference;
 }
 
-int LOCAL_negamaxWithMove(Board *board, int *bestMove, int alpha, int beta, const int depth, bool *solved) {
+// --- Helper: Negamax With Move (Root Helper) ---
+
+static int FN(negamaxWithMove)(Board *board, int *bestMove, int alpha, int beta, const int depth, bool *solved) {
     if (processBoardTerminal(board)) {
         *bestMove = -1; *solved = true;
         return board->color * getBoardEvaluation(board);
@@ -96,9 +110,9 @@ int LOCAL_negamaxWithMove(Board *board, int *bestMove, int alpha, int beta, cons
 
         bool childSolved;
         if (board->color == boardCopy.color) {
-            score = LOCAL_negamax(&boardCopy, alpha, beta, depth - 1, &childSolved);
+            score = FN(negamax)(&boardCopy, alpha, beta, depth - 1, &childSolved);
         } else {
-            score = -LOCAL_negamax(&boardCopy, -beta, -alpha, depth - 1, &childSolved);
+            score = -FN(negamax)(&boardCopy, -beta, -alpha, depth - 1, &childSolved);
         }
         nodeSolved = nodeSolved && childSolved;
 
@@ -114,12 +128,16 @@ int LOCAL_negamaxWithMove(Board *board, int *bestMove, int alpha, int beta, cons
     return reference;
 }
 
-void LOCAL_distributionRoot(Board *board, int *distribution, bool *solved, SolverConfig *config) {
+// --- Public: Distribution Root ---
+
+void FN(distributionRoot)(Board *board, int *distribution, bool *solved, SolverConfig *config) {
     const int8_t start = (board->color == 1) ? HBOUND_P1 : HBOUND_P2;
     const int8_t end = (board->color == 1) ? LBOUND_P1 : LBOUND_P2;
     int index = 5;
     int score;
 
+#if SOLVER_USE_CACHE
+    // LOCAL logic: explicit if/else for depth and mode
     int depth = config->depth;
     if (config->depth == 0) {
         depth = MAX_DEPTH;
@@ -127,6 +145,10 @@ void LOCAL_distributionRoot(Board *board, int *distribution, bool *solved, Solve
     } else {
         setCacheMode(true, config->compressCache);
     }
+#else
+    // GLOBAL logic: ternary, no cache call
+    int depth = (config->depth == 0) ? MAX_DEPTH : config->depth;
+#endif
 
     const int alpha = config->clip ? 0 : INT32_MIN + 1;
     const int beta  = config->clip ? 1 : INT32_MAX;
@@ -145,9 +167,9 @@ void LOCAL_distributionRoot(Board *board, int *distribution, bool *solved, Solve
 
         bool childSolved;
         if (board->color == boardCopy.color) {
-            score = LOCAL_negamax(&boardCopy, alpha, beta, depth, &childSolved);
+            score = FN(negamax)(&boardCopy, alpha, beta, depth, &childSolved);
         } else {
-            score = -LOCAL_negamax(&boardCopy, -beta, -alpha, depth, &childSolved);
+            score = -FN(negamax)(&boardCopy, -beta, -alpha, depth, &childSolved);
         }
         nodeSolved = nodeSolved && childSolved;
 
@@ -157,16 +179,22 @@ void LOCAL_distributionRoot(Board *board, int *distribution, bool *solved, Solve
         index--;
     }
     *solved = nodeSolved;
+
+#if SOLVER_USE_CACHE
     stepCache();
     resetCacheStats();
+#endif
 }
 
-void LOCAL_aspirationRoot(Context* context, SolverConfig *config) {
+// --- Public: Aspiration Root ---
+
+void FN(aspirationRoot)(Context* context, SolverConfig *config) {
     const int depthStep = 1;
     int currentDepth = 1;
-    bool oneShot = false;
 
-    // Check for No Iterative Deepening
+#if SOLVER_USE_CACHE
+    // LOCAL: OneShot logic + Cache Mode
+    bool oneShot = false;
     if (config->timeLimit == 0 && config->depth == 0) {
         currentDepth = MAX_DEPTH;
         oneShot = true;
@@ -174,6 +202,9 @@ void LOCAL_aspirationRoot(Context* context, SolverConfig *config) {
     } else {
         setCacheMode(true, config->compressCache);
     }
+#else
+    // GLOBAL: No OneShot, no cache calls, no depth override here
+#endif
 
     startProgress(config, PLAY_PREFIX);
 
@@ -201,47 +232,55 @@ void LOCAL_aspirationRoot(Context* context, SolverConfig *config) {
         bool searchValid = false;
 
         if (config->clip) {
-            // Clipped: Null Window (0, 1)
-            score = LOCAL_negamaxWithMove(context->board, &bestMove, 0, 1, currentDepth, &solved);
+            score = FN(negamaxWithMove)(context->board, &bestMove, 0, 1, currentDepth, &solved);
             searchValid = true;
-        } else if (oneShot) {
-            score = LOCAL_negamaxWithMove(context->board, &bestMove, INT32_MIN + 1, INT32_MAX, currentDepth, &solved);
+        } 
+#if SOLVER_USE_CACHE
+        else if (oneShot) {
+            // LOCAL only optimization
+            score = FN(negamaxWithMove)(context->board, &bestMove, INT32_MIN + 1, INT32_MAX, currentDepth, &solved);
             searchValid = true;
-        } else {
-            score = LOCAL_negamaxWithMove(context->board, &bestMove, alpha, beta, currentDepth, &solved);
+        } 
+#endif
+        else {
+            score = FN(negamaxWithMove)(context->board, &bestMove, alpha, beta, currentDepth, &solved);
 
             if (score > alpha && score < beta) {
                 searchValid = true;
                 window = windowSize;
-
                 alpha = score - window;
                 beta  = score + window;
             } else {
-                // Window Miss
                 windowMisses++;
                 window *= 2;
-
                 alpha = score - window;
                 beta  = score + window;
             }
         }
 
+#if SOLVER_USE_CACHE
         stepCache();
+#endif
 
         if (searchValid) {
-            // Record Timing
-            int timeIndex = oneShot ? 1 : currentDepth;
+            int timeIndex = 
+#if SOLVER_USE_CACHE
+                oneShot ? 1 : 
+#endif
+                currentDepth;
+
             if (depthTimes != NULL) {
                 double t = (double)(clock() - start) / CLOCKS_PER_SEC;
-                depthTimes[timeIndex] = t - lastTimeCaptured;
+                if(timeIndex < MAX_DEPTH) depthTimes[timeIndex] = t - lastTimeCaptured;
                 lastTimeCaptured = t;
             }
 
             updateProgress(currentDepth, bestMove, score, nodeCount);
 
-            // Check Exit Conditions
             if (solved) break;
+#if SOLVER_USE_CACHE
             if (oneShot) break;
+#endif
             if (config->depth > 0 && currentDepth >= config->depth) break;
             if (config->timeLimit > 0 && ((double)(clock() - start) / CLOCKS_PER_SEC) >= config->timeLimit) break;
 
@@ -266,5 +305,8 @@ void LOCAL_aspirationRoot(Context* context, SolverConfig *config) {
     if (config->clip && score < 0) {
         renderOutput("[WARNING]: Clipped solver used in losing position!", CHEAT_PREFIX);
     }
+
+#if SOLVER_USE_CACHE
     resetCacheStats();
+#endif
 }

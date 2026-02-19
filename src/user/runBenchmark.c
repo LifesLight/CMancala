@@ -32,7 +32,7 @@ static void runTest(
     SolverConfig config = { LOCAL_SOLVER, depthConfig, 0, false, compress, false };
 
     double start = currentTimeMs();
-    LOCAL_aspirationRoot(context, &config);
+    aspirationRoot_LOCAL(context, &config);
     double elapsed = currentTimeMs() - start;
 
     printf("Result: %.2f ms | Eval: %d | Nodes: %" PRIu64 "\n", elapsed, context->metadata.lastEvaluation, context->metadata.lastNodes);
@@ -61,7 +61,7 @@ static void runGlobalTest(
     SolverConfig config = { GLOBAL_SOLVER, 0, 0, false, true, false };
 
     double start = currentTimeMs();
-    GLOBAL_aspirationRoot(context, &config);
+    aspirationRoot_GLOBAL(context, &config);
     double elapsed = currentTimeMs() - start;
 
     printf("Result: %.2f ms | Eval: %d | Nodes: %" PRIu64 "\n", elapsed, context->metadata.lastEvaluation, context->metadata.lastNodes);

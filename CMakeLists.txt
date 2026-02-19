@@ -16,8 +16,7 @@ set(SOURCE_FILES
     src/user/handlePlaying.c
     src/user/interface.c
     src/user/runBenchmark.c
-    src/logic/solver/global.c
-    src/logic/solver/local.c
+    src/logic/solver/solver.c
     src/logic/throughput.c
     src/logic/solver/cache.c
 )

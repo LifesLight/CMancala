@@ -5,14 +5,13 @@
 
 #include "logic/solver/algo.h"
 
-
 void aspirationRoot(Context* context, SolverConfig *config) {
     switch (config->solver) {
         case GLOBAL_SOLVER:
-            GLOBAL_aspirationRoot(context, config);
+            aspirationRoot_GLOBAL(context, config);
             break;
         case LOCAL_SOLVER:
-            LOCAL_aspirationRoot(context, config);
+            aspirationRoot_LOCAL(context, config);
             break;
     }
 }
@@ -20,10 +19,10 @@ void aspirationRoot(Context* context, SolverConfig *config) {
 void distributionRoot(Board *board, int32_t* distribution, bool *solved, SolverConfig *config) {
     switch (config->solver) {
         case GLOBAL_SOLVER:
-            GLOBAL_distributionRoot(board, distribution, solved, config);
+            distributionRoot_GLOBAL(board, distribution, solved, config);
             break;
         case LOCAL_SOLVER:
-            LOCAL_distributionRoot(board, distribution, solved, config);
+            distributionRoot_LOCAL(board, distribution, solved, config);
             break;
     }
 }
