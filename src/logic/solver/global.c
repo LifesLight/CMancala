@@ -3,6 +3,8 @@
  */
 
 #include "logic/solver/global.h"
+#define max(a,b) (((a) > (b)) ? (a) : (b))
+#define min(a,b) (((a) < (b)) ? (a) : (b))
 
 static bool solved;
 

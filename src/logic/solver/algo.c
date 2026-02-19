@@ -4,7 +4,8 @@
 
 
 #include "logic/solver/algo.h"
-
+#define max(a,b) (((a) > (b)) ? (a) : (b))
+#define min(a,b) (((a) < (b)) ? (a) : (b))
 
 void aspirationRoot(Context* context, SolverConfig *config) {
     switch (config->solver) {
