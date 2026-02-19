@@ -5,7 +5,11 @@
 #include "logic/solver/impl/macros.h"
 #include "logic/utility.h"
 
+#if !SOLVER_USE_CACHE
+static bool solved;
+#endif
 
+// --- Helper: Key ---
 
 static inline int FN(key)(Board* board, int color1) {
     int res = color1 * getBoardEvaluation(board);
@@ -13,37 +17,23 @@ static inline int FN(key)(Board* board, int color1) {
     return res;
 }
 
-static inline void FN(sort)(int *a, int n, Board* allBoards, int color1) {
-    int keys[6];   // or MAX_MOVES
-
-    for (int i = 0; i < n; i++) {
-        keys[i] = FN(key)(&allBoards[a[i]], color1);
-    }
-
-    for (int i = 1; i < n; i++) {
-        int x = a[i];
-        int j = i - 1;
-
-
-        while (j >= 0 && keys[j] < keys[i]) {
-            a[j + 1] = a[j];
-            j--;
-        }
-        a[j + 1] = x;
-    }
-}
-
-
 // --- Helper: Negamax ---
 
+#if SOLVER_USE_CACHE
 static int FN(negamax)(Board *board, int alpha, int beta, const int depth, bool *solved) {
+#else
+static int FN(negamax)(Board *board, int alpha, int beta, const int depth) {
+#endif
     if (processBoardTerminal(board)) {
+#if SOLVER_USE_CACHE
         *solved = true;
+#endif
         return board->color * getBoardEvaluation(board);
     }
 
 #if SOLVER_USE_CACHE
-    int cachedValue, boundType;
+    int cachedValue;
+    int boundType;
     bool cachedSolved;
     if (getCachedValue(board, depth, &cachedValue, &boundType, &cachedSolved)) {
         if (boundType == EXACT_BOUND) {
@@ -61,49 +51,51 @@ static int FN(negamax)(Board *board, int alpha, int beta, const int depth, bool 
 #endif
 
     if (depth == 0) {
+#if SOLVER_USE_CACHE
         *solved = false;
+#else
+        solved = false;
+#endif
         return board->color * getBoardEvaluation(board);
     }
 
-    int reference = INT32_MIN;
-
 #if SOLVER_USE_CACHE
+    int reference = INT32_MIN;
     const int alphaOriginal = alpha;
-#endif
-
     nodeCount++;
-
     bool nodeSolved = true;
     int score;
+#else
+    nodeCount++;
+    int reference = INT32_MIN;
+    int score;
+#endif
 
-    const int start = (board->color == 1) ? HBOUND_P1 : HBOUND_P2;
-    const int end   = (board->color == 1) ? LBOUND_P1 : LBOUND_P2;
+    const int8_t start = (board->color == 1) ? HBOUND_P1 : HBOUND_P2;
+    const int8_t end   = (board->color == 1) ? LBOUND_P1 : LBOUND_P2;
 
     Board allMoves[6];
     int order[6];
     int keys[6];
-
     int valid = 0;
 
-    for (int i = 0; i < 6; i++) {
-        allMoves[i] = *board;
+    for (int8_t i = start; i >= end; i--) {
+        if (board->cells[i] == 0) continue;
 
-        if (board->cells[start - i] == 0) {
-            continue;
-        }
-        order[valid++] = i;
+        copyBoard(board, &allMoves[valid]);
+        makeMoveFunction(&allMoves[valid], i);
 
-        // Make copied board with move made
-        makeMoveFunction(&allMoves[i], start - i);
-        keys[i] = FN(key)(&allMoves[i], board->color);
+        keys[valid] = FN(key)(&allMoves[valid], board->color);
+        order[valid] = valid;
+        valid++;
     }
 
+    // Sort valid moves descending by evaluation key
     for (int i = 0; i < valid; i++) {
         int best = i;
         int best_key = keys[order[i]];
 
         for (int j = i + 1; j < valid; j++) {
-
             int k = keys[order[j]];
             if (k > best_key) {
                 best_key = k;
@@ -111,84 +103,109 @@ static int FN(negamax)(Board *board, int alpha, int beta, const int depth, bool 
             }
         }
 
-        if(best != i){
+        if (best != i) {
             int temp = order[i];
             order[i] = order[best];
             order[best] = temp;
         }
 
+        Board *boardCopy = &allMoves[order[i]];
 
+#if SOLVER_USE_CACHE
         bool childSolved;
-        if (board->color == allMoves[order[i]].color) {
-            score = FN(negamax)(&allMoves[order[i]], alpha, beta, depth - 1, &childSolved);
+        if (board->color == boardCopy->color) {
+            score = FN(negamax)(boardCopy, alpha, beta, depth - 1, &childSolved);
         } else {
-            score = -FN(negamax)(&allMoves[order[i]], -beta, -alpha, depth - 1, &childSolved);
+            score = -FN(negamax)(boardCopy, -beta, -alpha, depth - 1, &childSolved);
         }
         nodeSolved = nodeSolved && childSolved;
+#else
+        if (board->color == boardCopy->color) {
+            score = FN(negamax)(boardCopy, alpha, beta, depth - 1);
+        } else {
+            score = -FN(negamax)(boardCopy, -beta, -alpha, depth - 1);
+        }
+#endif
 
         reference = max(reference, score);
         alpha = max(alpha, reference);
+
         if (alpha >= beta) break;
     }
 
 #if SOLVER_USE_CACHE
-    int saveBoundType;
-    if (reference <= alphaOriginal) saveBoundType = UPPER_BOUND;
-    else if (reference >= beta) saveBoundType = LOWER_BOUND;
-    else saveBoundType = EXACT_BOUND;
+    if (reference <= alphaOriginal) boundType = UPPER_BOUND;
+    else if (reference >= beta) boundType = LOWER_BOUND;
+    else boundType = EXACT_BOUND;
 
-    cacheNode(board, reference, saveBoundType, depth, nodeSolved);
-#endif
-
+    cacheNode(board, reference, boundType, depth, nodeSolved);
     *solved = nodeSolved;
+#endif
     return reference;
 }
 
 // --- Helper: Negamax With Move (Root Helper) ---
 
-static int FN(negamaxWithMove)(Board *board, int *bestMove, int alpha, int beta, const int depth, bool *solved) {
+#if SOLVER_USE_CACHE
+int FN(negamaxWithMove)(Board *board, int *bestMove, int alpha, int beta, const int depth, bool *solved) {
+#else
+int FN(negamaxWithMove)(Board *board, int *bestMove, int alpha, int beta, const int depth) {
+#endif
     if (processBoardTerminal(board)) {
+#if SOLVER_USE_CACHE
         *bestMove = -1; *solved = true;
+#else
+        *bestMove = -1;
+#endif
         return board->color * getBoardEvaluation(board);
     }
     if (depth == 0) {
+#if SOLVER_USE_CACHE
         *bestMove = -1; *solved = false;
+#else
+        solved = false;
+        *bestMove = -1;
+#endif
         return board->color * getBoardEvaluation(board);
     }
 
     nodeCount++;
     int reference = INT32_MIN;
     int score;
+#if SOLVER_USE_CACHE
     *bestMove = -1;
     bool nodeSolved = true;
+#else
+    *bestMove = -1;
+#endif
 
-    const int start = (board->color == 1)  ? HBOUND_P1 : HBOUND_P2;
-    const int end = (board->color == 1)    ? LBOUND_P1 : LBOUND_P2;
+    const int8_t start = (board->color == 1)  ? HBOUND_P1 : HBOUND_P2;
+    const int8_t end = (board->color == 1)    ? LBOUND_P1 : LBOUND_P2;
 
     Board allMoves[6];
+    int moves[6];
     int order[6];
     int keys[6];
     int valid = 0;
 
-    for (int i = 0; i < 6; i++) {
-        allMoves[i] = *board;
+    for (int8_t i = start; i >= end; i--) {
+        if (board->cells[i] == 0) continue;
 
-        if (board->cells[start - i] == 0) {
-            continue;
-        }
-        order[valid++] = i;
+        copyBoard(board, &allMoves[valid]);
+        makeMoveFunction(&allMoves[valid], i);
 
-        // Make copied board with move made
-        makeMoveFunction(&allMoves[i], start - i);
-        keys[i] = FN(key)(&allMoves[i], board->color);
+        keys[valid] = FN(key)(&allMoves[valid], board->color);
+        moves[valid] = i;  // Capture the original hole index safely
+        order[valid] = valid;
+        valid++;
     }
 
+    // Sort valid moves descending by evaluation key
     for (int i = 0; i < valid; i++) {
         int best = i;
         int best_key = keys[order[i]];
 
         for (int j = i + 1; j < valid; j++) {
-
             int k = keys[order[j]];
             if (k > best_key) {
                 best_key = k;
@@ -196,44 +213,58 @@ static int FN(negamaxWithMove)(Board *board, int *bestMove, int alpha, int beta,
             }
         }
 
-        if(best != i){
+        if (best != i) {
             int temp = order[i];
             order[i] = order[best];
             order[best] = temp;
         }
 
+        Board *boardCopy = &allMoves[order[i]];
 
-        // Make copied board with move made
+#if SOLVER_USE_CACHE
         bool childSolved;
-        if (board->color == allMoves[order[i]].color) {
-            score = FN(negamax)(&allMoves[order[i]], alpha, beta, depth - 1, &childSolved);
+        if (board->color == boardCopy->color) {
+            score = FN(negamax)(boardCopy, alpha, beta, depth - 1, &childSolved);
         } else {
-            score = -FN(negamax)(&allMoves[order[i]], -beta, -alpha, depth - 1, &childSolved);
+            score = -FN(negamax)(boardCopy, -beta, -alpha, depth - 1, &childSolved);
         }
         nodeSolved = nodeSolved && childSolved;
+#else
+        if (board->color == boardCopy->color) {
+            score = FN(negamax)(boardCopy, alpha, beta, depth - 1);
+        } else {
+            score = -FN(negamax)(boardCopy, -beta, -alpha, depth - 1);
+        }
+#endif
 
         if (score > reference) {
             reference = score;
-            *bestMove = start - order[i];
+            *bestMove = moves[order[i]]; // Map back directly without fragile offset calculation
         }
 
         alpha = max(alpha, reference);
         if (alpha >= beta) break;
     }
+#if SOLVER_USE_CACHE
     *solved = nodeSolved;
+#endif
     return reference;
 }
 
 // --- Public: Distribution Root ---
 
+#if SOLVER_USE_CACHE
 void FN(distributionRoot)(Board *board, int *distribution, bool *solved, SolverConfig *config) {
+#else
+void FN(distributionRoot)(Board *board, int *distribution, bool *solvedOutput, SolverConfig *config) {
+#endif
     const int8_t start = (board->color == 1) ? HBOUND_P1 : HBOUND_P2;
     const int8_t end = (board->color == 1) ? LBOUND_P1 : LBOUND_P2;
+
     int index = 5;
     int score;
 
 #if SOLVER_USE_CACHE
-    // LOCAL logic: explicit if/else for depth and mode
     int depth = config->depth;
     if (config->depth == 0) {
         depth = MAX_DEPTH;
@@ -242,14 +273,17 @@ void FN(distributionRoot)(Board *board, int *distribution, bool *solved, SolverC
         setCacheMode(true, config->compressCache);
     }
 #else
-    // GLOBAL logic: ternary, no cache call
     int depth = (config->depth == 0) ? MAX_DEPTH : config->depth;
 #endif
 
     const int alpha = config->clip ? 0 : INT32_MIN + 1;
     const int beta  = config->clip ? 1 : INT32_MAX;
 
+#if SOLVER_USE_CACHE
     bool nodeSolved = true;
+#else
+    solved = true;
+#endif
 
     for (int8_t i = start; i >= end; i--) {
         if (board->cells[i] == 0) {
@@ -261,6 +295,7 @@ void FN(distributionRoot)(Board *board, int *distribution, bool *solved, SolverC
         copyBoard(board, &boardCopy);
         makeMoveFunction(&boardCopy, i);
 
+#if SOLVER_USE_CACHE
         bool childSolved;
         if (board->color == boardCopy.color) {
             score = FN(negamax)(&boardCopy, alpha, beta, depth, &childSolved);
@@ -268,17 +303,26 @@ void FN(distributionRoot)(Board *board, int *distribution, bool *solved, SolverC
             score = -FN(negamax)(&boardCopy, -beta, -alpha, depth, &childSolved);
         }
         nodeSolved = nodeSolved && childSolved;
+#else
+        if (board->color == boardCopy.color) {
+            score = FN(negamax)(&boardCopy, alpha, beta, depth);
+        } else {
+            score = -FN(negamax)(&boardCopy, -beta, -alpha, depth);
+        }
+#endif
 
         if (config->clip && score > 1) score = 1;
 
         distribution[index] = score;
         index--;
     }
-    *solved = nodeSolved;
 
 #if SOLVER_USE_CACHE
+    *solved = nodeSolved;
     stepCache();
     resetCacheStats();
+#else
+    *solvedOutput = solved;
 #endif
 }
 
@@ -289,8 +333,9 @@ void FN(aspirationRoot)(Context* context, SolverConfig *config) {
     int currentDepth = 1;
 
 #if SOLVER_USE_CACHE
-    // LOCAL: OneShot logic + Cache Mode
     bool oneShot = false;
+
+    // Check for No Iterative Deepening
     if (config->timeLimit == 0 && config->depth == 0) {
         currentDepth = MAX_DEPTH;
         oneShot = true;
@@ -298,18 +343,18 @@ void FN(aspirationRoot)(Context* context, SolverConfig *config) {
     } else {
         setCacheMode(true, config->compressCache);
     }
-#else
-    // GLOBAL: No OneShot, no cache calls, no depth override here
-#endif
-
-    startProgress(config, PLAY_PREFIX);
 
     int bestMove = -1;
     int score = 0;
     bool solved = false;
+#else
+    int bestMove = -1;
+    int score = 0;
+#endif
 
     const int windowSize = 1;
     int window = windowSize;
+
     int alpha = INT32_MIN + 1;
     int beta  = INT32_MAX;
     int windowMisses = 0;
@@ -323,32 +368,46 @@ void FN(aspirationRoot)(Context* context, SolverConfig *config) {
     }
     double lastTimeCaptured = 0.0;
 
+    startProgress(config, PLAY_PREFIX);
+
     while (true) {
         solved = true;
         bool searchValid = false;
 
         if (config->clip) {
+#if SOLVER_USE_CACHE
+            // Clipped: Null Window (0, 1)
             score = FN(negamaxWithMove)(context->board, &bestMove, 0, 1, currentDepth, &solved);
+#else
+            // Null Window Search (0, 1)
+            score = FN(negamaxWithMove)(context->board, &bestMove, 0, 1, currentDepth);
+#endif
             searchValid = true;
-        } 
+        }
 #if SOLVER_USE_CACHE
         else if (oneShot) {
-            // LOCAL only optimization
             score = FN(negamaxWithMove)(context->board, &bestMove, INT32_MIN + 1, INT32_MAX, currentDepth, &solved);
             searchValid = true;
-        } 
+        }
 #endif
         else {
+#if SOLVER_USE_CACHE
             score = FN(negamaxWithMove)(context->board, &bestMove, alpha, beta, currentDepth, &solved);
+#else
+            score = FN(negamaxWithMove)(context->board, &bestMove, alpha, beta, currentDepth);
+#endif
 
             if (score > alpha && score < beta) {
                 searchValid = true;
                 window = windowSize;
+
                 alpha = score - window;
                 beta  = score + window;
             } else {
+                // Window Miss
                 windowMisses++;
                 window *= 2;
+
                 alpha = score - window;
                 beta  = score + window;
             }
@@ -359,20 +418,25 @@ void FN(aspirationRoot)(Context* context, SolverConfig *config) {
 #endif
 
         if (searchValid) {
-            int timeIndex = 
+            // Record Timing
 #if SOLVER_USE_CACHE
-                oneShot ? 1 : 
-#endif
-                currentDepth;
-
+            int timeIndex = oneShot ? 1 : currentDepth;
             if (depthTimes != NULL) {
                 double t = (double)(clock() - start) / CLOCKS_PER_SEC;
-                if(timeIndex < MAX_DEPTH) depthTimes[timeIndex] = t - lastTimeCaptured;
+                depthTimes[timeIndex] = t - lastTimeCaptured;
                 lastTimeCaptured = t;
             }
+#else
+            if (depthTimes != NULL) {
+                double t = (double)(clock() - start) / CLOCKS_PER_SEC;
+                depthTimes[currentDepth] = t - lastTimeCaptured;
+                lastTimeCaptured = t;
+            }
+#endif
 
             updateProgress(currentDepth, bestMove, score, nodeCount);
 
+            // Check Exit Conditions
             if (solved) break;
 #if SOLVER_USE_CACHE
             if (oneShot) break;
