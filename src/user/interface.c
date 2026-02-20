@@ -11,7 +11,7 @@ void startInterface() {
 
     // Global config struct
     SolverConfig solverConfig = {
-        .solver = GLOBAL_SOLVER,
+        .solver = LOCAL_SOLVER,
         .depth = 0,
         .timeLimit = 5.0,
         .clip = false,

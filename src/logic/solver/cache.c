@@ -348,7 +348,7 @@ void invalidateCache() {
     }
 }
 
-void renderCacheStats() {
+void renderCacheStats(bool calcFrag, bool calcStoneDist, bool calcDepthDist) {
     if (currentMode == MODE_DISABLED || cacheSize == 0) {
         renderOutput("  Cache disabled.", CHEAT_PREFIX);
         return;
@@ -358,14 +358,14 @@ void renderCacheStats() {
     memset(&stats, 0, sizeof(CacheStats));
 
     switch (currentMode) {
-        case MODE_ND_B48_T16: collectCacheStats_NODEPTH_B48_T16(&stats); break;
-        case MODE_ND_B48_T32: collectCacheStats_NODEPTH_B48_T32(&stats); break;
-        case MODE_ND_B60_T32: collectCacheStats_NODEPTH_B60_T32(&stats); break;
-        case MODE_D_B48_T16:  collectCacheStats_DEPTH_B48_T16(&stats); break;
-        case MODE_D_B48_T32:  collectCacheStats_DEPTH_B48_T32(&stats); break;
-        case MODE_D_B60_T32:  collectCacheStats_DEPTH_B60_T32(&stats); break;
+        case MODE_ND_B48_T16: collectCacheStats_NODEPTH_B48_T16(&stats, calcFrag, calcStoneDist, calcDepthDist); break;
+        case MODE_ND_B48_T32: collectCacheStats_NODEPTH_B48_T32(&stats, calcFrag, calcStoneDist, calcDepthDist); break;
+        case MODE_ND_B60_T32: collectCacheStats_NODEPTH_B60_T32(&stats, calcFrag, calcStoneDist, calcDepthDist); break;
+        case MODE_D_B48_T16:  collectCacheStats_DEPTH_B48_T16(&stats, calcFrag, calcStoneDist, calcDepthDist); break;
+        case MODE_D_B48_T32:  collectCacheStats_DEPTH_B48_T32(&stats, calcFrag, calcStoneDist, calcDepthDist); break;
+        case MODE_D_B60_T32:  collectCacheStats_DEPTH_B60_T32(&stats, calcFrag, calcStoneDist, calcDepthDist); break;
         default: break;
     }
 
-    renderCacheOverview(&stats);
+    renderCacheOverview(&stats, calcFrag, calcStoneDist, calcDepthDist);
 }

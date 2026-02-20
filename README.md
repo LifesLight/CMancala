@@ -3,105 +3,110 @@
 ### Overview
 
 CMancala is a powerful Mancala solver and analyzer.
-While it's not the project’s primary focus, you can play against (effectively unbeatable) AI agents.
+You can play against (effectively unbeatable) AI agents.
 
 ### Rules
 
 The game follows basic Mancala rules.
-An **Avalanche** mode is also available.
+An **Avalanche** mode is available.
 
 ### Interface (config/menu/playing)
 
 CMancala starts in **config** mode to set game hyperparameters.
-When you start the game you enter one of three modes. You can switch between them at any time:
+Three modes — switchable anytime:
 
 * **Config:** Adjust application and game hyperparameters.
 * **Menu:** Perform analytical operations on the current game.
 * **Playing:** Play the game.
 
-More info is available via `help`. It lists all legal commands in every mode.
+See `help` for all legal commands.
 
 ### Performance
 
 The AI runs on a single thread.
-Performance varies with the game state and number of stones.
+Performance varies with game state and number of stones.
 
-* It typically searches 20–30 moves in a 5-second thinking window.
-* With 4 stones per pit, the AI reaches a very high level in about 60 seconds.
-* Fewer stones per pit improve search speed.
-* As the game progresses, the AI's move prediction improves.
+* Typical search: 20–30 moves in a 1s thinking window.
+* 4 stones/pit → very high level in ~5s.
+* Fewer stones → faster searches.
+* Predictions improve as the game progresses.
 
-In most configs, if the AI starts the game it becomes almost unbeatable.
-(In the classic 4 stones per pit setup, the starting player has an evaluation advantage of 8 at the start.)
+If the AI starts, it is usually almost unbeatable.
+(In 4-stone classic, starter has an evaluation advantage of 8.)
 
 Cache size notes (**LOCAL**):
 
-* Cache size is an exponent: size = `2^N`
-* Memory usage: `2^N * 16 bytes`
-* Default: **24** → ~268 MB RAM
-* Too large is never a problem (only RAM)
-* Use **29–32** for long solves (e.g. uniform 4-stone)
+* Cache size is an exponent: size = `2^N`.
+* Memory usage: `2^N * ~4–8 bytes per entry` (depends on tag size and depth mode).
+* Default: **24** → ~100 MiB RAM.
+* Use **29–32** for long solves (e.g., uniform 4-stone).
+* Cache size requirements have steadily decreased since v3.0. Run your own tests if concerned.
+
+* **Compressed mode:**
+  * The code auto-selects compressed vs non-compressed. You usually don't need to think about it.
+  * Required: `indexBits + tagBits >= keyBits`.
+    * For compressed keys that means `indexBits + tagBits >= 48`.
+    * For non-compressed keys that means `indexBits + tagBits >= 60`.
+  * Why that matters:
+    * Compressed mode uses **48-bit keys (B48)** instead of **60-bit keys (B60)**.
+    * Compression allows using 16-bit tags (when possible) instead of 32-bit tags, which can reduce RAM usage at given cache size.
+    * Non-compressed (B60) allows storing boards with larger per-cell values (up to <31 vs <16).
+  * Only force-compress if the math requires it or you explicitly want smaller tags to save RAM.
 
 <p align="center">
   <img src="measurements/v3.0/PickCacheSize.jpg" width="600">
 </p>
 
-*Measured on CMancala **v3.0***  
-
-More measurements are in the `measurements` directory.
+*Measured on CMancala **v3.0***. More measurements in `measurements/`.
 
 ### Algorithm
 
-All solvers use Negamax with Alpha-Beta pruning. They handle double moves. Common features:
+All solvers use Negamax + Alpha-Beta. They handle double moves.
 
 * **Double move handling:** Search adjusts when the same player continues or turn switches.
-* **Aspiration windows + iterative deepening:** Enables time-limited searches and better performance.
-* **Clip:** Changes solver behavior to only search for winning or losing moves. Only useful when the AI is in a winning position. In losing positions it treats all moves as equally bad if it can't find a win. That often causes the agent to pick the first IDX move and not return to a winning position.
+* **Aspiration windows + iterative deepening:** Enables time-limited searches and better performance. (Skipped for LOCAL with infinite depth and time)
+* **Move ordering:** Prioritizes promising moves early. Improves pruning.
+* **Clip:** Changes solver behavior to only search for wins/losses. Useful if you only want to see if a move is winning or losing, not "how winning" or "how losing". In losing positions it will always pick the first IDX move if no win is found so it most likely won't return to a winning position.
 
 #### Solvers
 
-* **GLOBAL:**
-  Default reference solver.
-  It completes only after exhaustively searching the game tree for the best move at the current node.
+* **GLOBAL:** Reference solver.
+* **LOCAL (default):** Way Faster in most cases. Uses a transposition table. At equal search depth it should be as strong or stronger than GLOBAL.
 
-* **LOCAL:**
-  Much faster in most cases.
-  It incorporates a transposition table and should give equal or better results at the same search depth.
-  It is not the default because the code is more complex and harder to validate, though in testing it is at least as strong as GLOBAL.
-  Increase the cache size to ~28–30 for long calculations (e.g., solving the uniform 4-stone position).
-
-### Restrictions
+### Limitations
 
 * Maximum supported stones on the board at any time: 224.
 
 ### User interface
 
-* CMancala has a terminal UI.
+* Terminal UI.
 
 ### Building and Running
 
 1. Install CMake.
 2. Have a compatible C compiler.
-3. In the project directory run:
+3. In project dir:
 
-   ```bash
-   cd build
-   cmake ..
-   make
-   ```
+```bash
+cd build
+cmake ..
+make
+````
+
 4. Run:
 
-   ```bash
-   ./Mancala
-   ```
+```bash
+./Mancala
+```
 
-CMancala also supports PGO. An example build script is provided.
+PGO supported. Example build script included.
 
 ### Discoveries
 
-* The uniform 4 stones per pit position is solved with **LOCAL**. The starting player wins by **8** points with perfect play. Best start move: **IDX: 3**.
-* In the uniform 3 stones per pit game the starting player wins by **2** points with perfect play. Best start move: **IDX: 5**.
+* Uniform 5-stone-per-pit solved with **LOCAL**. Starter wins by **10** points. Best first move: **IDX: 2**.
+* Uniform 4-stone-per-pit solved with **LOCAL**. Starter wins by **8** points. Best first move: **IDX: 3**.
+* Uniform 3-stone-per-pit: starter wins by **2** points. Best first move: **IDX: 5**.
 
 ### License
 
-CMancala is released under the MIT License. See the `LICENSE` file for details.
+CMancala is released under the MIT License. See `LICENSE` for details.

@@ -54,9 +54,9 @@
 
 void renderBoard(const Board *board, const char* prefix, const GameSettings* settings);
 void renderCustomBoard(const int32_t *cells, const int8_t color, const char* prefix, const GameSettings* settings);
-void renderCacheOverview(const CacheStats* stats);
 void renderWelcome();
 void renderOutput(const char* message, const char* prefix);
+void renderCacheOverview(const CacheStats* stats, bool showFrag, bool showStoneDist, bool showDepthDist);
 
 void startProgress(const SolverConfig* config, const char* prefix);
 void updateProgress(int currentDepth, int bestMove, int score, uint64_t nodeCount);

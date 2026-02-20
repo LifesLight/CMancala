@@ -48,7 +48,7 @@ static void runTest(
 
     // Only render stats for local solver
     if (type == LOCAL_SOLVER) {
-        renderCacheStats(); 
+        renderCacheStats(false, false, false);
     }
 }
 

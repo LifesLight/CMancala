@@ -12,9 +12,9 @@ static bool solved;
 // --- Helper: Key ---
 
 static inline int FN(key)(Board* board, int color1) {
-    int res = color1 * getBoardEvaluation(board);
-    if(color1 == board->color) res += 1000;
-    return res;
+    // We really like getting another turn, this forces it to be explored first
+    if(color1 == board->color) return 1000;
+    return color1 * getBoardEvaluation(board);
 }
 
 // --- Helper: Negamax ---
@@ -59,27 +59,24 @@ static int FN(negamax)(Board *board, int alpha, int beta, const int depth) {
         return board->color * getBoardEvaluation(board);
     }
 
+    int reference = INT32_MIN;
+    nodeCount++;
+    int score;
+
 #if SOLVER_USE_CACHE
-    int reference = INT32_MIN;
     const int alphaOriginal = alpha;
-    nodeCount++;
     bool nodeSolved = true;
-    int score;
-#else
-    nodeCount++;
-    int reference = INT32_MIN;
-    int score;
 #endif
 
-    const int8_t start = (board->color == 1) ? HBOUND_P1 : HBOUND_P2;
-    const int8_t end   = (board->color == 1) ? LBOUND_P1 : LBOUND_P2;
+    const int start = (board->color == 1) ? HBOUND_P1 : HBOUND_P2;
+    const int end   = (board->color == 1) ? LBOUND_P1 : LBOUND_P2;
 
     Board allMoves[6];
     int order[6];
     int keys[6];
     int valid = 0;
 
-    for (int8_t i = start; i >= end; i--) {
+    for (int i = start; i >= end; i--) {
         if (board->cells[i] == 0) continue;
 
         copyBoard(board, &allMoves[valid]);
@@ -153,18 +150,17 @@ int FN(negamaxWithMove)(Board *board, int *bestMove, int alpha, int beta, const 
 #endif
     if (processBoardTerminal(board)) {
 #if SOLVER_USE_CACHE
-        *bestMove = -1; *solved = true;
-#else
-        *bestMove = -1;
+        *solved = true;
 #endif
+        *bestMove = -1;
         return board->color * getBoardEvaluation(board);
     }
     if (depth == 0) {
+        *bestMove = -1;
 #if SOLVER_USE_CACHE
-        *bestMove = -1; *solved = false;
+        *solved = false;
 #else
         solved = false;
-        *bestMove = -1;
 #endif
         return board->color * getBoardEvaluation(board);
     }
@@ -172,15 +168,13 @@ int FN(negamaxWithMove)(Board *board, int *bestMove, int alpha, int beta, const 
     nodeCount++;
     int reference = INT32_MIN;
     int score;
+    *bestMove = -1;
 #if SOLVER_USE_CACHE
-    *bestMove = -1;
     bool nodeSolved = true;
-#else
-    *bestMove = -1;
 #endif
 
-    const int8_t start = (board->color == 1)  ? HBOUND_P1 : HBOUND_P2;
-    const int8_t end = (board->color == 1)    ? LBOUND_P1 : LBOUND_P2;
+    const int start = (board->color == 1)  ? HBOUND_P1 : HBOUND_P2;
+    const int end = (board->color == 1)    ? LBOUND_P1 : LBOUND_P2;
 
     Board allMoves[6];
     int moves[6];
@@ -188,14 +182,14 @@ int FN(negamaxWithMove)(Board *board, int *bestMove, int alpha, int beta, const 
     int keys[6];
     int valid = 0;
 
-    for (int8_t i = start; i >= end; i--) {
+    for (int i = start; i >= end; i--) {
         if (board->cells[i] == 0) continue;
 
         copyBoard(board, &allMoves[valid]);
         makeMoveFunction(&allMoves[valid], i);
 
         keys[valid] = FN(key)(&allMoves[valid], board->color);
-        moves[valid] = i;  // Capture the original hole index safely
+        moves[valid] = i;
         order[valid] = valid;
         valid++;
     }
@@ -239,7 +233,7 @@ int FN(negamaxWithMove)(Board *board, int *bestMove, int alpha, int beta, const 
 
         if (score > reference) {
             reference = score;
-            *bestMove = moves[order[i]]; // Map back directly without fragile offset calculation
+            *bestMove = moves[order[i]];
         }
 
         alpha = max(alpha, reference);
@@ -258,8 +252,8 @@ void FN(distributionRoot)(Board *board, int *distribution, bool *solved, SolverC
 #else
 void FN(distributionRoot)(Board *board, int *distribution, bool *solvedOutput, SolverConfig *config) {
 #endif
-    const int8_t start = (board->color == 1) ? HBOUND_P1 : HBOUND_P2;
-    const int8_t end = (board->color == 1) ? LBOUND_P1 : LBOUND_P2;
+    const int start = (board->color == 1) ? HBOUND_P1 : HBOUND_P2;
+    const int end = (board->color == 1) ? LBOUND_P1 : LBOUND_P2;
 
     int index = 5;
     int score;
@@ -285,7 +279,7 @@ void FN(distributionRoot)(Board *board, int *distribution, bool *solvedOutput, S
     solved = true;
 #endif
 
-    for (int8_t i = start; i >= end; i--) {
+    for (int i = start; i >= end; i--) {
         if (board->cells[i] == 0) {
             distribution[index] = INT32_MIN;
             index--;
@@ -332,6 +326,8 @@ void FN(aspirationRoot)(Context* context, SolverConfig *config) {
     const int depthStep = 1;
     int currentDepth = 1;
 
+    int bestMove = -1;
+    int score = 0;
 #if SOLVER_USE_CACHE
     bool oneShot = false;
 
@@ -344,12 +340,8 @@ void FN(aspirationRoot)(Context* context, SolverConfig *config) {
         setCacheMode(true, config->compressCache);
     }
 
-    int bestMove = -1;
-    int score = 0;
+
     bool solved = false;
-#else
-    int bestMove = -1;
-    int score = 0;
 #endif
 
     const int windowSize = 1;
@@ -376,7 +368,7 @@ void FN(aspirationRoot)(Context* context, SolverConfig *config) {
 
         if (config->clip) {
 #if SOLVER_USE_CACHE
-            // Clipped: Null Window (0, 1)
+            // Null Window Search (0, 1)
             score = FN(negamaxWithMove)(context->board, &bestMove, 0, 1, currentDepth, &solved);
 #else
             // Null Window Search (0, 1)
@@ -419,20 +411,15 @@ void FN(aspirationRoot)(Context* context, SolverConfig *config) {
 
         if (searchValid) {
             // Record Timing
+            int timeIndex = currentDepth;
 #if SOLVER_USE_CACHE
-            int timeIndex = oneShot ? 1 : currentDepth;
+            timeIndex = oneShot ? 1 : currentDepth;
+#endif
             if (depthTimes != NULL) {
                 double t = (double)(clock() - start) / CLOCKS_PER_SEC;
                 depthTimes[timeIndex] = t - lastTimeCaptured;
                 lastTimeCaptured = t;
             }
-#else
-            if (depthTimes != NULL) {
-                double t = (double)(clock() - start) / CLOCKS_PER_SEC;
-                depthTimes[currentDepth] = t - lastTimeCaptured;
-                lastTimeCaptured = t;
-            }
-#endif
 
             updateProgress(currentDepth, bestMove, score, nodeCount);
 

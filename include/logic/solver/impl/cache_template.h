@@ -346,7 +346,7 @@ static inline bool FN(getCachedValue)(Board* board, int currentDepth, int *eval,
 
 // --- Stats Collector ---
 
-static void FN(collectCacheStats)(CacheStats* stats) {
+static void FN(collectCacheStats)(CacheStats* stats, bool calcFrag, bool calcStoneDist, bool calcDepthDist) {
     stats->cacheSize = cacheSize;
     stats->entrySize = sizeof(FN(Bucket)) / 2;
 
@@ -361,6 +361,8 @@ static void FN(collectCacheStats)(CacheStats* stats) {
     uint64_t depthSum = 0;
     uint16_t maxDepth = 0;
     memset(stats->depthBins, 0, sizeof(stats->depthBins));
+#else
+    (void)calcDepthDist;
 #endif
 
     stats->hasDepth = CACHE_DEPTH;
@@ -400,23 +402,25 @@ static void FN(collectCacheStats)(CacheStats* stats) {
             int16_t val = (slot == 0) ? b->value_0 : b->value_1;
             int type = (val != CACHE_VAL_UNSET);
 
-            if (i == 0 && slot == 0) {
-                chunkSize = 1;
-            } else {
-                if (type == currentType) {
-                    chunkSize++;
-                } else {
-                    CacheChunk c = { chunkStart, chunkSize, currentType };
-                    if (topCount < OUTPUT_CHUNK_COUNT) {
-                        stats->topChunks[topCount++] = c;
-                    } else {
-                        int minIdx = 0;
-                        for (int k = 1; k < topCount; k++) if (stats->topChunks[k].size < stats->topChunks[minIdx].size) minIdx = k;
-                        if (c.size > stats->topChunks[minIdx].size) stats->topChunks[minIdx] = c;
-                    }
-                    currentType = type;
-                    chunkStart = (i << 1) + slot;
+            if (calcFrag) {
+                if (i == 0 && slot == 0) {
                     chunkSize = 1;
+                } else {
+                    if (type == currentType) {
+                        chunkSize++;
+                    } else {
+                        CacheChunk c = { chunkStart, chunkSize, currentType };
+                        if (topCount < OUTPUT_CHUNK_COUNT) {
+                            stats->topChunks[topCount++] = c;
+                        } else {
+                            int minIdx = 0;
+                            for (int k = 1; k < topCount; k++) if (stats->topChunks[k].size < stats->topChunks[minIdx].size) minIdx = k;
+                            if (c.size > stats->topChunks[minIdx].size) stats->topChunks[minIdx] = c;
+                        }
+                        currentType = type;
+                        chunkStart = (i << 1) + slot;
+                        chunkSize = 1;
+                    }
                 }
             }
 
@@ -427,8 +431,6 @@ static void FN(collectCacheStats)(CacheStats* stats) {
             if (bt == EXACT_BOUND) exactCount++;
             else if (bt == LOWER_BOUND) lowerCount++;
             else upperCount++;
-
-            TAG_TYPE tag = (slot == 0) ? b->tag_0 : b->tag_1;
 
 #if CACHE_DEPTH
             uint16_t d = (slot == 0) ? b->depth_0 : b->depth_1;
@@ -441,17 +443,20 @@ static void FN(collectCacheStats)(CacheStats* stats) {
             }
 #endif
 
-            uint64_t code = FN(mergeBoard)(i, tag);
-            Board brd = FN(untranslateBoard)(code);
+            if (calcStoneDist) {
+                TAG_TYPE tag = (slot == 0) ? b->tag_0 : b->tag_1;
+                uint64_t code = FN(mergeBoard)(i, tag);
+                Board brd = FN(untranslateBoard)(code);
 
-            for (int k = 0; k < 14; k++) {
-                if (k == 6 || k == 13) continue;
-                uint8_t s = brd.cells[k];
-                sumStones[k] += s;
-                countStones[k]++;
-                if (s > maxStones[k]) maxStones[k] = s;
-                if (s > 7) countOver7[k]++;
-                if (s > 15) countOver15[k]++;
+                for (int k = 0; k < 14; k++) {
+                    if (k == 6 || k == 13) continue;
+                    uint8_t s = brd.cells[k];
+                    sumStones[k] += s;
+                    countStones[k]++;
+                    if (s > maxStones[k]) maxStones[k] = s;
+                    if (s > 7) countOver7[k]++;
+                    if (s > 15) countOver15[k]++;
+                }
             }
         }
     }
@@ -468,20 +473,24 @@ static void FN(collectCacheStats)(CacheStats* stats) {
     stats->maxDepth = maxDepth;
 #endif
 
-    CacheChunk c = { chunkStart, chunkSize, currentType };
-    if (topCount < OUTPUT_CHUNK_COUNT) {
-        stats->topChunks[topCount++] = c;
+    if (calcFrag) {
+        CacheChunk c = { chunkStart, chunkSize, currentType };
+        if (topCount < OUTPUT_CHUNK_COUNT) {
+            stats->topChunks[topCount++] = c;
+        } else {
+            int minIdx = 0;
+            for (int k = 1; k < topCount; k++) if (stats->topChunks[k].size < stats->topChunks[minIdx].size) minIdx = k;
+            if (c.size > stats->topChunks[minIdx].size) stats->topChunks[minIdx] = c;
+        }
+
+        qsort(stats->topChunks, topCount, sizeof(CacheChunk), compareChunksStart);
+        stats->chunkCount = topCount;
     } else {
-        int minIdx = 0;
-        for (int k = 1; k < topCount; k++) if (stats->topChunks[k].size < stats->topChunks[minIdx].size) minIdx = k;
-        if (c.size > stats->topChunks[minIdx].size) stats->topChunks[minIdx] = c;
+        stats->chunkCount = 0;
     }
 
-    qsort(stats->topChunks, topCount, sizeof(CacheChunk), compareChunksStart);
-    stats->chunkCount = topCount;
-
 #if CACHE_DEPTH
-    if (nonSolvedCount > 0) {
+    if (calcDepthDist && nonSolvedCount > 0) {
         const uint32_t span = (uint32_t)maxDepth + 1;
         enum { DEPTH_BINS = 8 };
         const uint32_t binW = (span + DEPTH_BINS - 1) / DEPTH_BINS;

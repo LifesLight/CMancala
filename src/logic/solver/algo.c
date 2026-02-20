@@ -49,10 +49,10 @@ NegamaxTrace negamaxWithTrace(Board *board, int alpha, const int beta, const int
     NegamaxTrace tempResult;
 
     // Iterate over all possible moves
-    const int8_t start = (board->color == 1)  ? HBOUND_P1 : HBOUND_P2;
-    const int8_t end = (board->color == 1)    ? LBOUND_P1 : LBOUND_P2;
+    const int start = (board->color == 1)  ? HBOUND_P1 : HBOUND_P2;
+    const int end = (board->color == 1)    ? LBOUND_P1 : LBOUND_P2;
 
-    for (int8_t i = start; i >= end; i--) {
+    for (int i = start; i >= end; i--) {
         // Filter invalid moves
         if (board->cells[i] == 0) {
             continue;
@@ -114,10 +114,10 @@ NegamaxTrace traceRoot(Board *board, int alpha, const int beta, const int depth)
     NegamaxTrace tempResult;
 
     // Iterate over all possible moves
-    const int8_t start = (board->color == 1)  ? HBOUND_P1 : HBOUND_P2;
-    const int8_t end = (board->color == 1)    ? LBOUND_P1 : LBOUND_P2;
+    const int start = (board->color == 1)  ? HBOUND_P1 : HBOUND_P2;
+    const int end = (board->color == 1)    ? LBOUND_P1 : LBOUND_P2;
 
-    for (int8_t i = start; i >= end; i--) {
+    for (int i = start; i >= end; i--) {
         // Filter invalid moves
         if (board->cells[i] == 0) {
             continue;

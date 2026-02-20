@@ -273,7 +273,6 @@ void renderOutput(const char* message, const char* prefix) {
 static void renderStatBoard(const double* cells, const char* title, const char* format, const char* prefix) {
     printf("%s%s  %s:\n", prefix, OUTPUT_PREFIX, title);
 
-    // Top Border
     printf("%s%s  %s", prefix, OUTPUT_PREFIX, TL);
     for (int j = 0; j < 6; j++) {
         printf("%s%s%s%s%s%s%s", HL, HL, HL, HL, HL, HL, HL);
@@ -281,7 +280,6 @@ static void renderStatBoard(const double* cells, const char* title, const char* 
     }
     printf("%s\n", TR);
 
-    // Row 2 (Opponent: Indices 12 -> 7)
     printf("%s%s  %s", prefix, OUTPUT_PREFIX, VL);
     for (int j = 12; j >= 7; j--) {
         printf(format, cells[j]);
@@ -289,7 +287,6 @@ static void renderStatBoard(const double* cells, const char* title, const char* 
     }
     printf("\n");
 
-    // Middle Separator
     printf("%s%s  %s", prefix, OUTPUT_PREFIX, VL);
     for (int j = 0; j < 6; j++) {
         printf("%s%s%s%s%s%s%s", HL, HL, HL, HL, HL, HL, HL);
@@ -298,7 +295,6 @@ static void renderStatBoard(const double* cells, const char* title, const char* 
     }
     printf("\n");
 
-    // Row 1 (Player: Indices 0 -> 5)
     printf("%s%s  %s", prefix, OUTPUT_PREFIX, VL);
     for (int j = 0; j < 6; j++) {
         printf(format, cells[j]);
@@ -306,7 +302,6 @@ static void renderStatBoard(const double* cells, const char* title, const char* 
     }
     printf("\n");
 
-    // Bottom Border
     printf("%s%s  %s", prefix, OUTPUT_PREFIX, BL);
     for (int j = 0; j < 6; j++) {
         printf("%s%s%s%s%s%s%s", HL, HL, HL, HL, HL, HL, HL);
@@ -315,7 +310,7 @@ static void renderStatBoard(const double* cells, const char* title, const char* 
     printf("%s\n", BR);
 }
 
-void renderCacheOverview(const CacheStats* stats) {
+void renderCacheOverview(const CacheStats* stats, bool showFrag, bool showStoneDist, bool showDepthDist) {
     char message[256];
     char logBuffer[32];
 
@@ -379,11 +374,9 @@ void renderCacheOverview(const CacheStats* stats) {
     }
     renderOutput(message, CHEAT_PREFIX);
 
-    if (stats->setEntries > 0) {
+    if (showStoneDist && stats->setEntries > 0) {
         renderStatBoard(stats->avgStones, "Average Stones", "%7.1f", CHEAT_PREFIX);
         renderStatBoard(stats->maxStones, "Maximum Stones", "%7.0f", CHEAT_PREFIX);
-        
-        // Render the two new log-scale frequency boards
         renderStatBoard(stats->over7,  "Freq > 7  (log10)", "%7.2f", CHEAT_PREFIX);
         renderStatBoard(stats->over15, "Freq > 15 (log10)", "%7.2f", CHEAT_PREFIX);
     }
@@ -394,37 +387,41 @@ void renderCacheOverview(const CacheStats* stats) {
             snprintf(message, sizeof(message), "  Depth:      avg %.2f | max %u", avgDepth, (unsigned)stats->maxDepth);
             renderOutput(message, CHEAT_PREFIX);
 
-            const uint32_t span = (uint32_t)stats->maxDepth + 1;
-            enum { DEPTH_BINS = 8 };
-            const uint32_t binW = (span + DEPTH_BINS - 1) / DEPTH_BINS;
+            if (showDepthDist) {
+                const uint32_t span = (uint32_t)stats->maxDepth + 1;
+                enum { DEPTH_BINS = 8 };
+                const uint32_t binW = (span + DEPTH_BINS - 1) / DEPTH_BINS;
 
-            renderOutput("  Depth range| Count        | Percent", CHEAT_PREFIX);
-            renderOutput("  ------------------------------------", CHEAT_PREFIX);
+                renderOutput("  Depth range| Count        | Percent", CHEAT_PREFIX);
+                renderOutput("  ------------------------------------", CHEAT_PREFIX);
 
-            for (uint32_t bi = 0; bi < DEPTH_BINS; bi++) {
-                const uint32_t start = bi * binW;
-                uint32_t end = start + binW - 1;
-                if (end > stats->maxDepth) end = stats->maxDepth;
-                const double pct = (double)stats->depthBins[bi] / (double)stats->nonSolvedCount * 100.0;
-                snprintf(message, sizeof(message), "  %3u-%-3u    | %-12" PRIu64 "| %6.2f%%", start, end, stats->depthBins[bi], pct);
-                renderOutput(message, CHEAT_PREFIX);
-                if (end == stats->maxDepth) break;
+                for (uint32_t bi = 0; bi < DEPTH_BINS; bi++) {
+                    const uint32_t start = bi * binW;
+                    uint32_t end = start + binW - 1;
+                    if (end > stats->maxDepth) end = stats->maxDepth;
+                    const double pct = (double)stats->depthBins[bi] / (double)stats->nonSolvedCount * 100.0;
+                    snprintf(message, sizeof(message), "  %3u-%-3u    | %-12" PRIu64 "| %6.2f%%", start, end, stats->depthBins[bi], pct);
+                    renderOutput(message, CHEAT_PREFIX);
+                    if (end == stats->maxDepth) break;
+                }
+                renderOutput("  ------------------------------------", CHEAT_PREFIX);
             }
-            renderOutput("  ------------------------------------", CHEAT_PREFIX);
         } else {
             renderOutput("  Depth:      avg 0.00 | max 0", CHEAT_PREFIX);
         }
     }
 
-    renderOutput("  Fragmentation", CHEAT_PREFIX);
-    renderOutput("  Chunk Type | Start Index       | Chunk Size", CHEAT_PREFIX);
-    renderOutput("  --------------------------------------------", CHEAT_PREFIX);
+    if (showFrag) {
+        renderOutput("  Fragmentation", CHEAT_PREFIX);
+        renderOutput("  Chunk Type | Start Index       | Chunk Size", CHEAT_PREFIX);
+        renderOutput("  --------------------------------------------", CHEAT_PREFIX);
 
-    for (int i = 0; i < stats->chunkCount; i++) {
-        snprintf(message, sizeof(message), "     %s   | %17" PRIu64 " | %17" PRIu64,
-                 stats->topChunks[i].type ? "Set  " : "Unset", stats->topChunks[i].start, stats->topChunks[i].size);
-        renderOutput(message, CHEAT_PREFIX);
+        for (int i = 0; i < stats->chunkCount; i++) {
+            snprintf(message, sizeof(message), "     %s   | %17" PRIu64 " | %17" PRIu64,
+                     stats->topChunks[i].type ? "Set  " : "Unset", stats->topChunks[i].start, stats->topChunks[i].size);
+            renderOutput(message, CHEAT_PREFIX);
+        }
+        if (stats->chunkCount == OUTPUT_CHUNK_COUNT) renderOutput("  ...", CHEAT_PREFIX);
+        renderOutput("  --------------------------------------------", CHEAT_PREFIX);
     }
-    if (stats->chunkCount == OUTPUT_CHUNK_COUNT) renderOutput("  ...", CHEAT_PREFIX);
-    renderOutput("  --------------------------------------------", CHEAT_PREFIX);
 }

@@ -21,7 +21,7 @@ void renderCheatHelp() {
     renderOutput("  render                           : Render the current board", CHEAT_PREFIX);
     renderOutput("  analyze --solver --depth --clip  : Run analysis on the board, solver, depth and clip can be specified", CHEAT_PREFIX);
     renderOutput("  last                             : Fetch the last moves metadata", CHEAT_PREFIX);
-    renderOutput("  cache                            : Fetch the cache stats", CHEAT_PREFIX);
+    renderOutput("  cache [-f] [-sd] [-dd]           : Fetch the cache stats (fragmentation, stone count dist, depth dist)", CHEAT_PREFIX);
     renderOutput("  store [file name]                : Writes performance characteristics of the last \"step\" to a file", CHEAT_PREFIX);
     renderOutput("  trace                            : Compute move trace of the last move (requires cached evaluation)", CHEAT_PREFIX);
     renderOutput("  autoplay [true|false]            : If enabled the game loop will automatically continue", CHEAT_PREFIX);
@@ -372,12 +372,17 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
     }
 
     // Check for cache
-    if (strcmp(input, "cache") == 0) {
+    if (strncmp(input, "cache", 5) == 0 && (input[5] == '\0' || input[5] == ' ')) {
         if (getCacheSize() == 0) {
             renderOutput("  Cache disabled", CHEAT_PREFIX);
             return;
         }
-        renderCacheStats();
+
+        bool calcFrag = (strstr(input, "-f") != NULL);
+        bool calcStoneDist = (strstr(input, "-sd") != NULL);
+        bool calcDepthDist = (strstr(input, "-dd") != NULL);
+
+        renderCacheStats(calcFrag, calcStoneDist, calcDepthDist);
         return;
     }
 
