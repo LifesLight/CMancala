@@ -1,5 +1,4 @@
-#!/usr/bin/env bash
-set -euo pipefail
+set -e
 
 CC="${CC:-/usr/bin/gcc-14}"
 CXX="${CXX:-/usr/bin/g++-14}"

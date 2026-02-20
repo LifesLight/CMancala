@@ -80,6 +80,7 @@ All solvers use Negamax + Alpha-Beta. They handle double moves.
 ### User interface
 
 * Terminal UI.
+* Experimental WebUI.
 
 ### Building and Running
 

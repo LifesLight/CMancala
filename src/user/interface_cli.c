@@ -1,15 +1,9 @@
-/**
- * Copyright (c) Alexander Kurtz 2026
- */
-
+// src/user/interface_cli.c
 #include "user/interface.h"
 
-
 void startInterface() {
-    // Print welcome message
     renderWelcome();
 
-    // Global config struct
     SolverConfig solverConfig = {
         .solver = LOCAL_SOLVER,
         .depth = 0,
@@ -35,7 +29,6 @@ void startInterface() {
         .solverConfig = solverConfig
     };
 
-    // Global loop
     while (true) {
         bool requestedStart = false;
         handleConfigInput(&requestedStart, &config);
