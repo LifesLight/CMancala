@@ -13,7 +13,7 @@ static Board globalBoard;
 static Board globalLastBoard;
 static bool isGameInitialized = false;
 static bool aiThinking = false;
-static double totalNodesExplored = 0.0; /* NEW: Accumulator for total nodes */
+static double totalNodesExplored = 0.0;
 
 /* ── Board state accessors ─────────────────────────────────────────── */
 
@@ -82,7 +82,7 @@ static void init_game_with_config(int stones, int distribution, int moveFunc,
 
     isGameInitialized = true;
     aiThinking = false;
-    totalNodesExplored = 0.0; /* NEW: Reset total on new game */
+    totalNodesExplored = 0.0;
 }
 
 /* ── AI turn logic ─────────────────────────────────────────────────── */
@@ -93,7 +93,6 @@ static void ai_think_callback(void *arg) {
 
     aspirationRoot(&globalContext, &globalContext.config.solverConfig);
 
-    /* NEW: Accumulate nodes after AI finishes thinking */
     totalNodesExplored += globalContext.metadata.lastNodes;
 
     int move = globalContext.metadata.lastMove;
@@ -104,7 +103,6 @@ static void ai_think_callback(void *arg) {
 
     EM_ASM({ updateView(); });
 
-    /* Handle consecutive AI turns (captures / avalanche extra turns) */
     if (!isBoardTerminal(globalContext.board) && globalContext.board->color == -1) {
         emscripten_async_call(ai_think_callback, NULL, 500);
     } else {
@@ -170,8 +168,8 @@ EM_JS(void, launch_gui, (), {
         "       margin: 0; overflow: hidden; }",
 
         /* Shared sidebar chrome - WIDER & with top padding for content */
-        ".sidebar { position: fixed; top: 0; width: 280px; height: 100%;", /* CHANGED: 260px -> 280px */
-        "  background: #2d2d2d; padding: 20px; padding-top: 50px; border: none;", /* CHANGED: Added padding-top */
+        ".sidebar { position: fixed; top: 0; width: 280px; height: 100%;",
+        "  background: #2d2d2d; padding: 20px; padding-top: 50px; border: none;",
         "  transition: transform .3s; z-index: 10; overflow-y: auto; }",
 
         /* Left sidebar – stats */
@@ -249,9 +247,9 @@ EM_JS(void, launch_gui, (), {
         "  <span id='s-status' class='stat-val'>-</span></div>" +
         "<div class='stat-box'><span class='stat-label'>EVALUATION</span>" +
         "  <span id='s-eval' class='stat-val'>-</span></div>" +
-        "<div class='stat-box'><span class='stat-label'>LAST NODES EXPLORED</span>" + /* CHANGED: Label */
+        "<div class='stat-box'><span class='stat-label'>LAST NODES EXPLORED</span>" +
         "  <span id='s-nodes' class='stat-val'>-</span></div>" +
-        "<div class='stat-box'><span class='stat-label'>TOTAL NODES EXPLORED</span>" + /* NEW: Total stat box */
+        "<div class='stat-box'><span class='stat-label'>TOTAL NODES EXPLORED</span>" +
         "  <span id='s-total-nodes' class='stat-val'>-</span></div>" +
         "<div class='stat-box'><span class='stat-label'>THROUGHPUT</span>" +
         "  <span id='s-tput' class='stat-val'>-</span></div>";
@@ -413,10 +411,9 @@ EM_JS(void, launch_gui, (), {
             solved ? "SOLVED" : "DEPTH: " + depth;
         document.getElementById("s-eval").innerText =
             (evalVal === -9999) ? "N/A" : (evalVal > 0 ? "+" + evalVal : "" + evalVal);
-        document.getElementById("s-nodes").innerText = /* This is now LAST nodes */
+        document.getElementById("s-nodes").innerText =
             (nodes / 1e6).toFixed(3) + " M";
-        
-        /* NEW: Update total nodes explored */
+
         var totalNodes = Module._get_stat_total_nodes();
         document.getElementById("s-total-nodes").innerText =
             (totalNodes / 1e6).toFixed(3) + " M";
