@@ -440,7 +440,7 @@ EM_JS(void, launch_gui, (), {
     main.appendChild(histContainer);
 
     const footer = document.createElement("div"); footer.className = "footer";
-    footer.innerHTML = "<a href='https://github.com/LifesLight/CMancala' target='_blank'>CMancala v6.0</a>";
+    footer.innerHTML = "<a href='https://github.com/LifesLight/CMancala' target='_blank'>CMancala v6.1</a>";
     document.body.appendChild(footer);
 
     window.syncHistory = function() {
