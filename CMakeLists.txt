@@ -26,7 +26,7 @@ if(EMSCRIPTEN)
     set(CMAKE_C_STANDARD 17)
     set(CMAKE_C_STANDARD_REQUIRED ON)
 
-    set(UI_SOURCES src/web/interface_web.c)
+    set(UI_SOURCES src/web/interface.c)
 
     add_executable(Mancala ${CORE_SOURCES} ${UI_SOURCES})
     target_link_libraries(Mancala m)
