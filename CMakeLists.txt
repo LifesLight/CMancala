@@ -26,7 +26,7 @@ if(EMSCRIPTEN)
     set(CMAKE_C_STANDARD 17)
     set(CMAKE_C_STANDARD_REQUIRED ON)
 
-    set(UI_SOURCES src/user/interface_web.c)
+    set(UI_SOURCES src/web/interface_web.c)
 
     add_executable(Mancala ${CORE_SOURCES} ${UI_SOURCES})
     target_link_libraries(Mancala m)
@@ -40,7 +40,7 @@ if(EMSCRIPTEN)
         "-s NO_EXIT_RUNTIME=1"
         "-s EXPORTED_RUNTIME_METHODS=['ccall','cwrap','stringToUTF8']"
         "-s EXPORTED_FUNCTIONS=['_main','_malloc','_free']"
-        "--shell-file ${CMAKE_CURRENT_SOURCE_DIR}/src/user/shell.html"
+        "--shell-file ${CMAKE_CURRENT_SOURCE_DIR}/src/web/shell.html"
     )
     set_target_properties(Mancala PROPERTIES LINK_FLAGS "${EM_LINK_FLAGS}")
 
@@ -50,7 +50,7 @@ else()
     set(CMAKE_C_STANDARD 23)
     set(CMAKE_C_COMPILER "gcc")
 
-    set(UI_SOURCES src/user/interface_cli.c)
+    set(UI_SOURCES src/user/interface.c)
 
     add_executable(Mancala ${CORE_SOURCES} ${UI_SOURCES})
     target_link_libraries(Mancala m)
