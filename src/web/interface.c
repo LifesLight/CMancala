@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
-#include "logic/solver/cache.h" // Needed for CacheStats struct
+#include "logic/solver/cache.h"
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
@@ -44,7 +44,7 @@ static uint64_t webStatHits = 0;
 static double webStatExact = 0.0;
 static double webStatLower = 0.0;
 static double webStatUpper = 0.0;
-static int webStatHasDepth = 0; // 0 = false, 1 = true
+static int webStatHasDepth = 0;
 
 /* ================== UI HIGHLIGHT LOGIC ================== */
 
@@ -173,9 +173,9 @@ EMSCRIPTEN_KEEPALIVE void do_ai_step() {
     }
 }
 
-// Calculate stats into globals (Heavy op! Call sparingly)
+// Calculate stats
 EMSCRIPTEN_KEEPALIVE void update_web_cache_stats() {
-    if (aiThinking) return; // Don't access cache while AI is writing to it
+    if (aiThinking) return;
     CacheStats stats;
     fillCacheStats(&stats, false, false, false);
 
@@ -562,7 +562,6 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
         const currentPlayer = Module._get_current_player();
         const autoplay = Module._get_autoplay();
 
-        // Stats Formatter declared at the top to be safe
         const fmt = (n) => n >= 1e6 ? (n/1e6).toFixed(2)+"M" : (n >= 1e3 ? (n/1e3).toFixed(1)+"k" : n);
 
         const mBoard = document.getElementById("main-board");

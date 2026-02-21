@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 project(Mancala)
 
-set(MANCALA_VERSION "6.7" CACHE STRING "Current Version")
+set(MANCALA_VERSION "7.0" CACHE STRING "Current Version")
 
 # --- Options ---
 option(ENABLE_WEB_DEV "Enable Web Dev features (Cache selection, Mem growth)" OFF)
@@ -36,13 +36,11 @@ if(EMSCRIPTEN)
     add_executable(Mancala ${CORE_SOURCES} ${UI_SOURCES})
     target_link_libraries(Mancala m)
 
-    # Pass version variable down to the C code properly
     target_compile_definitions(Mancala PRIVATE MANCALA_VERSION=\"${MANCALA_VERSION}\")
 
     set_target_properties(Mancala PROPERTIES SUFFIX ".html")
     target_compile_options(Mancala PRIVATE -O3)
 
-    # Automatically generate the shell to inject the dynamic version variable.
     configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/web/shell.html ${CMAKE_CURRENT_BINARY_DIR}/shell.html @ONLY)
 
     # Base Emscripten Flags

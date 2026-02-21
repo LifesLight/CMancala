@@ -31,6 +31,8 @@ static int FN(negamax)(Board *board, int alpha, int beta, const int depth) {
         return board->color * getBoardEvaluation(board);
     }
 
+    nodeCount++;
+
 #if SOLVER_USE_CACHE
     int cachedValue;
     int boundType;
@@ -60,7 +62,6 @@ static int FN(negamax)(Board *board, int alpha, int beta, const int depth) {
     }
 
     int reference = INT32_MIN;
-    nodeCount++;
     int score;
 
 #if SOLVER_USE_CACHE
@@ -166,6 +167,7 @@ int FN(negamaxWithMove)(Board *board, int *bestMove, int alpha, int beta, const 
     }
 
     nodeCount++;
+
     int reference = INT32_MIN;
     int score;
     *bestMove = -1;
