@@ -40,9 +40,11 @@ static double webStatCacheSolved = 0.0;
 static double webStatLRUSwap = 0.0;
 static uint64_t webStatImprov = 0;
 static uint64_t webStatEvict = 0;
+static uint64_t webStatHits = 0;
 static double webStatExact = 0.0;
 static double webStatLower = 0.0;
 static double webStatUpper = 0.0;
+static int webStatHasDepth = 0; // 0 = false, 1 = true
 
 /* ================== UI HIGHLIGHT LOGIC ================== */
 
@@ -179,6 +181,8 @@ EMSCRIPTEN_KEEPALIVE void update_web_cache_stats() {
 
     webStatImprov = stats.overwriteImprove;
     webStatEvict = stats.overwriteEvict;
+    webStatHits = stats.hits;
+    webStatHasDepth = stats.hasDepth ? 1 : 0;
 
     if (stats.cacheSize > 0) {
         webStatCacheFill = (double)stats.setEntries / (double)stats.cacheSize * 100.0;
@@ -208,9 +212,11 @@ EMSCRIPTEN_KEEPALIVE double get_c_solved() { return webStatCacheSolved; }
 EMSCRIPTEN_KEEPALIVE double get_c_swap()   { return webStatLRUSwap; }
 EMSCRIPTEN_KEEPALIVE double get_c_imp()    { return (double)webStatImprov; }
 EMSCRIPTEN_KEEPALIVE double get_c_evi()    { return (double)webStatEvict; }
+EMSCRIPTEN_KEEPALIVE double get_c_hits()   { return (double)webStatHits; }
 EMSCRIPTEN_KEEPALIVE double get_c_exact()  { return webStatExact; }
 EMSCRIPTEN_KEEPALIVE double get_c_lower()  { return webStatLower; }
 EMSCRIPTEN_KEEPALIVE double get_c_upper()  { return webStatUpper; }
+EMSCRIPTEN_KEEPALIVE int    get_c_has_depth() { return webStatHasDepth; }
 
 #endif
 
@@ -449,7 +455,8 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
     let statsHtml = `<h3>SOLVER STATS</h3><div class='stat-box'><span class='stat-label'>STATUS</span><span id='s-status' class='stat-val'>-</span></div><div class='stat-box'><span class='stat-label'>EVALUATION</span><span id='s-eval' class='stat-val'>-</span></div><div class='stat-box'><span class='stat-label'>LAST NODES</span><span id='s-nodes' class='stat-val'>-</span></div><div class='stat-box'><span class='stat-label'>TOTAL NODES</span><span id='s-total-nodes' class='stat-val'>-</span></div><div class='stat-box'><span class='stat-label'>THROUGHPUT</span><span id='s-tput' class='stat-val'>-</span></div>`;
     
     #ifdef DEV_BUILD
-    statsHtml += `<h3>CACHE STATS</h3><div class='stat-box'><span class='stat-label'>CACHE USED</span><span id='c-fill' class='stat-val'>0.00%</span></div><div class='stat-box'><span class='stat-label'>CACHE SOLVED</span><span id='c-solved' class='stat-val'>0.00%</span></div><div class='stat-box'><span class='stat-label'>LRU SWAP RATE</span><span id='c-swap' class='stat-val'>0.00%</span></div><div class='stat-box'><span class='stat-label'>OVERWRITES</span><span class='stat-sub'>IMPROVE: <span id='c-imp'>0</span></span><span class='stat-sub'>EVICT: <span id='c-evi'>0</span></span></div><div class='stat-box'><span class='stat-label'>BOUNDS</span><span class='stat-sub'>EXACT: <span id='c-ex'>0.0</span>%</span><span class='stat-sub'>LOWER: <span id='c-lo'>0.0</span>%</span><span class='stat-sub'>UPPER: <span id='c-up'>0.0</span>%</span></div>`;
+    statsHtml += `<div class='stat-box'><span class='stat-label'>LAST TIME</span><span id='s-time' class='stat-val'>-</span></div>`;
+    statsHtml += `<h3>CACHE STATS</h3><div class='stat-box'><span class='stat-label'>CACHE USED</span><span id='c-fill' class='stat-val'>0.00%</span></div><div class='stat-box'><span class='stat-label'>CACHE SOLVED</span><span id='c-solved' class='stat-val'>0.00%</span></div><div class='stat-box'><span class='stat-label'>LAST CACHE HITS</span><span id='c-hits' class='stat-val'>0</span></div><div class='stat-box'><span class='stat-label'>LRU SWAP RATE</span><span id='c-swap' class='stat-val'>0.00%</span></div><div class='stat-box'><span class='stat-label'>OVERWRITES</span><span class='stat-sub'>IMPROVE: <span id='c-imp'>0</span></span><span class='stat-sub'>EVICT: <span id='c-evi'>0</span></span></div><div class='stat-box'><span class='stat-label'>BOUNDS</span><span class='stat-sub'>EXACT: <span id='c-ex'>0.0</span>%</span><span class='stat-sub'>LOWER: <span id='c-lo'>0.0</span>%</span><span class='stat-sub'>UPPER: <span id='c-up'>0.0</span>%</span></div>`;
     #endif
 
     sideL.innerHTML = statsHtml;
@@ -460,7 +467,7 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
     
     const sideR = document.createElement("div"); sideR.className = "sidebar sidebar-right";
     
-    let html = `<h3>GAME SETTINGS</h3><div class='cfg-row'><span class='cfg-label'>STONES (1-18)</span><input id='cfg-stones' type='number' value='4' min='1' max='18' oninput="if(this.value > 18) this.value = 18; if(this.value < 1 && this.value !== '') this.value = 1;"></div><div class='cfg-row'><span class='cfg-label'>DISTRIBUTION</span><select id='cfg-dist'><option value='0'>Uniform</option><option value='1'>Random</option></select></div><div class='cfg-row' id='seed-row' style='display:none'><span class='cfg-label'>SEED (0=rand)</span><input id='cfg-seed' type='number' value='0'></div><div class='cfg-row'><span class='cfg-label'>MODE</span><select id='cfg-mode'><option value='0'>Classic</option><option value='1'>Avalanche</option></select></div><div class='cfg-row'><span class='cfg-label'>AI TIME LIMIT (s, 0=inf)</span><input id='cfg-time' type='number' value='1'></div><div class='cfg-row'><span class='cfg-label'>STARTING PLAYER</span><select id='cfg-start'><option value='1'>Player</option><option value='-1'>AI</option></select></div>`;
+    let html = `<h3>GAME SETTINGS</h3><div class='cfg-row'><span class='cfg-label'>STONES (1-18)</span><input id='cfg-stones' type='number' value='4' min='1' max='18' oninput="if(this.value > 18) this.value = 18; if(this.value < 1 && this.value !== '') this.value = 1;"></div><div class='cfg-row'><span class='cfg-label'>DISTRIBUTION</span><select id='cfg-dist'><option value='0'>Uniform</option><option value='1'>Random</option></select></div><div class='cfg-row' id='seed-row' style='display:none'><span class='cfg-label'>SEED (0=rand)</span><input id='cfg-seed' type='number' value='0'></div><div class='cfg-row'><span class='cfg-label'>MODE</span><select id='cfg-mode'><option value='0'>Classic</option><option value='1'>Avalanche</option></select></div><div class='cfg-row'><span class='cfg-label'>AI TIME LIMIT (s, 0=inf)</span><input id='cfg-time' type='number' value='1' min='0' oninput="if(this.value < 0) this.value = 0;"></div><div class='cfg-row'><span class='cfg-label'>STARTING PLAYER</span><select id='cfg-start'><option value='1'>Player</option><option value='-1'>AI</option></select></div>`;
 
     #ifdef DEV_BUILD
     html += `<div class='cfg-row'><span class='cfg-label'>CACHE SIZE (18-30)</span><input id='cfg-cache' type='number' value='24' min='18' max='30' oninput="if(this.value > 30) this.value = 30; if(this.value < 18 && this.value !== '') this.value = 18;"></div>`;
@@ -555,6 +562,9 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
         const currentPlayer = Module._get_current_player();
         const autoplay = Module._get_autoplay();
 
+        // Stats Formatter declared at the top to be safe
+        const fmt = (n) => n >= 1e6 ? (n/1e6).toFixed(2)+"M" : (n >= 1e3 ? (n/1e3).toFixed(1)+"k" : n);
+
         const mBoard = document.getElementById("main-board");
         mBoard.classList.toggle("disabled", !!(thinking || gameOver));
         mBoard.classList.toggle("cheated", !!Module._get_is_cheated());
@@ -603,17 +613,27 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
         
         document.getElementById("s-status").innerText = Module._get_stat_solved() ? "SOLVED" : "DEPTH: " + Module._get_stat_depth();
         let ev = Module._get_stat_eval(); document.getElementById("s-eval").innerText = (ev === -9999) ? "N/A" : (ev > 0 ? "+" + ev : ev);
-        document.getElementById("s-nodes").innerText = (Module._get_stat_nodes() / 1e6).toFixed(3) + " M";
-        document.getElementById("s-total-nodes").innerText = (Module._get_stat_total_nodes() / 1e6).toFixed(3) + " M";
+        
+        document.getElementById("s-nodes").innerText = fmt(Module._get_stat_nodes());
+        document.getElementById("s-total-nodes").innerText = fmt(Module._get_stat_total_nodes());
+        
         let ti = Module._get_stat_time(); document.getElementById("s-tput").innerText = (ti > 0 ? ((Module._get_stat_nodes() / ti) / 1e6).toFixed(2) : "0.00") + " M n/s";
         
         #ifdef DEV_BUILD
+        document.getElementById("s-time").innerText = ti.toFixed(3) + " s";
+
         Module._update_web_cache_stats();
         document.getElementById("c-fill").innerText = Module._get_c_fill().toFixed(2) + "%";
-        document.getElementById("c-solved").innerText = Module._get_c_solved().toFixed(2) + "%";
+        
+        if (Module._get_c_has_depth()) {
+            document.getElementById("c-solved").innerText = Module._get_c_solved().toFixed(2) + "%";
+        } else {
+            document.getElementById("c-solved").innerText = " - %";
+        }
+
+        document.getElementById("c-hits").innerText = fmt(Module._get_c_hits());
         document.getElementById("c-swap").innerText = Module._get_c_swap().toFixed(2) + "%";
         
-        const fmt = (n) => n > 1e6 ? (n/1e6).toFixed(1)+"M" : (n > 1e3 ? (n/1e3).toFixed(1)+"K" : n);
         document.getElementById("c-imp").innerText = fmt(Module._get_c_imp());
         document.getElementById("c-evi").innerText = fmt(Module._get_c_evi());
         

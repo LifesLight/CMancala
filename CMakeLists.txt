@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 project(Mancala)
 
-set(MANCALA_VERSION "6.6" CACHE STRING "Current Version")
+set(MANCALA_VERSION "6.7" CACHE STRING "Current Version")
 
 # --- Options ---
 option(ENABLE_WEB_DEV "Enable Web Dev features (Cache selection, Mem growth)" OFF)
