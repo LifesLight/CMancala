@@ -28,22 +28,43 @@ static bool isGameInitialized = false;
 static bool aiThinking = false;
 static double totalNodesExplored = 0.0;
 
-static int calc_capture_mask(const Board* prev, const Board* curr) {
-    int mask = 0;
-    bool sweep_p1 = false, sweep_p2 = false;
-    if (isBoardTerminal(curr)) {
-        if (isBoardPlayerOneEmpty(curr)) sweep_p2 = true;
-        if (isBoardPlayerTwoEmpty(curr)) sweep_p1 = true;
+static int calc_capture_mask(const Board* prev, const Board* curr, int move) {
+    if (move < 0 || move > 13) return 0;
+    
+    int player = prev->color;
+    int stones = prev->cells[move];
+    if (stones == 0) return 0;
+    
+    int last_pit = move;
+    int stones_left = stones;
+    int expected_sow_to_store = 0;
+    
+    // Calculate how many stones should land in the store purely via sowing
+    while (stones_left > 0) {
+        last_pit = (last_pit + 1) % 14;
+        if (player == 1 && last_pit == 13) continue;
+        if (player == -1 && last_pit == 6) continue;
+        
+        if (player == 1 && last_pit == 6) expected_sow_to_store++;
+        if (player == -1 && last_pit == 13) expected_sow_to_store++;
+        
+        stones_left--;
     }
-    if (prev->color == 1) {
-        for (int i = 7; i <= 12; i++) {
-            if (curr->cells[i] < prev->cells[i] && !sweep_p2) mask |= (1 << i);
-        }
+    
+    int actual_store_diff = 0;
+    if (player == 1) {
+        actual_store_diff = curr->cells[6] - prev->cells[6];
     } else {
-        for (int i = 0; i <= 5; i++) {
-            if (curr->cells[i] < prev->cells[i] && !sweep_p1) mask |= (1 << i);
-        }
+        actual_store_diff = curr->cells[13] - prev->cells[13];
     }
+    
+    int mask = 0;
+    // If store gained more than the naturally sowed stones, it's a guaranteed capture.
+    if (actual_store_diff > expected_sow_to_store) {
+        // Only highlight the opponent's captured pit as red.
+        mask |= (1 << (12 - last_pit));
+    }
+    
     return mask;
 }
 
@@ -52,6 +73,7 @@ static int calc_modified_mask(const Board* prev, const Board* curr, int capMask)
     for (int i = 0; i < 14; i++) {
         if (prev->cells[i] != curr->cells[i]) mask |= (1 << i);
     }
+    // If a capture happened, mathematically tag the pit that triggered it as modified (grey)
     if (capMask != 0) {
         for (int i = 0; i <= 12; i++) {
             if (i == 6) continue; 
@@ -186,7 +208,7 @@ static void ai_think_callback(void *arg) {
     if (move != -1) {
         copyBoard(globalContext.board, globalContext.lastBoard);
         makeMoveManual(globalContext.board, move);
-        currentCaptureMask = calc_capture_mask(globalContext.lastBoard, globalContext.board);
+        currentCaptureMask = calc_capture_mask(globalContext.lastBoard, globalContext.board, move);
         currentModifiedMask = calc_modified_mask(globalContext.lastBoard, globalContext.board, currentCaptureMask);
         push_history(globalContext.board, move, currentCaptureMask, currentModifiedMask);
     }
@@ -212,7 +234,7 @@ void do_web_move(int index) {
     copyBoard(globalContext.board, globalContext.lastBoard);
     makeMoveManual(globalContext.board, index);
     globalContext.metadata.lastMove = index;
-    currentCaptureMask = calc_capture_mask(globalContext.lastBoard, globalContext.board);
+    currentCaptureMask = calc_capture_mask(globalContext.lastBoard, globalContext.board, index);
     currentModifiedMask = calc_modified_mask(globalContext.lastBoard, globalContext.board, currentCaptureMask);
     push_history(globalContext.board, index, currentCaptureMask, currentModifiedMask);
     EM_ASM({ updateView(); });
@@ -229,8 +251,9 @@ void restart_game(int stones, int distribution, int moveFunc, double timeLimit, 
 }
 
 #ifdef __EMSCRIPTEN__
-EM_JS(void, launch_gui, (), {
+EM_JS(void, launch_gui, (const char* v_ptr), {
     document.body.innerHTML = "";
+    const vStr = UTF8ToString(v_ptr);
     const css = `
         * { box-sizing: border-box; }
         body { background: #222; color: #fff; font-family: monospace; margin: 0; overflow: hidden; }
@@ -327,7 +350,7 @@ EM_JS(void, launch_gui, (), {
     hBtn.onclick = () => { const hc = document.getElementById("history-container"); if (hc.style.display === "none" || !hc.style.display) { hc.style.display = "flex"; hBtn.innerText = "▲ history ▲"; window.syncHistory(); } else { hc.style.display = "none"; hBtn.innerText = "▼ history ▼"; } };
     main.appendChild(hBtn);
     const hCont = document.createElement("div"); hCont.id = "history-container"; hCont.className = "history-container"; main.appendChild(hCont);
-    document.body.insertAdjacentHTML('beforeend', "<div class='footer'><a href='https://github.com/LifesLight/CMancala' target='_blank'>CMancala v6.4</a></div>");
+    document.body.insertAdjacentHTML('beforeend', "<div class='footer'><a href='https://github.com/LifesLight/CMancala' target='_blank'>CMancala v" + vStr + "</a></div>");
     
     window.syncHistory = function() {
         const hc = document.getElementById("history-container"); if (hc.style.display === "none") return;
@@ -411,6 +434,6 @@ EM_JS(void, launch_gui, (), {
 void startInterface() {
     init_game_with_config(4, 0, 0, 1.0, 1, 0);
 #ifdef __EMSCRIPTEN__
-    launch_gui();
+    launch_gui(MANCALA_VERSION);
 #endif
 }

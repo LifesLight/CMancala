@@ -258,7 +258,7 @@ void renderBoard(const Board *board, const char* prefix, const GameSettings* set
 
 void renderWelcome() {
     printf("+-----------------------------------------+\n");
-    printf("| %sWelcome to CMancala!                 |\n", OUTPUT_PREFIX);
+    printf("| %sWelcome to CMancala v%s!            |\n", OUTPUT_PREFIX, MANCALA_VERSION);
     printf("| %sType 'help' for a list of commands   |\n", OUTPUT_PREFIX);
     printf("|                                         |\n");
     printf("| (c) Alexander Kurtz 2026                |\n");

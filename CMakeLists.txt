@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.20)
 project(Mancala)
 
+set(MANCALA_VERSION "6.5" CACHE STRING "Current Version")
+
 # --- 1. Define Core Shared Files ---
 set(CORE_SOURCES
     src/main.c
@@ -30,17 +32,23 @@ if(EMSCRIPTEN)
 
     add_executable(Mancala ${CORE_SOURCES} ${UI_SOURCES})
     target_link_libraries(Mancala m)
+    
+    # Pass version variable down to the C code properly
+    target_compile_definitions(Mancala PRIVATE MANCALA_VERSION=\"${MANCALA_VERSION}\")
 
     set_target_properties(Mancala PROPERTIES SUFFIX ".html")
     target_compile_options(Mancala PRIVATE -O3)
+
+    # Automatically generate the shell to inject the dynamic version variable.
+    configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/web/shell.html ${CMAKE_CURRENT_BINARY_DIR}/shell.html @ONLY)
 
     string(JOIN " " EM_LINK_FLAGS
         "-O3"
         "-s INITIAL_MEMORY=268435456"
         "-s NO_EXIT_RUNTIME=1"
-        "-s EXPORTED_RUNTIME_METHODS=['ccall','cwrap','stringToUTF8']"
+        "-s EXPORTED_RUNTIME_METHODS=['ccall','cwrap','stringToUTF8','UTF8ToString']"
         "-s EXPORTED_FUNCTIONS=['_main','_malloc','_free']"
-        "--shell-file ${CMAKE_CURRENT_SOURCE_DIR}/src/web/shell.html"
+        "--shell-file ${CMAKE_CURRENT_BINARY_DIR}/shell.html"
     )
     set_target_properties(Mancala PROPERTIES LINK_FLAGS "${EM_LINK_FLAGS}")
 
@@ -54,6 +62,9 @@ else()
 
     add_executable(Mancala ${CORE_SOURCES} ${UI_SOURCES})
     target_link_libraries(Mancala m)
+    
+    # Pass version variable down to the native executable too
+    target_compile_definitions(Mancala PRIVATE MANCALA_VERSION=\"${MANCALA_VERSION}\")
 
     # --- PGO options ---
     option(ENABLE_PGO "Enable profile guided optimization" OFF)
