@@ -28,9 +28,16 @@ static bool isGameInitialized = false;
 static bool aiThinking = false;
 static double totalNodesExplored = 0.0;
 
+/* ================== UI HIGHLIGHT LOGIC ================== */
+
 static int calc_capture_mask(const Board* prev, const Board* curr, int move) {
+    // Avalanche mode has no captures; completely bypass the logic
+    if (globalContext.config.gameSettings.moveFunction == AVALANCHE_MOVE) {
+        return 0;
+    }
+
     if (move < 0 || move > 13) return 0;
-    
+
     int player = prev->color;
     int stones = prev->cells[move];
     if (stones == 0) return 0;
@@ -51,18 +58,12 @@ static int calc_capture_mask(const Board* prev, const Board* curr, int move) {
         stones_left--;
     }
     
-    int actual_store_diff = 0;
-    if (player == 1) {
-        actual_store_diff = curr->cells[6] - prev->cells[6];
-    } else {
-        actual_store_diff = curr->cells[13] - prev->cells[13];
-    }
+    int actual_store_diff = (player == 1) ? (curr->cells[6] - prev->cells[6]) : (curr->cells[13] - prev->cells[13]);
     
     int mask = 0;
-    // If store gained more than the naturally sowed stones, it's a guaranteed capture.
+    // If the store gained more than the naturally sowed stones, it's a guaranteed capture.
     if (actual_store_diff > expected_sow_to_store) {
-        // Only highlight the opponent's captured pit as red.
-        mask |= (1 << (12 - last_pit));
+        mask |= (1 << (12 - last_pit)); // Highlight the opponent's captured pit
     }
     
     return mask;
@@ -73,7 +74,7 @@ static int calc_modified_mask(const Board* prev, const Board* curr, int capMask)
     for (int i = 0; i < 14; i++) {
         if (prev->cells[i] != curr->cells[i]) mask |= (1 << i);
     }
-    // If a capture happened, mathematically tag the pit that triggered it as modified (grey)
+    // Mathematically tag the player's pit that triggered the capture as modified (grey)
     if (capMask != 0) {
         for (int i = 0; i <= 12; i++) {
             if (i == 6) continue; 
@@ -82,6 +83,8 @@ static int calc_modified_mask(const Board* prev, const Board* curr, int capMask)
     }
     return mask;
 }
+
+/* ================== EMSCRIPTEN EXPORTS ================== */
 
 EMSCRIPTEN_KEEPALIVE int  get_stone_count(int i) { return isGameInitialized ? globalContext.board->cells[i] : 0; }
 EMSCRIPTEN_KEEPALIVE int  get_current_player()   { return isGameInitialized ? globalContext.board->color : 0; }
@@ -93,7 +96,11 @@ EMSCRIPTEN_KEEPALIVE int  get_current_captures() {
     if (globalContext.config.gameSettings.moveFunction == AVALANCHE_MOVE) return 0;
     return currentCaptureMask; 
 }
-EMSCRIPTEN_KEEPALIVE int  get_current_modified() { return currentModifiedMask; } 
+
+EMSCRIPTEN_KEEPALIVE int  get_current_modified() { 
+    if (globalContext.config.gameSettings.moveFunction == AVALANCHE_MOVE) return 0;
+    return currentModifiedMask; 
+} 
 
 EMSCRIPTEN_KEEPALIVE int  get_is_cheated()       { return isCheated; }
 EMSCRIPTEN_KEEPALIVE int  get_history_count()    { return historyCount; }
@@ -112,9 +119,22 @@ EMSCRIPTEN_KEEPALIVE int get_history_captures(int turn) {
     return 0;
 }
 EMSCRIPTEN_KEEPALIVE int get_history_modified(int turn) { 
+    if (globalContext.config.gameSettings.moveFunction == AVALANCHE_MOVE) return 0;
     if (turn >= 0 && turn < historyCount) return boardHistoryModified[turn];
     return 0;
 }
+
+EMSCRIPTEN_KEEPALIVE int    get_stat_solved() { return globalContext.metadata.lastSolved; }
+EMSCRIPTEN_KEEPALIVE int    get_stat_depth()  { return globalContext.metadata.lastDepth; }
+EMSCRIPTEN_KEEPALIVE double get_stat_nodes()  { return (double)globalContext.metadata.lastNodes; }
+EMSCRIPTEN_KEEPALIVE double get_stat_time()   { return globalContext.metadata.lastTime; }
+EMSCRIPTEN_KEEPALIVE double get_stat_total_nodes() { return totalNodesExplored; }
+EMSCRIPTEN_KEEPALIVE int    get_stat_eval() {
+    if (globalContext.metadata.lastEvaluation == INT32_MAX) return -9999;
+    return globalContext.metadata.lastEvaluation;
+}
+
+/* ================== GAME ENGINE ================== */
 
 static void push_history(Board* b, int move, int capMask, int modMask) {
     if (historyCount < MAX_HISTORY) {
@@ -154,16 +174,6 @@ void undo_move() {
         globalContext.metadata.lastMove = -1;
         EM_ASM({ updateView(); });
     }
-}
-
-EMSCRIPTEN_KEEPALIVE int    get_stat_solved() { return globalContext.metadata.lastSolved; }
-EMSCRIPTEN_KEEPALIVE int    get_stat_depth()  { return globalContext.metadata.lastDepth; }
-EMSCRIPTEN_KEEPALIVE double get_stat_nodes()  { return (double)globalContext.metadata.lastNodes; }
-EMSCRIPTEN_KEEPALIVE double get_stat_time()   { return globalContext.metadata.lastTime; }
-EMSCRIPTEN_KEEPALIVE double get_stat_total_nodes() { return totalNodesExplored; }
-EMSCRIPTEN_KEEPALIVE int    get_stat_eval() {
-    if (globalContext.metadata.lastEvaluation == INT32_MAX) return -9999;
-    return globalContext.metadata.lastEvaluation;
 }
 
 static void init_game_with_config(int stones, int distribution, int moveFunc, double timeLimit, int startColor, int seedInput) {
@@ -220,6 +230,7 @@ static void ai_think_callback(void *arg) {
         EM_ASM({ updateView(); });
     }
 }
+
 static void kick_off_ai(void) {
     aiThinking = true;
     EM_ASM({ updateView(); });
@@ -250,10 +261,17 @@ void restart_game(int stones, int distribution, int moveFunc, double timeLimit, 
 #endif
 }
 
+/* ================== FRONTEND GUI ================== */
+
 #ifdef __EMSCRIPTEN__
 EM_JS(void, launch_gui, (const char* v_ptr), {
     document.body.innerHTML = "";
     const vStr = UTF8ToString(v_ptr);
+    
+    // Global Touch Detection state for bypassing hover bugs on Mobile/Tablets
+    window.isTouchDevice = false;
+    window.addEventListener('touchstart', () => { window.isTouchDevice = true; }, { passive: true });
+
     const css = `
         * { box-sizing: border-box; }
         body { background: #222; color: #fff; font-family: monospace; margin: 0; overflow: hidden; }
@@ -291,10 +309,10 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
         .mini .row { gap: 5px; margin: 5px 0; }
         .player-pit { cursor: pointer; border-color: #0f0 !important; }
         .ai-pit { border-color: #f00 !important; }
-        .highlight-modified { background: #5a5a5a !important; }
-        .highlight-move { background: #999 !important; color: #000; }
+        .highlight-modified { background: #5a5a5a !important; color: #fff; }
+        .highlight-move { background: #999 !important; color: #fff; }
         .highlight-capture { background-color: #e73121 !important; color: #fff; }
-        .highlight-last-drop { background: #6e6e6e !important; color: #000; }
+        .highlight-last-drop { background: #6e6e6e !important; color: #fff; }
         .disabled { opacity: .5; pointer-events: none; }
         .undo-pos { position: absolute; bottom: -35px; left: 30px; }
         .history-container { display: none; flex-direction: column; gap: 20px; padding: 15px; background: #1a1a1a; border-radius: 10px; max-height: 35vh; overflow-y: auto; margin-top: 10px; border: 1px solid #444; }
@@ -304,51 +322,81 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
         .footer a { color: #888; text-decoration: none; font-size: 14px; pointer-events: auto; }
     `;
     const style = document.createElement("style"); style.textContent = css; document.head.appendChild(style);
+
     window.createBoardDOM = function(container, prefix, isMini) {
         container.innerHTML = "";
         const wrap = document.createElement("div"); wrap.className = "board-wrapper " + (isMini ? "mini" : "main"); wrap.id = prefix + "board";
         const p2Store = document.createElement("div"); p2Store.className = "store"; p2Store.id = prefix + "13"; wrap.appendChild(p2Store);
         const rows = document.createElement("div");
         const tRow = document.createElement("div"); tRow.className = "row";
-        for (let i = 12; i >= 7; i--) { const p = document.createElement("div"); p.className = "pit ai-pit"; p.id = prefix + i; tRow.appendChild(p); }
+        
+        for (let i = 12; i >= 7; i--) { 
+            const p = document.createElement("div"); p.className = "pit ai-pit"; p.id = prefix + i; tRow.appendChild(p); 
+        }
+        
         const bRow = document.createElement("div"); bRow.className = "row";
         for (let i = 0; i <= 5; i++) {
             const p = document.createElement("div"); p.className = "pit player-pit"; p.id = prefix + i;
             if (!isMini) {
-                p.onclick = () => { if (Module._get_ai_thinking() || Module._get_current_player() !== 1) return; Module._do_web_move(i); };
-                p.onmouseenter = () => { window.hoveredPit = i; window.updateView(); };
-                p.onmouseleave = () => { window.hoveredPit = -1; window.updateView(); };
+                p.onclick = () => { 
+                    if (Module._get_ai_thinking() || Module._get_current_player() !== 1) return; 
+                    window.hoveredPit = -1; // Reset hover on click to avoid stickiness
+                    Module._do_web_move(i); 
+                };
+                p.onmouseenter = () => { 
+                    if (!window.isTouchDevice) { window.hoveredPit = i; window.updateView(); } 
+                };
+                p.onmouseleave = () => { 
+                    if (!window.isTouchDevice) { window.hoveredPit = -1; window.updateView(); } 
+                };
             }
             bRow.appendChild(p);
         }
         rows.appendChild(tRow); rows.appendChild(bRow); wrap.appendChild(rows);
+        
         const p1Store = document.createElement("div"); p1Store.className = "store"; p1Store.id = prefix + "6"; wrap.appendChild(p1Store);
         container.appendChild(wrap);
     };
+
     const sideL = document.createElement("div"); sideL.className = "sidebar sidebar-left";
     sideL.innerHTML = `<h3>SOLVER STATS</h3><div class='stat-box'><span class='stat-label'>STATUS</span><span id='s-status' class='stat-val'>-</span></div><div class='stat-box'><span class='stat-label'>EVALUATION</span><span id='s-eval' class='stat-val'>-</span></div><div class='stat-box'><span class='stat-label'>LAST NODES</span><span id='s-nodes' class='stat-val'>-</span></div><div class='stat-box'><span class='stat-label'>TOTAL NODES</span><span id='s-total-nodes' class='stat-val'>-</span></div><div class='stat-box'><span class='stat-label'>THROUGHPUT</span><span id='s-tput' class='stat-val'>-</span></div>`;
     document.body.appendChild(sideL);
+    
     const togL = document.createElement("button"); togL.className = "side-toggle toggle-left"; togL.innerText = "STATS";
     togL.onclick = () => sideL.classList.toggle("open"); document.body.appendChild(togL);
+    
     const sideR = document.createElement("div"); sideR.className = "sidebar sidebar-right";
     sideR.innerHTML = `<h3>GAME SETTINGS</h3><div class='cfg-row'><span class='cfg-label'>STONES (1-18)</span><input id='cfg-stones' type='number' value='4' min='1' max='18' oninput="if(this.value > 18) this.value = 18; if(this.value < 1 && this.value !== '') this.value = 1;"></div><div class='cfg-row'><span class='cfg-label'>DISTRIBUTION</span><select id='cfg-dist'><option value='0'>Uniform</option><option value='1'>Random</option></select></div><div class='cfg-row' id='seed-row' style='display:none'><span class='cfg-label'>SEED (0=rand)</span><input id='cfg-seed' type='number' value='0'></div><div class='cfg-row'><span class='cfg-label'>MODE</span><select id='cfg-mode'><option value='0'>Classic</option><option value='1'>Avalanche</option></select></div><div class='cfg-row'><span class='cfg-label'>AI TIME LIMIT (s, 0=inf)</span><input id='cfg-time' type='number' value='1'></div><div class='cfg-row'><span class='cfg-label'>STARTING PLAYER</span><select id='cfg-start'><option value='1'>Player</option><option value='-1'>AI</option></select></div><button id='cfg-go' class='cfg-btn'>START GAME</button>`;
     document.body.appendChild(sideR);
+    
     document.getElementById('cfg-dist').onchange = (e) => { document.getElementById('seed-row').style.display = e.target.value == '1' ? 'block' : 'none'; };
     const togR = document.createElement("button"); togR.className = "side-toggle toggle-right"; togR.innerText = "SETTINGS";
     togR.onclick = () => sideR.classList.toggle("open"); document.body.appendChild(togR);
+    
     document.getElementById("cfg-go").onclick = () => {
         if (Module._get_ai_thinking()) return;
         Module._restart_game(parseInt(document.getElementById("cfg-stones").value), parseInt(document.getElementById("cfg-dist").value), parseInt(document.getElementById("cfg-mode").value), parseFloat(document.getElementById("cfg-time").value), parseInt(document.getElementById("cfg-start").value), parseInt(document.getElementById("cfg-seed").value));
         sideR.classList.remove("open");
     };
+    
     const main = document.createElement("div"); main.className = "main-content"; document.body.appendChild(main);
     const bRel = document.createElement("div"); bRel.className = "board-container-relative"; main.appendChild(bRel);
     const bCont = document.createElement("div"); bRel.appendChild(bCont); window.createBoardDOM(bCont, "main-", false);
+    
     const uBtn = document.createElement("button"); uBtn.id = "undo-btn"; uBtn.className = "bottom-btn undo-pos"; uBtn.innerText = "undo move"; uBtn.onclick = () => Module._undo_move(); bRel.appendChild(uBtn);
     const sTxt = document.createElement("div"); sTxt.id = "status-text"; sTxt.style.marginTop = "25px"; sTxt.style.marginBottom = "15px"; sTxt.style.fontSize = "18px"; main.appendChild(sTxt);
     const hBtn = document.createElement("button"); hBtn.id = "hist-btn"; hBtn.className = "bottom-btn"; hBtn.style.marginTop = "0px"; hBtn.innerText = "▼ history ▼";
-    hBtn.onclick = () => { const hc = document.getElementById("history-container"); if (hc.style.display === "none" || !hc.style.display) { hc.style.display = "flex"; hBtn.innerText = "▲ history ▲"; window.syncHistory(); } else { hc.style.display = "none"; hBtn.innerText = "▼ history ▼"; } };
+    
+    hBtn.onclick = () => { 
+        const hc = document.getElementById("history-container"); 
+        if (hc.style.display === "none" || !hc.style.display) { 
+            hc.style.display = "flex"; hBtn.innerText = "▲ history ▲"; window.syncHistory(); 
+        } else { 
+            hc.style.display = "none"; hBtn.innerText = "▼ history ▼"; 
+        } 
+    };
     main.appendChild(hBtn);
+    
     const hCont = document.createElement("div"); hCont.id = "history-container"; hCont.className = "history-container"; main.appendChild(hCont);
     document.body.insertAdjacentHTML('beforeend', "<div class='footer'><a href='https://github.com/LifesLight/CMancala' target='_blank'>CMancala v" + vStr + "</a></div>");
     
@@ -358,9 +406,11 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
         for (let t = count - 2; t >= 0; t--) {
             const item = document.createElement("div"); item.className = "hist-item";
             const bC = document.createElement("div"); window.createBoardDOM(bC, "h" + t + "-", true); item.appendChild(bC); hc.appendChild(item);
+            
             const mv = Module._get_history_move(t); 
             const cp = Module._get_history_captures(t);
             const md = Module._get_history_modified(t);
+            
             for (let i = 0; i < 14; i++) {
                 const el = document.getElementById("h" + t + "-" + i);
                 if (el) { 
@@ -389,6 +439,7 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
         const hoveredPit = window.hoveredPit !== undefined ? window.hoveredPit : -1;
         let drops = [];
         let lastDrop = -1;
+        
         if (hoveredPit >= 0 && !thinking && !gameOver && Module._get_current_player() === 1) {
             let stones = Module._get_stone_count(hoveredPit);
             if (stones > 0) {
@@ -409,6 +460,7 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
             
             el.classList.remove("highlight-capture", "highlight-move", "highlight-modified", "highlight-last-drop");
             
+            // Render hover preview if active, otherwise render actual history highlights
             if (lastDrop !== -1) {
                 if (i === lastDrop) el.classList.add("highlight-last-drop");
                 else if (drops.includes(i)) el.classList.add("highlight-modified");
@@ -424,13 +476,17 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
         document.getElementById("s-nodes").innerText = (Module._get_stat_nodes() / 1e6).toFixed(3) + " M";
         document.getElementById("s-total-nodes").innerText = (Module._get_stat_total_nodes() / 1e6).toFixed(3) + " M";
         let ti = Module._get_stat_time(); document.getElementById("s-tput").innerText = (ti > 0 ? ((Module._get_stat_nodes() / ti) / 1e6).toFixed(2) : "0.00") + " M n/s";
+        
         const st = document.getElementById("status-text");
         if (gameOver) st.innerText = ">> GAME OVER"; else if (thinking) st.innerText = ">> AI THINKING..."; else st.innerText = ">> YOUR TURN";
+        
         window.syncHistory();
     };
+    
     setTimeout(updateView, 100);
 });
 #endif
+
 void startInterface() {
     init_game_with_config(4, 0, 0, 1.0, 1, 0);
 #ifdef __EMSCRIPTEN__
