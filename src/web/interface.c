@@ -52,8 +52,6 @@ static int calc_modified_mask(const Board* prev, const Board* curr, int capMask)
     for (int i = 0; i < 14; i++) {
         if (prev->cells[i] != curr->cells[i]) mask |= (1 << i);
     }
-    // If a capture happened, the capturing pit returned to 0 stones (0->1->0)
-    // We mathematically find the opposite pit and tag it as modified.
     if (capMask != 0) {
         for (int i = 0; i <= 12; i++) {
             if (i == 6) continue; 
@@ -259,8 +257,8 @@ EM_JS(void, launch_gui, (), {
         .board-wrapper.cheated { background: #3d3336; }
         .board-wrapper.main { padding: 20px; gap: 20px; }
         .board-wrapper.mini { padding: 10px; gap: 10px; border-radius: 6px; background: #2a2a2a; }
-        .pit { border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #444; transition: background 0.2s; }
-        .store { border-radius: 20px; display: flex; align-items: center; justify-content: center; background: #555; transition: background 0.2s; }
+        .pit { border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #444; transition: background 0.2s, color 0.2s; }
+        .store { border-radius: 20px; display: flex; align-items: center; justify-content: center; background: #555; transition: background 0.2s, color 0.2s; }
         .row { display: flex; }
         .main .pit { width: 60px; height: 60px; font-size: 24px; border: 2px solid #555; }
         .main .store { width: 80px; font-size: 32px; border: 2px solid #666; }
@@ -273,6 +271,7 @@ EM_JS(void, launch_gui, (), {
         .highlight-modified { background: #5a5a5a !important; }
         .highlight-move { background: #999 !important; color: #000; }
         .highlight-capture { background-color: #e73121 !important; color: #fff; }
+        .highlight-last-drop { background: #6e6e6e !important; color: #000; }
         .disabled { opacity: .5; pointer-events: none; }
         .undo-pos { position: absolute; bottom: -35px; left: 30px; }
         .history-container { display: none; flex-direction: column; gap: 20px; padding: 15px; background: #1a1a1a; border-radius: 10px; max-height: 35vh; overflow-y: auto; margin-top: 10px; border: 1px solid #444; }
@@ -292,7 +291,11 @@ EM_JS(void, launch_gui, (), {
         const bRow = document.createElement("div"); bRow.className = "row";
         for (let i = 0; i <= 5; i++) {
             const p = document.createElement("div"); p.className = "pit player-pit"; p.id = prefix + i;
-            if (!isMini) p.onclick = () => { if (Module._get_ai_thinking() || Module._get_current_player() !== 1) return; Module._do_web_move(i); };
+            if (!isMini) {
+                p.onclick = () => { if (Module._get_ai_thinking() || Module._get_current_player() !== 1) return; Module._do_web_move(i); };
+                p.onmouseenter = () => { window.hoveredPit = i; window.updateView(); };
+                p.onmouseleave = () => { window.hoveredPit = -1; window.updateView(); };
+            }
             bRow.appendChild(p);
         }
         rows.appendChild(tRow); rows.appendChild(bRow); wrap.appendChild(rows);
@@ -324,7 +327,7 @@ EM_JS(void, launch_gui, (), {
     hBtn.onclick = () => { const hc = document.getElementById("history-container"); if (hc.style.display === "none" || !hc.style.display) { hc.style.display = "flex"; hBtn.innerText = "▲ history ▲"; window.syncHistory(); } else { hc.style.display = "none"; hBtn.innerText = "▼ history ▼"; } };
     main.appendChild(hBtn);
     const hCont = document.createElement("div"); hCont.id = "history-container"; hCont.className = "history-container"; main.appendChild(hCont);
-    document.body.insertAdjacentHTML('beforeend', "<div class='footer'><a href='https://github.com/LifesLight/CMancala' target='_blank'>CMancala v6.3</a></div>");
+    document.body.insertAdjacentHTML('beforeend', "<div class='footer'><a href='https://github.com/LifesLight/CMancala' target='_blank'>CMancala v6.4</a></div>");
     
     window.syncHistory = function() {
         const hc = document.getElementById("history-container"); if (hc.style.display === "none") return;
@@ -360,14 +363,37 @@ EM_JS(void, launch_gui, (), {
         const captures = Module._get_current_captures();
         const modified = Module._get_current_modified();
 
+        const hoveredPit = window.hoveredPit !== undefined ? window.hoveredPit : -1;
+        let drops = [];
+        let lastDrop = -1;
+        if (hoveredPit >= 0 && !thinking && !gameOver && Module._get_current_player() === 1) {
+            let stones = Module._get_stone_count(hoveredPit);
+            if (stones > 0) {
+                let curr = hoveredPit;
+                while (stones > 0) {
+                    curr = (curr + 1) % 14;
+                    if (curr === 13) continue;
+                    if (!drops.includes(curr)) drops.push(curr);
+                    stones--;
+                }
+                lastDrop = curr;
+            }
+        }
+
         for (let i = 0; i < 14; i++) {
             const el = document.getElementById("main-" + i); if (!el) continue;
             el.innerText = Module._get_stone_count(i);
             
-            el.classList.remove("highlight-capture", "highlight-move", "highlight-modified");
-            if (captures & (1 << i)) el.classList.add("highlight-capture");
-            else if (i === lastMove) el.classList.add("highlight-move");
-            else if (modified & (1 << i)) el.classList.add("highlight-modified");
+            el.classList.remove("highlight-capture", "highlight-move", "highlight-modified", "highlight-last-drop");
+            
+            if (lastDrop !== -1) {
+                if (i === lastDrop) el.classList.add("highlight-last-drop");
+                else if (drops.includes(i)) el.classList.add("highlight-modified");
+            } else {
+                if (captures & (1 << i)) el.classList.add("highlight-capture");
+                else if (i === lastMove) el.classList.add("highlight-move");
+                else if (modified & (1 << i)) el.classList.add("highlight-modified");
+            }
         }
         
         document.getElementById("s-status").innerText = Module._get_stat_solved() ? "SOLVED" : "DEPTH: " + Module._get_stat_depth();
