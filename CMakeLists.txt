@@ -3,6 +3,9 @@ project(Mancala)
 
 set(MANCALA_VERSION "6.6" CACHE STRING "Current Version")
 
+# --- Options ---
+option(ENABLE_WEB_DEV "Enable Web Dev features (Cache selection, Mem growth)" OFF)
+
 # --- 1. Define Core Shared Files ---
 set(CORE_SOURCES
     src/main.c
@@ -32,7 +35,7 @@ if(EMSCRIPTEN)
 
     add_executable(Mancala ${CORE_SOURCES} ${UI_SOURCES})
     target_link_libraries(Mancala m)
-    
+
     # Pass version variable down to the C code properly
     target_compile_definitions(Mancala PRIVATE MANCALA_VERSION=\"${MANCALA_VERSION}\")
 
@@ -42,15 +45,25 @@ if(EMSCRIPTEN)
     # Automatically generate the shell to inject the dynamic version variable.
     configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/web/shell.html ${CMAKE_CURRENT_BINARY_DIR}/shell.html @ONLY)
 
-    string(JOIN " " EM_LINK_FLAGS
+    # Base Emscripten Flags
+    set(EM_FLAGS 
         "-O3"
-        "-s INITIAL_MEMORY=268435456"
+        "-s INITIAL_MEMORY=134217728"
         "-s NO_EXIT_RUNTIME=1"
+        "-s ALLOW_MEMORY_GROWTH=1"
         "-s EXPORTED_RUNTIME_METHODS=['ccall','cwrap','stringToUTF8','UTF8ToString']"
         "-s EXPORTED_FUNCTIONS=['_main','_malloc','_free']"
         "--shell-file ${CMAKE_CURRENT_BINARY_DIR}/shell.html"
     )
-    set_target_properties(Mancala PROPERTIES LINK_FLAGS "${EM_LINK_FLAGS}")
+
+    # --- DEV BUILD CONFIGURATION ---
+    if(ENABLE_WEB_DEV)
+        message(STATUS ">> WEB DEV BUILD ENABLED: DEV_BUILD def")
+        target_compile_definitions(Mancala PRIVATE DEV_BUILD)
+    endif()
+
+    string(JOIN " " EM_LINK_FLAGS_STR ${EM_FLAGS})
+    set_target_properties(Mancala PROPERTIES LINK_FLAGS "${EM_LINK_FLAGS_STR}")
 
 else()
     message(STATUS "Configuring for Native/CLI Build")
@@ -62,7 +75,7 @@ else()
 
     add_executable(Mancala ${CORE_SOURCES} ${UI_SOURCES})
     target_link_libraries(Mancala m)
-    
+
     # Pass version variable down to the native executable too
     target_compile_definitions(Mancala PRIVATE MANCALA_VERSION=\"${MANCALA_VERSION}\")
 

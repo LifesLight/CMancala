@@ -2,7 +2,7 @@ set -e
 
 CC="${CC:-/usr/bin/gcc-14}"
 CXX="${CXX:-/usr/bin/g++-14}"
-BUILD_DIR="${BUILD_DIR:-build-pgo}"
+BUILD_DIR="${BUILD_DIR:-build_pgo}"
 JOBS="${JOBS:-$(nproc)}"
 
 echo "CC=${CC}"

@@ -348,6 +348,23 @@ void invalidateCache() {
     }
 }
 
+void fillCacheStats(CacheStats* stats, bool calcFrag, bool calcStoneDist, bool calcDepthDist) {
+    memset(stats, 0, sizeof(CacheStats));
+    if (currentMode == MODE_DISABLED || cacheSize == 0) {
+        return;
+    }
+
+    switch (currentMode) {
+        case MODE_ND_B48_T16: collectCacheStats_NODEPTH_B48_T16(stats, calcFrag, calcStoneDist, calcDepthDist); break;
+        case MODE_ND_B48_T32: collectCacheStats_NODEPTH_B48_T32(stats, calcFrag, calcStoneDist, calcDepthDist); break;
+        case MODE_ND_B60_T32: collectCacheStats_NODEPTH_B60_T32(stats, calcFrag, calcStoneDist, calcDepthDist); break;
+        case MODE_D_B48_T16:  collectCacheStats_DEPTH_B48_T16(stats, calcFrag, calcStoneDist, calcDepthDist); break;
+        case MODE_D_B48_T32:  collectCacheStats_DEPTH_B48_T32(stats, calcFrag, calcStoneDist, calcDepthDist); break;
+        case MODE_D_B60_T32:  collectCacheStats_DEPTH_B60_T32(stats, calcFrag, calcStoneDist, calcDepthDist); break;
+        default: break;
+    }
+}
+
 void renderCacheStats(bool calcFrag, bool calcStoneDist, bool calcDepthDist) {
     if (currentMode == MODE_DISABLED || cacheSize == 0) {
         renderOutput("  Cache disabled.", CHEAT_PREFIX);
@@ -355,17 +372,7 @@ void renderCacheStats(bool calcFrag, bool calcStoneDist, bool calcDepthDist) {
     }
 
     CacheStats stats;
-    memset(&stats, 0, sizeof(CacheStats));
 
-    switch (currentMode) {
-        case MODE_ND_B48_T16: collectCacheStats_NODEPTH_B48_T16(&stats, calcFrag, calcStoneDist, calcDepthDist); break;
-        case MODE_ND_B48_T32: collectCacheStats_NODEPTH_B48_T32(&stats, calcFrag, calcStoneDist, calcDepthDist); break;
-        case MODE_ND_B60_T32: collectCacheStats_NODEPTH_B60_T32(&stats, calcFrag, calcStoneDist, calcDepthDist); break;
-        case MODE_D_B48_T16:  collectCacheStats_DEPTH_B48_T16(&stats, calcFrag, calcStoneDist, calcDepthDist); break;
-        case MODE_D_B48_T32:  collectCacheStats_DEPTH_B48_T32(&stats, calcFrag, calcStoneDist, calcDepthDist); break;
-        case MODE_D_B60_T32:  collectCacheStats_DEPTH_B60_T32(&stats, calcFrag, calcStoneDist, calcDepthDist); break;
-        default: break;
-    }
-
+    fillCacheStats(&stats, calcFrag, calcStoneDist, calcDepthDist);
     renderCacheOverview(&stats, calcFrag, calcStoneDist, calcDepthDist);
 }

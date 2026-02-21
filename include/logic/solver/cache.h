@@ -55,6 +55,7 @@ void cacheNode(Board* board, int evaluation, int boundType, int depth, bool solv
 
 bool getCachedValue(Board* board, int currentDepth, int *evaluation, int *boundType, bool *solved);
 
+void fillCacheStats(CacheStats* stats, bool calcFrag, bool calcStoneDist, bool calcDepthDist);
 void renderCacheStats(bool calcFrag, bool calcStoneDist, bool calcDepthDist);
 
 void resetCacheStats();
