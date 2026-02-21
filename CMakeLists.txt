@@ -3,9 +3,6 @@ project(Mancala)
 
 set(MANCALA_VERSION "7.0" CACHE STRING "Current Version")
 
-# --- Options ---
-option(ENABLE_WEB_DEV "Enable Web Dev features (Cache selection, Mem growth)" OFF)
-
 # --- 1. Define Core Shared Files ---
 set(CORE_SOURCES
     src/main.c
@@ -54,12 +51,6 @@ if(EMSCRIPTEN)
         "--shell-file ${CMAKE_CURRENT_BINARY_DIR}/shell.html"
     )
 
-    # --- DEV BUILD CONFIGURATION ---
-    if(ENABLE_WEB_DEV)
-        message(STATUS ">> WEB DEV BUILD ENABLED: DEV_BUILD def")
-        target_compile_definitions(Mancala PRIVATE DEV_BUILD)
-    endif()
-
     string(JOIN " " EM_LINK_FLAGS_STR ${EM_FLAGS})
     set_target_properties(Mancala PROPERTIES LINK_FLAGS "${EM_LINK_FLAGS_STR}")
 
@@ -74,7 +65,6 @@ else()
     add_executable(Mancala ${CORE_SOURCES} ${UI_SOURCES})
     target_link_libraries(Mancala m)
 
-    # Pass version variable down to the native executable too
     target_compile_definitions(Mancala PRIVATE MANCALA_VERSION=\"${MANCALA_VERSION}\")
 
     # --- PGO options ---
@@ -113,7 +103,4 @@ else()
 
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OPT_FLAGS} ${PGO_FLAGS}")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OPT_FLAGS} ${PGO_FLAGS}")
-
-    message(STATUS "C flags: ${CMAKE_C_FLAGS}")
-    message(STATUS "Linker flags: ${CMAKE_EXE_LINKER_FLAGS}")
 endif()

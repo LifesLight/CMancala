@@ -153,7 +153,6 @@ EMSCRIPTEN_KEEPALIVE int    get_stat_eval() {
 static void kick_off_ai(void);
 #endif
 
-#ifdef DEV_BUILD
 EMSCRIPTEN_KEEPALIVE void set_web_cache_size(int size) {
     if (aiThinking) return;
     setCacheSize(size);
@@ -217,8 +216,6 @@ EMSCRIPTEN_KEEPALIVE double get_c_exact()  { return webStatExact; }
 EMSCRIPTEN_KEEPALIVE double get_c_lower()  { return webStatLower; }
 EMSCRIPTEN_KEEPALIVE double get_c_upper()  { return webStatUpper; }
 EMSCRIPTEN_KEEPALIVE int    get_c_has_depth() { return webStatHasDepth; }
-
-#endif
 
 /* ================== GAME ENGINE ================== */
 
@@ -361,6 +358,15 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
     window.isTouchDevice = false;
     window.addEventListener('touchstart', () => { window.isTouchDevice = true; }, { passive: true });
     
+    window.domCache = {};
+    window.getEl = function(id) {
+        let el = window.domCache[id];
+        if (!el) { el = document.getElementById(id); window.domCache[id] = el; }
+        return el;
+    };
+    window.lastHistoryCount = -1;
+    window.hoverTimeout = null;
+
     const css = `
         * { box-sizing: border-box; }
         body { background: #222; color: #fff; font-family: monospace; margin: 0; overflow: hidden; }
@@ -413,6 +419,12 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
         .footer a { color: #888; text-decoration: none; font-size: 14px; pointer-events: auto; }
         .chk-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
         .chk-row input { width: auto; }
+        .chk-row .cfg-label { margin-bottom: 0; }
+        
+        .expert-only { display: none; }
+        body.expert-mode .expert-only { display: block; }
+        .expert-btn { background: transparent; border: 1px solid #444; color: #666; font-size: 10px; margin-left: 10px; cursor: pointer; padding: 2px 5px; border-radius: 4px; pointer-events: auto; }
+        body.expert-mode .expert-btn { color: #0f0; border-color: #0f0; }
     `;
     const style = document.createElement("style"); style.textContent = css; document.head.appendChild(style);
 
@@ -433,14 +445,24 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
             if (!isMini) {
                 p.onclick = () => { 
                     if (Module._get_ai_thinking() || Module._get_current_player() !== 1) return; 
+                    if (window.hoverTimeout) { clearTimeout(window.hoverTimeout); window.hoverTimeout = null; }
                     window.hoveredPit = -1; 
                     Module._do_web_move(i); 
                 };
                 p.onmouseenter = () => { 
-                    if (!window.isTouchDevice) { window.hoveredPit = i; window.updateView(); } 
+                    if (!window.isTouchDevice) { 
+                        if (window.hoverTimeout) { clearTimeout(window.hoverTimeout); window.hoverTimeout = null; }
+                        window.hoveredPit = i; 
+                        window.updateView(); 
+                    } 
                 };
                 p.onmouseleave = () => { 
-                    if (!window.isTouchDevice) { window.hoveredPit = -1; window.updateView(); } 
+                    if (!window.isTouchDevice) { 
+                        window.hoverTimeout = setTimeout(() => {
+                            window.hoveredPit = -1; 
+                            window.updateView(); 
+                        }, 250);
+                    } 
                 };
             }
             bRow.appendChild(p);
@@ -454,10 +476,8 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
     const sideL = document.createElement("div"); sideL.className = "sidebar sidebar-left";
     let statsHtml = `<h3>SOLVER STATS</h3><div class='stat-box'><span class='stat-label'>STATUS</span><span id='s-status' class='stat-val'>-</span></div><div class='stat-box'><span class='stat-label'>EVALUATION</span><span id='s-eval' class='stat-val'>-</span></div><div class='stat-box'><span class='stat-label'>LAST NODES</span><span id='s-nodes' class='stat-val'>-</span></div><div class='stat-box'><span class='stat-label'>TOTAL NODES</span><span id='s-total-nodes' class='stat-val'>-</span></div><div class='stat-box'><span class='stat-label'>THROUGHPUT</span><span id='s-tput' class='stat-val'>-</span></div>`;
     
-    #ifdef DEV_BUILD
     statsHtml += `<div class='stat-box'><span class='stat-label'>LAST TIME</span><span id='s-time' class='stat-val'>-</span></div>`;
-    statsHtml += `<h3>CACHE STATS</h3><div class='stat-box'><span class='stat-label'>CACHE USED</span><span id='c-fill' class='stat-val'>0.00%</span></div><div class='stat-box'><span class='stat-label'>CACHE SOLVED</span><span id='c-solved' class='stat-val'>0.00%</span></div><div class='stat-box'><span class='stat-label'>LAST CACHE HITS</span><span id='c-hits' class='stat-val'>0</span></div><div class='stat-box'><span class='stat-label'>LRU SWAP RATE</span><span id='c-swap' class='stat-val'>0.00%</span></div><div class='stat-box'><span class='stat-label'>OVERWRITES</span><span class='stat-sub'>IMPROVE: <span id='c-imp'>0</span></span><span class='stat-sub'>EVICT: <span id='c-evi'>0</span></span></div><div class='stat-box'><span class='stat-label'>BOUNDS</span><span class='stat-sub'>EXACT: <span id='c-ex'>0.0</span>%</span><span class='stat-sub'>LOWER: <span id='c-lo'>0.0</span>%</span><span class='stat-sub'>UPPER: <span id='c-up'>0.0</span>%</span></div>`;
-    #endif
+    statsHtml += `<div class='expert-only'><h3>CACHE STATS</h3><div class='stat-box'><span class='stat-label'>CACHE USED</span><span id='c-fill' class='stat-val'>0.00%</span></div><div class='stat-box'><span class='stat-label'>CACHE SOLVED</span><span id='c-solved' class='stat-val'>0.00%</span></div><div class='stat-box'><span class='stat-label'>LAST CACHE HITS</span><span id='c-hits' class='stat-val'>0</span></div><div class='stat-box'><span class='stat-label'>LRU SWAP RATE</span><span id='c-swap' class='stat-val'>0.00%</span></div><div class='stat-box'><span class='stat-label'>OVERWRITES</span><span class='stat-sub'>IMPROVE: <span id='c-imp'>0</span></span><span class='stat-sub'>EVICT: <span id='c-evi'>0</span></span></div><div class='stat-box'><span class='stat-label'>BOUNDS</span><span class='stat-sub'>EXACT: <span id='c-ex'>0.0</span>%</span><span class='stat-sub'>LOWER: <span id='c-lo'>0.0</span>%</span><span class='stat-sub'>UPPER: <span id='c-up'>0.0</span>%</span></div></div>`;
 
     sideL.innerHTML = statsHtml;
     document.body.appendChild(sideL);
@@ -469,10 +489,7 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
     
     let html = `<h3>GAME SETTINGS</h3><div class='cfg-row'><span class='cfg-label'>STONES (1-18)</span><input id='cfg-stones' type='number' value='4' min='1' max='18' oninput="if(this.value > 18) this.value = 18; if(this.value < 1 && this.value !== '') this.value = 1;"></div><div class='cfg-row'><span class='cfg-label'>DISTRIBUTION</span><select id='cfg-dist'><option value='0'>Uniform</option><option value='1'>Random</option></select></div><div class='cfg-row' id='seed-row' style='display:none'><span class='cfg-label'>SEED (0=rand)</span><input id='cfg-seed' type='number' value='0'></div><div class='cfg-row'><span class='cfg-label'>MODE</span><select id='cfg-mode'><option value='0'>Classic</option><option value='1'>Avalanche</option></select></div><div class='cfg-row'><span class='cfg-label'>AI TIME LIMIT (s, 0=inf)</span><input id='cfg-time' type='number' value='1' min='0' oninput="if(this.value < 0) this.value = 0;"></div><div class='cfg-row'><span class='cfg-label'>STARTING PLAYER</span><select id='cfg-start'><option value='1'>Player</option><option value='-1'>AI</option></select></div>`;
 
-    #ifdef DEV_BUILD
-    html += `<div class='cfg-row'><span class='cfg-label'>CACHE SIZE (18-30)</span><input id='cfg-cache' type='number' value='24' min='18' max='30' oninput="if(this.value > 30) this.value = 30; if(this.value < 18 && this.value !== '') this.value = 18;"></div>`;
-    html += `<div class='chk-row'><span class='cfg-label'>AI AUTOPLAY</span><input id='cfg-autoplay' type='checkbox' checked></div>`;
-    #endif
+    html += `<div class='expert-only'><div class='cfg-row'><span class='cfg-label'>CACHE SIZE EXP (18-30)</span><input id='cfg-cache' type='number' value='24' min='18' max='30' oninput="if(this.value > 30) this.value = 30; if(this.value < 18 && this.value !== '') this.value = 18;"></div><div class='chk-row'><span class='cfg-label'>AI AUTOPLAY</span><input id='cfg-autoplay' type='checkbox' checked></div></div>`;
 
     html += `<button id='cfg-go' class='cfg-btn'>START GAME</button>`;
     
@@ -483,20 +500,16 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
     const togR = document.createElement("button"); togR.className = "side-toggle toggle-right"; togR.innerText = "SETTINGS";
     togR.onclick = () => sideR.classList.toggle("open"); document.body.appendChild(togR);
     
-    #ifdef DEV_BUILD
     const apChk = document.getElementById("cfg-autoplay");
     if(apChk) apChk.onchange = (e) => { Module._set_autoplay(e.target.checked ? 1 : 0); };
-    #endif
 
     document.getElementById("cfg-go").onclick = () => {
         if (Module._get_ai_thinking()) return;
         
-        #ifdef DEV_BUILD
         const cacheInput = document.getElementById("cfg-cache");
         if (cacheInput) Module._set_web_cache_size(parseInt(cacheInput.value));
         const apInput = document.getElementById("cfg-autoplay");
         if (apInput) Module._set_autoplay(apInput.checked ? 1 : 0);
-        #endif
 
         Module._restart_game(parseInt(document.getElementById("cfg-stones").value), parseInt(document.getElementById("cfg-dist").value), parseInt(document.getElementById("cfg-mode").value), parseFloat(document.getElementById("cfg-time").value), parseInt(document.getElementById("cfg-start").value), parseInt(document.getElementById("cfg-seed").value));
         sideR.classList.remove("open");
@@ -508,19 +521,17 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
     
     const uBtn = document.createElement("button"); uBtn.id = "undo-btn"; uBtn.className = "bottom-btn undo-pos"; uBtn.innerText = "undo move"; uBtn.onclick = () => Module._undo_move(); bRel.appendChild(uBtn);
 
-    const stepBtn = document.createElement("button"); stepBtn.id = "step-btn"; stepBtn.className = "bottom-btn step-pos"; stepBtn.innerText = "step AI >"; 
+    const stepBtn = document.createElement("button"); stepBtn.id = "step-btn"; stepBtn.className = "bottom-btn step-pos expert-only"; stepBtn.innerText = "step AI >"; 
     stepBtn.style.display = "none";
-    #ifdef DEV_BUILD
     stepBtn.onclick = () => Module._do_ai_step();
-    #endif
     bRel.appendChild(stepBtn);
 
     const sTxt = document.createElement("div"); sTxt.id = "status-text"; sTxt.style.marginTop = "25px"; sTxt.style.marginBottom = "15px"; sTxt.style.fontSize = "18px"; main.appendChild(sTxt);
     const hBtn = document.createElement("button"); hBtn.id = "hist-btn"; hBtn.className = "bottom-btn"; hBtn.style.marginTop = "0px"; hBtn.innerText = "▼ history ▼";
     
     hBtn.onclick = () => { 
-        const hc = document.getElementById("history-container"); 
-        if (hc.style.display === "none" || !hc.style.display) { 
+        const hc = window.getEl("history-container"); 
+        if (hc.style.display !== "flex") { 
             hc.style.display = "flex"; hBtn.innerText = "▲ history ▲"; window.syncHistory(); 
         } else { 
             hc.style.display = "none"; hBtn.innerText = "▼ history ▼"; 
@@ -529,11 +540,28 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
     main.appendChild(hBtn);
     
     const hCont = document.createElement("div"); hCont.id = "history-container"; hCont.className = "history-container"; main.appendChild(hCont);
-    document.body.insertAdjacentHTML('beforeend', "<div class='footer'><a href='https://github.com/LifesLight/CMancala' target='_blank'>CMancala v" + vStr + "</a></div>");
+    
+    window.toggleExpert = function() {
+        const isExpert = document.body.classList.toggle("expert-mode");
+        if (!isExpert) {
+            const cInput = document.getElementById("cfg-cache");
+            if (cInput) { cInput.value = "24"; Module._set_web_cache_size(24); }
+            const aInput = document.getElementById("cfg-autoplay");
+            if (aInput) { aInput.checked = true; Module._set_autoplay(1); }
+        }
+    };
+    
+    document.body.insertAdjacentHTML('beforeend', "<div class='footer'><a href='https://github.com/LifesLight/CMancala' target='_blank'>CMancala v" + vStr + "</a><button class='expert-btn' onclick='window.toggleExpert()'>EXP</button></div>");
     
     window.syncHistory = function() {
-        const hc = document.getElementById("history-container"); if (hc.style.display === "none") return;
-        const count = Module._get_history_count(); hc.innerHTML = "";
+        const hc = window.getEl("history-container"); 
+        if (!hc || hc.style.display !== "flex") return;
+        
+        const count = Module._get_history_count(); 
+        if (window.lastHistoryCount === count) return;
+        window.lastHistoryCount = count;
+        
+        hc.innerHTML = "";
         for (let t = count - 2; t >= 0; t--) {
             const item = document.createElement("div"); item.className = "hist-item";
             const bC = document.createElement("div"); window.createBoardDOM(bC, "h" + t + "-", true); item.appendChild(bC); hc.appendChild(item);
@@ -545,8 +573,9 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
             for (let i = 0; i < 14; i++) {
                 const el = document.getElementById("h" + t + "-" + i);
                 if (el) { 
-                    el.innerText = Module._get_history_stone_count(t, i); 
-                    el.classList.remove("highlight-capture", "highlight-move", "highlight-modified");
+                    el.textContent = Module._get_history_stone_count(t, i); 
+                    el.className = (i > 6 && i < 13) ? "pit ai-pit" : (i <= 5 ? "pit player-pit" : "store");
+                    
                     if (cp & (1 << i)) el.classList.add("highlight-capture");
                     else if (i === mv) el.classList.add("highlight-move");
                     else if (md & (1 << i)) el.classList.add("highlight-modified");
@@ -562,23 +591,32 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
         const currentPlayer = Module._get_current_player();
         const autoplay = Module._get_autoplay();
 
-        const fmt = (n) => n >= 1e6 ? (n/1e6).toFixed(2)+"M" : (n >= 1e3 ? (n/1e3).toFixed(1)+"k" : n);
+        const fmt = (n) => n >= 1e6 ? (n/1e6).toFixed(2)+"M" : (n >= 1e3 ? (n/1e3).toFixed(1)+"k" : String(n));
 
-        const mBoard = document.getElementById("main-board");
-        mBoard.classList.toggle("disabled", !!(thinking || gameOver));
-        mBoard.classList.toggle("cheated", !!Module._get_is_cheated());
-        document.getElementById("undo-btn").classList.toggle("disabled", !Module._can_undo());
+        const mBoard = window.getEl("main-board");
+        const isDis = !!(thinking || gameOver);
+        if (mBoard.classList.contains("disabled") !== isDis) mBoard.classList.toggle("disabled", isDis);
+        const isCheat = !!Module._get_is_cheated();
+        if (mBoard.classList.contains("cheated") !== isCheat) mBoard.classList.toggle("cheated", isCheat);
+        
+        const undoBtn = window.getEl("undo-btn");
+        const cannotUndo = !Module._can_undo();
+        if (undoBtn.classList.contains("disabled") !== cannotUndo) undoBtn.classList.toggle("disabled", cannotUndo);
         
         const showStep = (!autoplay && currentPlayer === -1 && !thinking && !gameOver);
-        const sBtn = document.getElementById("step-btn");
-        if(sBtn) sBtn.style.display = showStep ? "block" : "none";
+        const sBtn = window.getEl("step-btn");
+        if(sBtn) {
+            const disp = showStep ? "block" : "none";
+            if (sBtn.style.display !== disp) sBtn.style.display = disp;
+        }
 
         const lastMove = Module._get_last_move();
         const captures = Module._get_current_captures();
         const modified = Module._get_current_modified();
 
         const hoveredPit = window.hoveredPit !== undefined ? window.hoveredPit : -1;
-        let drops = [];
+        
+        let drops = 0;
         let lastDrop = -1;
         
         if (hoveredPit >= 0 && !thinking && !gameOver && currentPlayer === 1) {
@@ -588,7 +626,7 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
                 while (stones > 0) {
                     curr = (curr + 1) % 14;
                     if (curr === 13) continue;
-                    if (!drops.includes(curr)) drops.push(curr);
+                    drops |= (1 << curr);
                     stones--;
                 }
                 lastDrop = curr;
@@ -596,56 +634,65 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
         }
 
         for (let i = 0; i < 14; i++) {
-            const el = document.getElementById("main-" + i); if (!el) continue;
-            el.innerText = Module._get_stone_count(i);
-            el.classList.remove("highlight-capture", "highlight-move", "highlight-modified", "highlight-last-drop");
+            const el = window.getEl("main-" + i); if (!el) continue;
             
+            const stStr = String(Module._get_stone_count(i));
+            if (el.textContent !== stStr) el.textContent = stStr;
+            
+            let newClass = "";
             if (lastDrop !== -1) {
-                if (i === lastDrop) el.classList.add("highlight-last-drop");
-                else if (drops.includes(i)) el.classList.add("highlight-modified");
+                if (i === lastDrop) newClass = "highlight-last-drop";
+                else if (drops & (1 << i)) newClass = "highlight-modified";
             } else {
-                if (captures & (1 << i)) el.classList.add("highlight-capture");
-                else if (i === lastMove) el.classList.add("highlight-move");
-                else if (modified & (1 << i)) el.classList.add("highlight-modified");
+                if (captures & (1 << i)) newClass = "highlight-capture";
+                else if (i === lastMove) newClass = "highlight-move";
+                else if (modified & (1 << i)) newClass = "highlight-modified";
+            }
+            
+            const currClass = el.getAttribute("data-hl") || "";
+            if (currClass !== newClass) {
+                if (currClass) el.classList.remove(currClass);
+                if (newClass) el.classList.add(newClass);
+                el.setAttribute("data-hl", newClass);
             }
         }
         
-        document.getElementById("s-status").innerText = Module._get_stat_solved() ? "SOLVED" : "DEPTH: " + Module._get_stat_depth();
-        let ev = Module._get_stat_eval(); document.getElementById("s-eval").innerText = (ev === -9999) ? "N/A" : (ev > 0 ? "+" + ev : ev);
-        
-        document.getElementById("s-nodes").innerText = fmt(Module._get_stat_nodes());
-        document.getElementById("s-total-nodes").innerText = fmt(Module._get_stat_total_nodes());
-        
-        let ti = Module._get_stat_time(); document.getElementById("s-tput").innerText = (ti > 0 ? ((Module._get_stat_nodes() / ti) / 1e6).toFixed(2) : "0.00") + " M n/s";
-        
-        #ifdef DEV_BUILD
-        document.getElementById("s-time").innerText = ti.toFixed(3) + " s";
+        const setTxt = (id, txt) => {
+            const el = window.getEl(id);
+            if (el && el.textContent !== txt) el.textContent = txt;
+        };
 
-        Module._update_web_cache_stats();
-        document.getElementById("c-fill").innerText = Module._get_c_fill().toFixed(2) + "%";
+        setTxt("s-status", Module._get_stat_solved() ? "SOLVED" : "DEPTH: " + Module._get_stat_depth());
+        let ev = Module._get_stat_eval(); 
+        setTxt("s-eval", (ev === -9999) ? "N/A" : (ev > 0 ? "+" + ev : String(ev)));
         
-        if (Module._get_c_has_depth()) {
-            document.getElementById("c-solved").innerText = Module._get_c_solved().toFixed(2) + "%";
-        } else {
-            document.getElementById("c-solved").innerText = " - %";
+        setTxt("s-nodes", fmt(Module._get_stat_nodes()));
+        setTxt("s-total-nodes", fmt(Module._get_stat_total_nodes()));
+        
+        let ti = Module._get_stat_time(); 
+        setTxt("s-tput", (ti > 0 ? ((Module._get_stat_nodes() / ti) / 1e6).toFixed(2) : "0.00") + " M n/s");
+        setTxt("s-time", ti.toFixed(3) + " s");
+        
+        if (document.body.classList.contains("expert-mode")) {
+            Module._update_web_cache_stats();
+            setTxt("c-fill", Module._get_c_fill().toFixed(2) + "%");
+            setTxt("c-solved", Module._get_c_has_depth() ? (Module._get_c_solved().toFixed(2) + "%") : " - %");
+            setTxt("c-hits", fmt(Module._get_c_hits()));
+            setTxt("c-swap", Module._get_c_swap().toFixed(2) + "%");
+            setTxt("c-imp", fmt(Module._get_c_imp()));
+            setTxt("c-evi", fmt(Module._get_c_evi()));
+            setTxt("c-ex", Module._get_c_exact().toFixed(1));
+            setTxt("c-lo", Module._get_c_lower().toFixed(1));
+            setTxt("c-up", Module._get_c_upper().toFixed(1));
         }
 
-        document.getElementById("c-hits").innerText = fmt(Module._get_c_hits());
-        document.getElementById("c-swap").innerText = Module._get_c_swap().toFixed(2) + "%";
-        
-        document.getElementById("c-imp").innerText = fmt(Module._get_c_imp());
-        document.getElementById("c-evi").innerText = fmt(Module._get_c_evi());
-        
-        document.getElementById("c-ex").innerText = Module._get_c_exact().toFixed(1);
-        document.getElementById("c-lo").innerText = Module._get_c_lower().toFixed(1);
-        document.getElementById("c-up").innerText = Module._get_c_upper().toFixed(1);
-        #endif
-
-        const st = document.getElementById("status-text");
-        if (gameOver) st.innerText = ">> GAME OVER"; 
-        else if (thinking) st.innerText = ">> AI THINKING..."; 
-        else if (currentPlayer === -1 && !autoplay) st.innerText = ">> WAITING FOR STEP";
-        else st.innerText = (currentPlayer === 1) ? ">> YOUR TURN" : ">> AI TURN";
+        const stEl = window.getEl("status-text");
+        let stStr = "";
+        if (gameOver) stStr = ">> GAME OVER"; 
+        else if (thinking) stStr = ">> AI THINKING..."; 
+        else if (currentPlayer === -1 && !autoplay) stStr = ">> WAITING FOR STEP";
+        else stStr = (currentPlayer === 1) ? ">> YOUR TURN" : ">> AI TURN";
+        if (stEl && stEl.textContent !== stStr) stEl.textContent = stStr;
         
         window.syncHistory();
     };
