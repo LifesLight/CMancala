@@ -354,7 +354,11 @@ void restart_game(int stones, int distribution, int moveFunc, double timeLimit, 
 EM_JS(void, launch_gui, (const char* v_ptr), {
     document.body.innerHTML = "";
     const vStr = UTF8ToString(v_ptr);
-    
+    const meta = document.createElement('meta');
+    meta.name = "viewport";
+    meta.content = "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0";
+    document.head.appendChild(meta);
+
     window.isTouchDevice = false;
     window.addEventListener('touchstart', () => { window.isTouchDevice = true; }, { passive: true });
     
@@ -538,7 +542,8 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
         } 
     };
     main.appendChild(hBtn);
-    
+
+    const hCont = document.createElement("div"); hCont.id = "history-container"; hCont.className = "history-container"; main.appendChild(hCont);
     window.toggleExpert = function() {
         const isExpert = document.body.classList.toggle("expert-mode");
         if (!isExpert) {

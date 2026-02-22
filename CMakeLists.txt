@@ -46,7 +46,7 @@ if(EMSCRIPTEN)
         "-flto"
         "-s WASM=1"
         "-s ASSERTIONS=0"
-        "-s INITIAL_MEMORY=134217728"
+        "-s INITIAL_MEMORY=205520896"
         "-s NO_EXIT_RUNTIME=1"
         "-s ALLOW_MEMORY_GROWTH=1"
         "-s MAXIMUM_MEMORY=2684354560"
