@@ -43,9 +43,14 @@ if(EMSCRIPTEN)
     # Base Emscripten Flags
     set(EM_FLAGS 
         "-O3"
+        "-flto"
+        "-s WASM=1"
+        "-s ASSERTIONS=0"
         "-s INITIAL_MEMORY=134217728"
         "-s NO_EXIT_RUNTIME=1"
         "-s ALLOW_MEMORY_GROWTH=1"
+        "-s MAXIMUM_MEMORY=2684354560"
+        "-s ENVIRONMENT=web"
         "-s EXPORTED_RUNTIME_METHODS=['ccall','cwrap','stringToUTF8','UTF8ToString']"
         "-s EXPORTED_FUNCTIONS=['_main','_malloc','_free']"
         "--shell-file ${CMAKE_CURRENT_BINARY_DIR}/shell.html"

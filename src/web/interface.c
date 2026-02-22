@@ -394,8 +394,8 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
         .board-wrapper.cheated { background: #3d3336; }
         .board-wrapper.main { padding: 20px; gap: 20px; }
         .board-wrapper.mini { padding: 10px; gap: 10px; border-radius: 6px; background: #2a2a2a; }
-        .pit { border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #444; transition: background 0.2s, color 0.2s; }
-        .store { border-radius: 20px; display: flex; align-items: center; justify-content: center; background: #555; transition: background 0.2s, color 0.2s; }
+        .pit { border-radius: 50%; display: flex; align-items: center; justify-content: center; background-color: #444; transition: background-color 0.25s ease, color 0.25s ease; }
+        .store { border-radius: 20px; display: flex; align-items: center; justify-content: center; background-color: #555; transition: background-color 0.25s ease, color 0.25s ease; }
         .row { display: flex; }
         .main .pit { width: 60px; height: 60px; font-size: 24px; border: 2px solid #555; }
         .main .store { width: 80px; font-size: 32px; border: 2px solid #666; }
@@ -405,10 +405,10 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
         .mini .row { gap: 5px; margin: 5px 0; }
         .player-pit { cursor: pointer; border-color: #0f0 !important; }
         .ai-pit { border-color: #f00 !important; }
-        .highlight-modified { background: #5a5a5a !important; color: #fff; }
-        .highlight-move { background: #999 !important; color: #fff; }
+        .highlight-modified { background-color: #5a5a5a !important; color: #fff; }
+        .highlight-move { background-color: #999 !important; color: #fff; }
         .highlight-capture { background-color: #e73121 !important; color: #fff; }
-        .highlight-last-drop { background: #6e6e6e !important; color: #fff; }
+        .highlight-last-drop { background-color: #6e6e6e !important; color: #fff; }
         .disabled { opacity: .5; pointer-events: none; }
         .undo-pos { position: absolute; bottom: -35px; left: 30px; }
         .step-pos { position: absolute; bottom: -35px; right: 30px; }
@@ -461,7 +461,7 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
                         window.hoverTimeout = setTimeout(() => {
                             window.hoveredPit = -1; 
                             window.updateView(); 
-                        }, 250);
+                        }, 50);
                     } 
                 };
             }
@@ -489,7 +489,7 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
     
     let html = `<h3>GAME SETTINGS</h3><div class='cfg-row'><span class='cfg-label'>STONES (1-18)</span><input id='cfg-stones' type='number' value='4' min='1' max='18' oninput="if(this.value > 18) this.value = 18; if(this.value < 1 && this.value !== '') this.value = 1;"></div><div class='cfg-row'><span class='cfg-label'>DISTRIBUTION</span><select id='cfg-dist'><option value='0'>Uniform</option><option value='1'>Random</option></select></div><div class='cfg-row' id='seed-row' style='display:none'><span class='cfg-label'>SEED (0=rand)</span><input id='cfg-seed' type='number' value='0'></div><div class='cfg-row'><span class='cfg-label'>MODE</span><select id='cfg-mode'><option value='0'>Classic</option><option value='1'>Avalanche</option></select></div><div class='cfg-row'><span class='cfg-label'>AI TIME LIMIT (s, 0=inf)</span><input id='cfg-time' type='number' value='1' min='0' oninput="if(this.value < 0) this.value = 0;"></div><div class='cfg-row'><span class='cfg-label'>STARTING PLAYER</span><select id='cfg-start'><option value='1'>Player</option><option value='-1'>AI</option></select></div>`;
 
-    html += `<div class='expert-only'><div class='cfg-row'><span class='cfg-label'>CACHE SIZE EXP (18-30)</span><input id='cfg-cache' type='number' value='24' min='18' max='30' oninput="if(this.value > 30) this.value = 30; if(this.value < 18 && this.value !== '') this.value = 18;"></div><div class='chk-row'><span class='cfg-label'>AI AUTOPLAY</span><input id='cfg-autoplay' type='checkbox' checked></div></div>`;
+    html += `<div class='expert-only'><div class='cfg-row'><span class='cfg-label'>CACHE SIZE EXP (18-28)</span><input id='cfg-cache' type='number' value='24' min='18' max='28' oninput="if(this.value > 28) this.value = 28; if(this.value < 18 && this.value !== '') this.value = 18;"></div><div class='chk-row'><span class='cfg-label'>AI AUTOPLAY</span><input id='cfg-autoplay' type='checkbox' checked></div></div>`;
 
     html += `<button id='cfg-go' class='cfg-btn'>START GAME</button>`;
     
@@ -539,8 +539,6 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
     };
     main.appendChild(hBtn);
     
-    const hCont = document.createElement("div"); hCont.id = "history-container"; hCont.className = "history-container"; main.appendChild(hCont);
-    
     window.toggleExpert = function() {
         const isExpert = document.body.classList.toggle("expert-mode");
         if (!isExpert) {
@@ -548,6 +546,8 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
             if (cInput) { cInput.value = "24"; Module._set_web_cache_size(24); }
             const aInput = document.getElementById("cfg-autoplay");
             if (aInput) { aInput.checked = true; Module._set_autoplay(1); }
+        } else {
+            window.updateView();
         }
     };
     
