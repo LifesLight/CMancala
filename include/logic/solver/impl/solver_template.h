@@ -278,8 +278,8 @@ void FN(distributionRoot)(Board *board, int *distribution, bool *solvedOutput, S
             index--;
             continue;
         }
-        Board boardCopy;
-        copyBoard(board, &boardCopy);
+
+        Board boardCopy = *board;
         makeMoveFunction(&boardCopy, i);
 
 #if SOLVER_USE_CACHE
