@@ -59,7 +59,7 @@ NegamaxTrace negamaxWithTrace(Board *board, int alpha, const int beta, const int
         }
 
         // Make copied board with move made
-        copyBoard(board, &boardCopy);
+        boardCopy = *board;
         makeMoveFunction(&boardCopy, i);
 
         // Branch to check if this player is still playing
@@ -124,7 +124,7 @@ NegamaxTrace traceRoot(Board *board, int alpha, const int beta, const int depth)
         }
 
         // Make copied board with move made
-        copyBoard(board, &boardCopy);
+        boardCopy = *board;
         makeMoveFunction(&boardCopy, i);
 
         // Branch to check if this player is still playing

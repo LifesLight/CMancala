@@ -47,7 +47,7 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
             return;
         }
 
-        copyBoard(context->lastBoard, context->board);
+        *context->board = *context->lastBoard;
         context->metadata.lastMove = -1;
         context->metadata.lastEvaluation = INT32_MAX;
         context->metadata.lastDepth = 0;
@@ -202,7 +202,7 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
         snprintf(temp, sizeof(temp), "00000%.*s", (int)(sizeof(temp) - 6), input + 5);
 
         // Save previous board
-        copyBoard(context->board, context->lastBoard);
+        *context->lastBoard = *context->board;
         context->metadata.lastEvaluation = INT32_MAX;
 
         // Load board

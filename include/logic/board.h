@@ -34,11 +34,6 @@ void setMoveFunction(MoveFunction moveFunction);
 void makeMoveFunction(Board* board, const uint8_t actionIndex);
 
 /**
- * Copies the board from the source to the target
-*/
-void copyBoard(const Board *board, Board *target);
-
-/**
  * Configures the board with the given stones per cell
 */
 void configBoard(Board *board, int stones);

@@ -183,7 +183,7 @@ void stepGame(bool* requestedMenu, Context* context) {
     snprintf(message, sizeof(message), "Move: %d", move > 5 ? 13 - move : move + 1);
     renderOutput(message, PLAY_PREFIX);
 
-    copyBoard(context->board, context->lastBoard);
+    *context->lastBoard = *context->board;
     makeMoveManual(context->board, move);
     return;
 }

@@ -299,7 +299,7 @@ static void ai_think_callback(void *arg) {
     totalNodesExplored += globalContext.metadata.lastNodes;
     int move = globalContext.metadata.lastMove;
     if (move != -1) {
-        copyBoard(globalContext.board, globalContext.lastBoard);
+        globalContext.lastBoard = globalContext.board;
         makeMoveManual(globalContext.board, move);
         currentCaptureMask = calc_capture_mask(globalContext.lastBoard, globalContext.board, move);
         currentModifiedMask = calc_modified_mask(globalContext.lastBoard, globalContext.board, currentCaptureMask);
@@ -326,7 +326,7 @@ EMSCRIPTEN_KEEPALIVE
 void do_web_move(int index) {
     if (!isGameInitialized || aiThinking) return;
     if (globalContext.board->color != 1 || globalContext.board->cells[index] == 0) return;
-    copyBoard(globalContext.board, globalContext.lastBoard);
+    globalContext.lastBoard = globalContext.board;
     makeMoveManual(globalContext.board, index);
     globalContext.metadata.lastMove = index;
     currentCaptureMask = calc_capture_mask(globalContext.lastBoard, globalContext.board, index);

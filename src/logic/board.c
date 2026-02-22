@@ -15,10 +15,6 @@ void setMoveFunction(MoveFunction moveFunction) {
     }
 }
 
-void copyBoard(const Board *board, Board *target) {
-    memcpy(target, board, sizeof(Board));
-}
-
 void configBoard(Board *board, int stones) {
     // Assign start values
     for (int i = 0; i < ASIZE; i++) {
