@@ -187,19 +187,13 @@ static inline uint64_t FN(mergeBoard)(uint64_t bucketIndex, TAG_TYPE tag) {
     return ((uint64_t)tag << (cacheSizePow - 1)) | bucketIndex;
 }
 
-static inline void FN(cacheNode)(Board* board, int evaluation, int boundType, int depth, bool solved) {
+static inline void FN(cacheNodeHash)(Board* board, uint64_t boardRep, int evaluation, int boundType, int depth, bool solved) {
     int scoreDelta = board->cells[SCORE_P1] - board->cells[SCORE_P2];
     scoreDelta *= board->color;
     evaluation -= scoreDelta;
 
     if (evaluation > CACHE_VAL_MAX || evaluation < CACHE_VAL_MIN) {
         failedEncodeValueRange++;
-        return;
-    }
-
-    uint64_t boardRep;
-    if (!FN(translateBoard)(board, &boardRep)) {
-        failedEncodeStoneCount++;
         return;
     }
 
@@ -219,7 +213,6 @@ static inline void FN(cacheNode)(Board* board, int evaluation, int boundType, in
 #endif
 
     // --- Same-key update ---
-    // Slot 0
     if (b->tag_0 == tag) {
 #if CACHE_DEPTH
         if (b->depth_0 > depth) return;
@@ -229,7 +222,6 @@ static inline void FN(cacheNode)(Board* board, int evaluation, int boundType, in
         sameKeyOverwriteCount++;
         return;
     }
-    // Slot 1
     if (b->tag_1 == tag) {
 #if CACHE_DEPTH
         if (b->depth_1 > depth) return;
@@ -259,8 +251,8 @@ static inline void FN(cacheNode)(Board* board, int evaluation, int boundType, in
     }
 
     // --- Victim selection ---
-    // 0 = evict slot 0, 1 = evict slot 1
     int victim;
+    victimOverwriteCount++;
 
 #if CACHE_DEPTH
     if (b->depth_1 != b->depth_0) {
@@ -276,7 +268,6 @@ static inline void FN(cacheNode)(Board* board, int evaluation, int boundType, in
     victim = (zeroExact != oneExact) ? (zeroExact ? 1 : 0) : 1;
 #endif
 
-    victimOverwriteCount++;
 
     if (victim == 0) {
         b->tag_0 = tag;
@@ -293,10 +284,7 @@ static inline void FN(cacheNode)(Board* board, int evaluation, int boundType, in
     }
 }
 
-static inline bool FN(getCachedValue)(Board* board, int currentDepth, int *eval, int *boundType, bool *solved) {
-    uint64_t hashValue;
-    if (!FN(translateBoard)(board, &hashValue)) return false;
-
+static inline bool FN(getCachedValueHash)(Board* board, uint64_t hashValue, int currentDepth, int *eval, int *boundType, bool *solved) {
     uint64_t index;
     TAG_TYPE tag;
     FN(splitBoard)(hashValue, &index, &tag);
@@ -309,11 +297,10 @@ static inline bool FN(getCachedValue)(Board* board, int currentDepth, int *eval,
     else if (b->tag_1 == tag) matchSlot = 1;
     else return false;
 
-    // Check unset
     int16_t valToCheck = (matchSlot == 0) ? b->value_0 : b->value_1;
     if (valToCheck == CACHE_VAL_UNSET) return false;
 
-    // LRU Swap: If match is in slot 1, swap to slot 0 (MRU)
+    // LRU Swap
     if (matchSlot == 1) {
         TAG_TYPE t = b->tag_0; b->tag_0 = b->tag_1; b->tag_1 = t;
         int16_t v = b->value_0; b->value_0 = b->value_1; b->value_1 = v;

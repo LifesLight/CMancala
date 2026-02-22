@@ -34,10 +34,13 @@ static int FN(negamax)(Board *board, int alpha, int beta, const int depth) {
     nodeCount++;
 
 #if SOLVER_USE_CACHE
+    uint64_t boardHash = 0;
+    bool hashValid = translateBoard(board, &boardHash);
+
     int cachedValue;
     int boundType;
     bool cachedSolved;
-    if (getCachedValue(board, depth, &cachedValue, &boundType, &cachedSolved)) {
+    if (hashValid && getCachedValueHash(board, boardHash, depth, &cachedValue, &boundType, &cachedSolved)) {
         if (boundType == EXACT_BOUND) {
             *solved = cachedSolved;
             return cachedValue;
@@ -73,41 +76,31 @@ static int FN(negamax)(Board *board, int alpha, int beta, const int depth) {
     const int end   = (board->color == 1) ? LBOUND_P1 : LBOUND_P2;
 
     Board allMoves[6];
-    int order[6];
+
     int keys[6];
     int valid = 0;
 
     for (int i = start; i >= end; i--) {
         if (board->cells[i] == 0) continue;
 
-        copyBoard(board, &allMoves[valid]);
-        makeMoveFunction(&allMoves[valid], i);
+        Board newBoard = *board;
+        makeMoveFunction(&newBoard, i);
 
-        keys[valid] = FN(key)(&allMoves[valid], board->color);
-        order[valid] = valid;
+        int k = FN(key)(&newBoard, board->color);
+
+        int j = valid;
+        while (j > 0 && keys[j - 1] < k) {
+            keys[j] = keys[j - 1];
+            allMoves[j] = allMoves[j - 1];
+            j--;
+        }
+        keys[j] = k;
+        allMoves[j] = newBoard;
         valid++;
     }
 
-    // Sort valid moves descending by evaluation key
     for (int i = 0; i < valid; i++) {
-        int best = i;
-        int best_key = keys[order[i]];
-
-        for (int j = i + 1; j < valid; j++) {
-            int k = keys[order[j]];
-            if (k > best_key) {
-                best_key = k;
-                best = j;
-            }
-        }
-
-        if (best != i) {
-            int temp = order[i];
-            order[i] = order[best];
-            order[best] = temp;
-        }
-
-        Board *boardCopy = &allMoves[order[i]];
+        Board *boardCopy = &allMoves[i];
 
 #if SOLVER_USE_CACHE
         bool childSolved;
@@ -132,11 +125,13 @@ static int FN(negamax)(Board *board, int alpha, int beta, const int depth) {
     }
 
 #if SOLVER_USE_CACHE
-    if (reference <= alphaOriginal) boundType = UPPER_BOUND;
-    else if (reference >= beta) boundType = LOWER_BOUND;
-    else boundType = EXACT_BOUND;
+    if (hashValid) {
+        if (reference <= alphaOriginal) boundType = UPPER_BOUND;
+        else if (reference >= beta) boundType = LOWER_BOUND;
+        else boundType = EXACT_BOUND;
 
-    cacheNode(board, reference, boundType, depth, nodeSolved);
+        cacheNodeHash(board, boardHash, reference, boundType, depth, nodeSolved);
+    }
     *solved = nodeSolved;
 #endif
     return reference;
@@ -145,9 +140,9 @@ static int FN(negamax)(Board *board, int alpha, int beta, const int depth) {
 // --- Helper: Negamax With Move (Root Helper) ---
 
 #if SOLVER_USE_CACHE
-int FN(negamaxWithMove)(Board *board, int *bestMove, int alpha, int beta, const int depth, bool *solved) {
+int FN(negamaxWithMove)(Board *board, int *bestMove, int alpha, int beta, const int depth, bool *solved, int previousBestMove) {
 #else
-int FN(negamaxWithMove)(Board *board, int *bestMove, int alpha, int beta, const int depth) {
+int FN(negamaxWithMove)(Board *board, int *bestMove, int alpha, int beta, const int depth, int previousBestMove) {
 #endif
     if (processBoardTerminal(board)) {
 #if SOLVER_USE_CACHE
@@ -180,42 +175,38 @@ int FN(negamaxWithMove)(Board *board, int *bestMove, int alpha, int beta, const 
 
     Board allMoves[6];
     int moves[6];
-    int order[6];
     int keys[6];
     int valid = 0;
 
     for (int i = start; i >= end; i--) {
         if (board->cells[i] == 0) continue;
 
-        copyBoard(board, &allMoves[valid]);
-        makeMoveFunction(&allMoves[valid], i);
+        Board newBoard = *board;
+        makeMoveFunction(&newBoard, i);
 
-        keys[valid] = FN(key)(&allMoves[valid], board->color);
-        moves[valid] = i;
-        order[valid] = valid;
+        int k = FN(key)(&newBoard, board->color);
+
+        // Principal Variation
+        if (i == previousBestMove) {
+            k += 100000;
+        }
+
+        // Inline insertion sort descending by key
+        int j = valid;
+        while (j > 0 && keys[j - 1] < k) {
+            keys[j] = keys[j - 1];
+            allMoves[j] = allMoves[j - 1];
+            moves[j] = moves[j - 1];
+            j--;
+        }
+        keys[j] = k;
+        allMoves[j] = newBoard;
+        moves[j] = i;
         valid++;
     }
 
-    // Sort valid moves descending by evaluation key
     for (int i = 0; i < valid; i++) {
-        int best = i;
-        int best_key = keys[order[i]];
-
-        for (int j = i + 1; j < valid; j++) {
-            int k = keys[order[j]];
-            if (k > best_key) {
-                best_key = k;
-                best = j;
-            }
-        }
-
-        if (best != i) {
-            int temp = order[i];
-            order[i] = order[best];
-            order[best] = temp;
-        }
-
-        Board *boardCopy = &allMoves[order[i]];
+        Board *boardCopy = &allMoves[i];
 
 #if SOLVER_USE_CACHE
         bool childSolved;
@@ -235,7 +226,7 @@ int FN(negamaxWithMove)(Board *board, int *bestMove, int alpha, int beta, const 
 
         if (score > reference) {
             reference = score;
-            *bestMove = moves[order[i]];
+            *bestMove = moves[i];
         }
 
         alpha = max(alpha, reference);
@@ -342,7 +333,6 @@ void FN(aspirationRoot)(Context* context, SolverConfig *config) {
         setCacheMode(true, config->compressCache);
     }
 
-
     bool solved = false;
 #endif
 
@@ -365,30 +355,34 @@ void FN(aspirationRoot)(Context* context, SolverConfig *config) {
     startProgress(config, PLAY_PREFIX);
 
     while (true) {
+#if SOLVER_USE_CACHE
         solved = true;
+#else
+        solved = true;
+#endif
         bool searchValid = false;
+
+        int previousBest = bestMove;
 
         if (config->clip) {
 #if SOLVER_USE_CACHE
-            // Null Window Search (0, 1)
-            score = FN(negamaxWithMove)(context->board, &bestMove, 0, 1, currentDepth, &solved);
+            score = FN(negamaxWithMove)(context->board, &bestMove, 0, 1, currentDepth, &solved, previousBest);
 #else
-            // Null Window Search (0, 1)
-            score = FN(negamaxWithMove)(context->board, &bestMove, 0, 1, currentDepth);
+            score = FN(negamaxWithMove)(context->board, &bestMove, 0, 1, currentDepth, previousBest);
 #endif
             searchValid = true;
         }
 #if SOLVER_USE_CACHE
         else if (oneShot) {
-            score = FN(negamaxWithMove)(context->board, &bestMove, INT32_MIN + 1, INT32_MAX, currentDepth, &solved);
+            score = FN(negamaxWithMove)(context->board, &bestMove, INT32_MIN + 1, INT32_MAX, currentDepth, &solved, previousBest);
             searchValid = true;
         }
 #endif
         else {
 #if SOLVER_USE_CACHE
-            score = FN(negamaxWithMove)(context->board, &bestMove, alpha, beta, currentDepth, &solved);
+            score = FN(negamaxWithMove)(context->board, &bestMove, alpha, beta, currentDepth, &solved, previousBest);
 #else
-            score = FN(negamaxWithMove)(context->board, &bestMove, alpha, beta, currentDepth);
+            score = FN(negamaxWithMove)(context->board, &bestMove, alpha, beta, currentDepth, previousBest);
 #endif
 
             if (score > alpha && score < beta) {
@@ -412,7 +406,6 @@ void FN(aspirationRoot)(Context* context, SolverConfig *config) {
 #endif
 
         if (searchValid) {
-            // Record Timing
             int timeIndex = currentDepth;
 #if SOLVER_USE_CACHE
             timeIndex = oneShot ? 1 : currentDepth;
@@ -425,7 +418,6 @@ void FN(aspirationRoot)(Context* context, SolverConfig *config) {
 
             updateProgress(currentDepth, bestMove, score, nodeCount);
 
-            // Check Exit Conditions
             if (solved) break;
 #if SOLVER_USE_CACHE
             if (oneShot) break;

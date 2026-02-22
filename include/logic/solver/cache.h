@@ -51,9 +51,11 @@ void setCacheMode(bool depth, CacheMode compressMode);
 
 void invalidateCache();
 
-void cacheNode(Board* board, int evaluation, int boundType, int depth, bool solved);
+bool translateBoard(Board* board, uint64_t *code);
 
-bool getCachedValue(Board* board, int currentDepth, int *evaluation, int *boundType, bool *solved);
+void cacheNodeHash(Board* board, uint64_t boardRep, int evaluation, int boundType, int depth, bool solved);
+
+bool getCachedValueHash(Board* board, uint64_t hashValue, int currentDepth, int *eval, int *boundType, bool *solved);
 
 void fillCacheStats(CacheStats* stats, bool calcFrag, bool calcStoneDist, bool calcDepthDist);
 void renderCacheStats(bool calcFrag, bool calcStoneDist, bool calcDepthDist);

@@ -300,26 +300,26 @@ void setCacheSize(int sizePow) {
     configSizePow = sizePow;
 }
 
-void cacheNode(Board* board, int evaluation, int boundType, int depth, bool solved) {
+void cacheNodeHash(Board* board, uint64_t boardRep, int evaluation, int boundType, int depth, bool solved) {
     switch (currentMode) {
-        case MODE_ND_B48_T16: cacheNode_NODEPTH_B48_T16(board, evaluation, boundType, depth, solved); break;
-        case MODE_ND_B48_T32: cacheNode_NODEPTH_B48_T32(board, evaluation, boundType, depth, solved); break;
-        case MODE_ND_B60_T32: cacheNode_NODEPTH_B60_T32(board, evaluation, boundType, depth, solved); break;
-        case MODE_D_B48_T16:  cacheNode_DEPTH_B48_T16(board, evaluation, boundType, depth, solved); break;
-        case MODE_D_B48_T32:  cacheNode_DEPTH_B48_T32(board, evaluation, boundType, depth, solved); break;
-        case MODE_D_B60_T32:  cacheNode_DEPTH_B60_T32(board, evaluation, boundType, depth, solved); break;
+        case MODE_ND_B48_T16: cacheNodeHash_NODEPTH_B48_T16(board, boardRep, evaluation, boundType, depth, solved); break;
+        case MODE_ND_B48_T32: cacheNodeHash_NODEPTH_B48_T32(board, boardRep, evaluation, boundType, depth, solved); break;
+        case MODE_ND_B60_T32: cacheNodeHash_NODEPTH_B60_T32(board, boardRep, evaluation, boundType, depth, solved); break;
+        case MODE_D_B48_T16:  cacheNodeHash_DEPTH_B48_T16(board, boardRep, evaluation, boundType, depth, solved); break;
+        case MODE_D_B48_T32:  cacheNodeHash_DEPTH_B48_T32(board, boardRep, evaluation, boundType, depth, solved); break;
+        case MODE_D_B60_T32:  cacheNodeHash_DEPTH_B60_T32(board, boardRep, evaluation, boundType, depth, solved); break;
         default: break;
     }
 }
 
-bool getCachedValue(Board* board, int currentDepth, int *evaluation, int *boundType, bool *solved) {
+bool getCachedValueHash(Board* board, uint64_t hashValue, int currentDepth, int *evaluation, int *boundType, bool *solved) {
     switch (currentMode) {
-        case MODE_ND_B48_T16: return getCachedValue_NODEPTH_B48_T16(board, currentDepth, evaluation, boundType, solved);
-        case MODE_ND_B48_T32: return getCachedValue_NODEPTH_B48_T32(board, currentDepth, evaluation, boundType, solved);
-        case MODE_ND_B60_T32: return getCachedValue_NODEPTH_B60_T32(board, currentDepth, evaluation, boundType, solved);
-        case MODE_D_B48_T16:  return getCachedValue_DEPTH_B48_T16(board, currentDepth, evaluation, boundType, solved);
-        case MODE_D_B48_T32:  return getCachedValue_DEPTH_B48_T32(board, currentDepth, evaluation, boundType, solved);
-        case MODE_D_B60_T32:  return getCachedValue_DEPTH_B60_T32(board, currentDepth, evaluation, boundType, solved);
+        case MODE_ND_B48_T16: return getCachedValueHash_NODEPTH_B48_T16(board, hashValue, currentDepth, evaluation, boundType, solved);
+        case MODE_ND_B48_T32: return getCachedValueHash_NODEPTH_B48_T32(board, hashValue, currentDepth, evaluation, boundType, solved);
+        case MODE_ND_B60_T32: return getCachedValueHash_NODEPTH_B60_T32(board, hashValue, currentDepth, evaluation, boundType, solved);
+        case MODE_D_B48_T16:  return getCachedValueHash_DEPTH_B48_T16(board, hashValue, currentDepth, evaluation, boundType, solved);
+        case MODE_D_B48_T32:  return getCachedValueHash_DEPTH_B48_T32(board, hashValue, currentDepth, evaluation, boundType, solved);
+        case MODE_D_B60_T32:  return getCachedValueHash_DEPTH_B60_T32(board, hashValue, currentDepth, evaluation, boundType, solved);
         default: return false;
     }
 }
@@ -375,4 +375,16 @@ void renderCacheStats(bool calcFrag, bool calcStoneDist, bool calcDepthDist) {
 
     fillCacheStats(&stats, calcFrag, calcStoneDist, calcDepthDist);
     renderCacheOverview(&stats, calcFrag, calcStoneDist, calcDepthDist);
+}
+
+bool translateBoard(Board* board, uint64_t *code) {
+    switch (currentMode) {
+        case MODE_ND_B48_T16: return translateBoard_NODEPTH_B48_T16(board, code);
+        case MODE_ND_B48_T32: return translateBoard_NODEPTH_B48_T32(board, code); break;
+        case MODE_ND_B60_T32: return translateBoard_NODEPTH_B60_T32(board, code); break;
+        case MODE_D_B48_T16:  return translateBoard_DEPTH_B48_T16(  board, code); break;
+        case MODE_D_B48_T32:  return translateBoard_DEPTH_B48_T32(  board, code); break;
+        case MODE_D_B60_T32:  return translateBoard_DEPTH_B60_T32(  board, code); break;
+        default: return false;
+    }
 }
