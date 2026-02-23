@@ -72,14 +72,27 @@ else()
 
     target_compile_definitions(Mancala PRIVATE MANCALA_VERSION=\"${MANCALA_VERSION}\")
 
-    # --- PGO options ---
+    # --- Build Options ---
     option(ENABLE_PGO "Enable profile guided optimization" OFF)
+    option(ENABLE_PROFILING "Enable debug symbols for perf analysis" OFF)
+
     set(PGO_STAGE "generate" CACHE STRING "PGO stage: generate or use")
 
     message(STATUS "ENABLE_PGO=${ENABLE_PGO}")
-    message(STATUS "PGO_STAGE=${PGO_STAGE}")
+    message(STATUS "ENABLE_PROFILING=${ENABLE_PROFILING}")
+    if(ENABLE_PGO)
+        message(STATUS "PGO_STAGE=${PGO_STAGE}")
+    endif()
 
+    # Base optimization flags
     set(GCC_COMMON_FLAGS "-O3 -march=native -fno-stack-protector -Wall -Wextra -pedantic")
+
+    # --- Profiling Logic ---
+    if(ENABLE_PROFILING)
+        # Keeps O3 but adds symbols and frame pointers for 'perf'
+        set(GCC_COMMON_FLAGS "${GCC_COMMON_FLAGS} -g -fno-omit-frame-pointer")
+    endif()
+
     set(LTO_FLAG "-flto")
 
     if(NOT WIN32)
