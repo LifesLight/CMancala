@@ -84,7 +84,7 @@ static int FN(negamax)(Board *board, int alpha, int beta, const int depth) {
         if (board->cells[i] == 0) continue;
 
         Board newBoard = *board;
-        makeMoveFunction(&newBoard, i);
+        MAKE_MOVE(&newBoard, i);
 
         int k = FN(key)(&newBoard, board->color);
 
@@ -182,7 +182,7 @@ int FN(negamaxWithMove)(Board *board, int *bestMove, int alpha, int beta, const 
         if (board->cells[i] == 0) continue;
 
         Board newBoard = *board;
-        makeMoveFunction(&newBoard, i);
+        MAKE_MOVE(&newBoard, i);
 
         int k = FN(key)(&newBoard, board->color);
 
@@ -280,7 +280,7 @@ void FN(distributionRoot)(Board *board, int *distribution, bool *solvedOutput, S
         }
 
         Board boardCopy = *board;
-        makeMoveFunction(&boardCopy, i);
+        MAKE_MOVE(&boardCopy, i);
 
 #if SOLVER_USE_CACHE
         bool childSolved;

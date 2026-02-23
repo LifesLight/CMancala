@@ -489,8 +489,6 @@ void startGameHandling(Config config) {
     Board board;
     initializeBoardFromConfig(&board, &config);
 
-    setMoveFunction(config.gameSettings.moveFunction);
-
     Metadata metadata = {
         .lastEvaluation = INT32_MAX,
         .lastMove = -1,

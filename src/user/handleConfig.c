@@ -46,7 +46,7 @@ void printConfig(Config* config) {
     snprintf(message, sizeof(message), "  Seed: %d", config->gameSettings.seed);
     renderOutput(message, CONFIG_PREFIX);
 
-    switch (config->gameSettings.moveFunction) {
+    switch (getMoveFunction()) {
         case CLASSIC_MOVE:
             snprintf(message, sizeof(message), "  Mode: classic");
             break;
@@ -267,10 +267,10 @@ void handleConfigInput(bool* requestedStart, Config* config) {
     }
 
     if (strncmp(input, "mode ", 5) == 0) {
-        MoveFunction originalMode = config->gameSettings.moveFunction;
+        MoveFunction originalMode = getMoveFunction();
 
         if (strcmp(input + 5, "classic") == 0) {
-            config->gameSettings.moveFunction = CLASSIC_MOVE;
+            setMoveFunction(CLASSIC_MOVE);
             if (originalMode == CLASSIC_MOVE) {
                 renderOutput("Mode already set to classic", CONFIG_PREFIX);
                 return;
@@ -278,7 +278,7 @@ void handleConfigInput(bool* requestedStart, Config* config) {
             renderOutput("Updated mode to classic", CONFIG_PREFIX);
             return;
         } else if (strcmp(input + 5, "avalanche") == 0) {
-            config->gameSettings.moveFunction = AVALANCHE_MOVE;
+            setMoveFunction(AVALANCHE_MOVE);
             if (originalMode == AVALANCHE_MOVE) {
                 renderOutput("Mode already set to avalanche", CONFIG_PREFIX);
                 return;

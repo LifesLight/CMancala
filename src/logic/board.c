@@ -15,6 +15,10 @@ void setMoveFunction(MoveFunction moveFunction) {
     }
 }
 
+MoveFunction getMoveFunction(void) {
+    return activeMoveMode;
+}
+
 void configBoard(Board *board, int stones) {
     // Assign start values
     for (int i = 0; i < ASIZE; i++) {

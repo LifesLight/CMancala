@@ -49,7 +49,7 @@ static int webStatHasDepth = 0;
 /* ================== UI HIGHLIGHT LOGIC ================== */
 
 static int calc_capture_mask(const Board* prev, const Board* curr, int move) {
-    if (globalContext.config.gameSettings.moveFunction == AVALANCHE_MOVE) {
+    if (getMoveFunction() == AVALANCHE_MOVE) {
         return 0;
     }
 
@@ -107,12 +107,12 @@ EMSCRIPTEN_KEEPALIVE int  get_ai_thinking()      { return aiThinking; }
 EMSCRIPTEN_KEEPALIVE int  get_game_over()        { return isGameInitialized && isBoardTerminal(globalContext.board); }
 
 EMSCRIPTEN_KEEPALIVE int  get_current_captures() { 
-    if (globalContext.config.gameSettings.moveFunction == AVALANCHE_MOVE) return 0;
+    if (getMoveFunction() == AVALANCHE_MOVE) return 0;
     return currentCaptureMask; 
 }
 
 EMSCRIPTEN_KEEPALIVE int  get_current_modified() { 
-    if (globalContext.config.gameSettings.moveFunction == AVALANCHE_MOVE) return 0;
+    if (getMoveFunction() == AVALANCHE_MOVE) return 0;
     return currentModifiedMask; 
 } 
 
@@ -129,12 +129,12 @@ EMSCRIPTEN_KEEPALIVE int get_history_move(int turn) {
     return -1;
 }
 EMSCRIPTEN_KEEPALIVE int get_history_captures(int turn) {
-    if (globalContext.config.gameSettings.moveFunction == AVALANCHE_MOVE) return 0;
+    if (getMoveFunction() == AVALANCHE_MOVE) return 0;
     if (turn >= 0 && turn < historyCount) return boardHistoryCaptures[turn];
     return 0;
 }
 EMSCRIPTEN_KEEPALIVE int get_history_modified(int turn) { 
-    if (globalContext.config.gameSettings.moveFunction == AVALANCHE_MOVE) return 0;
+    if (getMoveFunction() == AVALANCHE_MOVE) return 0;
     if (turn >= 0 && turn < historyCount) return boardHistoryModified[turn];
     return 0;
 }
@@ -262,7 +262,14 @@ void undo_move() {
 static void init_game_with_config(int stones, int distribution, int moveFunc, double timeLimit, int startColor, int seedInput) {
     if (stones < 1) stones = 1;
     if (stones > 18) stones = 18;
-    SolverConfig solverConfig = {.solver = LOCAL_SOLVER, .depth = 0, .timeLimit = timeLimit, .clip = false, .compressCache = AUTO, .progressBar = false};
+    SolverConfig solverConfig = {
+        .solver = LOCAL_SOLVER, 
+        .depth = 0, 
+        .timeLimit = timeLimit, 
+        .clip = false, 
+        .compressCache = AUTO, 
+        .progressBar = false
+    };
     int actualSeed = seedInput;
     if (actualSeed == 0) actualSeed = (int)time(NULL);
     GameSettings gameSettings = {
@@ -271,13 +278,16 @@ static void init_game_with_config(int stones, int distribution, int moveFunc, do
         .seed = actualSeed,
         .startColor = startColor, 
         .player1 = HUMAN_AGENT, 
-        .player2 = AI_AGENT, 
-        .moveFunction = moveFunc ? AVALANCHE_MOVE : CLASSIC_MOVE
+        .player2 = AI_AGENT
     };
     Config config = {.autoplay = false, .gameSettings = gameSettings, .solverConfig = solverConfig};
+    
+    // Set the single source of truth for the move function
+    setMoveFunction(moveFunc ? AVALANCHE_MOVE : CLASSIC_MOVE);
+
     srand(gameSettings.seed);
     initializeBoardFromConfig(&globalBoard, &config);
-    setMoveFunction(config.gameSettings.moveFunction);
+    
     globalContext.board = &globalBoard;
     globalContext.lastBoard = &globalLastBoard;
     globalContext.config = config;

@@ -53,7 +53,6 @@ typedef struct {
     uint8_t startColor;
     Agent player1;
     Agent player2;
-    MoveFunction moveFunction;
 } GameSettings;
 
 typedef struct {

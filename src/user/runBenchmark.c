@@ -15,10 +15,14 @@ static void runTest(
     CacheMode compress, 
     int depth, 
     Solver type,
-    const char* label
+    const char* label,
+    MoveFunction moveFunction
 ) {
     printf("----------------------------------------------------------------\n");
     printf("Benchmarking: %s\n", label);
+
+    // Synchronize global move mode
+    setMoveFunction(moveFunction);
 
     // Setup Board
     setCacheSize(sizePow);
@@ -66,34 +70,34 @@ void runBenchmark() {
     const int T32_B60 = 29; 
     const int T16_B48 = 33; 
 
-    setMoveFunction(CLASSIC_MOVE);
-
     // --- 1. T32 MODES (Standard RAM) ---
-    runTest(&context, 2, T32_B48, ALWAYS_COMPRESS, 0,   LOCAL_SOLVER, "MODE_ND_B48_T32");
-    runTest(&context, 2, T32_B48, ALWAYS_COMPRESS, 999, LOCAL_SOLVER, "MODE_D_B48_T32");
-    runTest(&context, 2, T32_B60, NEVER_COMPRESS, 0,   LOCAL_SOLVER, "MODE_ND_B60_T32");
-    runTest(&context, 2, T32_B60, NEVER_COMPRESS, 999, LOCAL_SOLVER, "MODE_D_B60_T32");
+    // Hits: LOCAL_CLASSIC
+    runTest(&context, 2, T32_B48, ALWAYS_COMPRESS, 0,   LOCAL_SOLVER, "MODE_ND_B48_T32", CLASSIC_MOVE);
+    runTest(&context, 2, T32_B48, ALWAYS_COMPRESS, 999, LOCAL_SOLVER, "MODE_D_B48_T32", CLASSIC_MOVE);
+    runTest(&context, 2, T32_B60, NEVER_COMPRESS, 0,   LOCAL_SOLVER, "MODE_ND_B60_T32", CLASSIC_MOVE);
+    runTest(&context, 2, T32_B60, NEVER_COMPRESS, 999, LOCAL_SOLVER, "MODE_D_B60_T32", CLASSIC_MOVE);
 
     // --- 2. T16 MODES (High RAM) ---
-    runTest(&context, 2, T16_B48, ALWAYS_COMPRESS, 0,   LOCAL_SOLVER, "MODE_ND_B48_T16");
-    runTest(&context, 2, T16_B48, ALWAYS_COMPRESS, 999, LOCAL_SOLVER, "MODE_D_B48_T16");
+    // Hits: LOCAL_CLASSIC
+    runTest(&context, 2, T16_B48, ALWAYS_COMPRESS, 0,   LOCAL_SOLVER, "MODE_ND_B48_T16", CLASSIC_MOVE);
+    runTest(&context, 2, T16_B48, ALWAYS_COMPRESS, 999, LOCAL_SOLVER, "MODE_D_B48_T16", CLASSIC_MOVE);
 
     // --- 3. AVALANCHE ---
-    setMoveFunction(AVALANCHE_MOVE);
-    runTest(&context, 2, T32_B48, ALWAYS_COMPRESS, 999, LOCAL_SOLVER, "Avalanche (D_B48_T32)");
+    // Hits: LOCAL_AVALANCHE
+    runTest(&context, 2, T32_B48, ALWAYS_COMPRESS, 999, LOCAL_SOLVER, "Avalanche (D_B48_T32)", AVALANCHE_MOVE);
 
     // --- 4. 3-STONE COMPARISON ---
-    setMoveFunction(CLASSIC_MOVE);
-    runTest(&context, 3, 24, ALWAYS_COMPRESS, 0,  LOCAL_SOLVER, "3-Stone B48 (Size 24)");
-    runTest(&context, 3, 29, NEVER_COMPRESS, 0, LOCAL_SOLVER, "3-Stone B60 (Size 29)");
+    // Hits: LOCAL_CLASSIC
+    runTest(&context, 3, 24, ALWAYS_COMPRESS, 0,  LOCAL_SOLVER, "3-Stone B48 (Size 24)", CLASSIC_MOVE);
+    runTest(&context, 3, 29, NEVER_COMPRESS, 0,   LOCAL_SOLVER, "3-Stone B60 (Size 29)", CLASSIC_MOVE);
 
     // --- 5. GLOBAL SOLVER ---
     // Note: Global solver tests imply sizePow=0 and compress=true
-    setMoveFunction(CLASSIC_MOVE);
-    runTest(&context, 2, 0, ALWAYS_COMPRESS, 0, GLOBAL_SOLVER, "GLOBAL SOLVER - Classic (2 Stones)");
+    // Hits: GLOBAL_CLASSIC
+    runTest(&context, 2, 0, ALWAYS_COMPRESS, 0, GLOBAL_SOLVER, "GLOBAL SOLVER - Classic (2 Stones)", CLASSIC_MOVE);
 
-    setMoveFunction(AVALANCHE_MOVE);
-    runTest(&context, 1, 0, ALWAYS_COMPRESS, 0, GLOBAL_SOLVER, "GLOBAL SOLVER - Avalanche (1 Stone)");
+    // Hits: GLOBAL_AVALANCHE
+    runTest(&context, 1, 0, ALWAYS_COMPRESS, 0, GLOBAL_SOLVER, "GLOBAL SOLVER - Avalanche (1 Stone)", AVALANCHE_MOVE);
 
     printf("----------------------------------------------------------------\n");
     printf("Benchmark Complete.\n");

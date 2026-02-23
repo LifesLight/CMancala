@@ -3,6 +3,7 @@
 
 void startInterface() {
     renderWelcome();
+    setMoveFunction(CLASSIC_MOVE);
 
     SolverConfig solverConfig = {
         .solver = LOCAL_SOLVER,
@@ -19,8 +20,7 @@ void startInterface() {
         .seed = time(NULL),
         .startColor = 1,
         .player1 = HUMAN_AGENT,
-        .player2 = AI_AGENT,
-        .moveFunction = CLASSIC_MOVE
+        .player2 = AI_AGENT
     };
 
     Config config = {

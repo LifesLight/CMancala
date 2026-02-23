@@ -26,6 +26,7 @@
  * Sets the move function to use (Classic vs Avalanche)
 */
 void setMoveFunction(MoveFunction moveFunction);
+MoveFunction getMoveFunction(void);
 
 /**
  * Main wrapper function that dispatches to the active mode.

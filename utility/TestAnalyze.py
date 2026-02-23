@@ -5,7 +5,7 @@ import sys
 import os
 
 # --- CONFIGURATION ---
-EXECUTABLE_PATH = "./build-pgo/Mancala"
+EXECUTABLE_PATH = "./build/Mancala"
 ITERATIONS = 100
 BASE_DEPTH = 0
 DEPTH_VARIATION = 0

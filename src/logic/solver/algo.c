@@ -2,16 +2,33 @@
  * Copyright (c) Alexander Kurtz 2026
  */
 
-
 #include "logic/solver/solver.h"
+
+extern void aspirationRoot_GLOBAL_CLASSIC(Context* context, SolverConfig *config);
+extern void aspirationRoot_GLOBAL_AVALANCHE(Context* context, SolverConfig *config);
+extern void aspirationRoot_LOCAL_CLASSIC(Context* context, SolverConfig *config);
+extern void aspirationRoot_LOCAL_AVALANCHE(Context* context, SolverConfig *config);
+
+extern void distributionRoot_GLOBAL_CLASSIC(Board *board, int32_t* distribution, bool *solved, SolverConfig *config);
+extern void distributionRoot_GLOBAL_AVALANCHE(Board *board, int32_t* distribution, bool *solved, SolverConfig *config);
+extern void distributionRoot_LOCAL_CLASSIC(Board *board, int32_t* distribution, bool *solved, SolverConfig *config);
+extern void distributionRoot_LOCAL_AVALANCHE(Board *board, int32_t* distribution, bool *solved, SolverConfig *config);
 
 void aspirationRoot(Context* context, SolverConfig *config) {
     switch (config->solver) {
         case GLOBAL_SOLVER:
-            aspirationRoot_GLOBAL(context, config);
+            if (getMoveFunction() == CLASSIC_MOVE) {
+                aspirationRoot_GLOBAL_CLASSIC(context, config);
+            } else {
+                aspirationRoot_GLOBAL_AVALANCHE(context, config);
+            }
             break;
         case LOCAL_SOLVER:
-            aspirationRoot_LOCAL(context, config);
+            if (getMoveFunction() == CLASSIC_MOVE) {
+                aspirationRoot_LOCAL_CLASSIC(context, config);
+            } else {
+                aspirationRoot_LOCAL_AVALANCHE(context, config);
+            }
             break;
     }
 }
@@ -19,10 +36,18 @@ void aspirationRoot(Context* context, SolverConfig *config) {
 void distributionRoot(Board *board, int32_t* distribution, bool *solved, SolverConfig *config) {
     switch (config->solver) {
         case GLOBAL_SOLVER:
-            distributionRoot_GLOBAL(board, distribution, solved, config);
+            if (getMoveFunction() == CLASSIC_MOVE) {
+                distributionRoot_GLOBAL_CLASSIC(board, distribution, solved, config);
+            } else {
+                distributionRoot_GLOBAL_AVALANCHE(board, distribution, solved, config);
+            }
             break;
         case LOCAL_SOLVER:
-            distributionRoot_LOCAL(board, distribution, solved, config);
+            if (getMoveFunction() == CLASSIC_MOVE) {
+                distributionRoot_LOCAL_CLASSIC(board, distribution, solved, config);
+            } else {
+                distributionRoot_LOCAL_AVALANCHE(board, distribution, solved, config);
+            }
             break;
     }
 }
