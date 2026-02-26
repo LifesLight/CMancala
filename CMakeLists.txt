@@ -9,8 +9,6 @@ set(CORE_SOURCES
     src/logic/utility.c
     src/logic/board.c
     src/logic/solver/algo.c
-    src/logic/solver/solver.c
-    src/logic/throughput.c
     src/logic/solver/cache.c
     src/user/render.c
     src/user/runBenchmark.c
