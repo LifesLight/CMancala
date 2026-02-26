@@ -44,6 +44,7 @@ typedef struct {
     bool clip;
     CacheMode compressCache;
     bool progressBar;
+    int threads;
 } SolverConfig;
 
 typedef struct {

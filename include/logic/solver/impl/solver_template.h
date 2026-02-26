@@ -4,26 +4,34 @@
 
 #include "logic/solver/impl/macros.h"
 #include "logic/utility.h"
+#include <pthread.h>
+#include <stdatomic.h>
+
+extern _Thread_local uint64_t nodeCount;
+extern _Atomic uint64_t globalNodeCount;
+extern _Atomic bool solver_abort_search;
 
 #if !SOLVER_USE_CACHE
-static bool solved;
+static _Thread_local bool solved;
 #endif
 
-// --- Helper: Key ---
-
 static inline int FN(key)(Board* board, int color1) {
-    // We really like getting another turn, this forces it to be explored first
     if(color1 == board->color) return 1000;
     return color1 * getBoardEvaluation(board);
 }
 
-// --- Helper: Negamax ---
-
 #if SOLVER_USE_CACHE
-static int FN(negamax)(Board *board, int alpha, int beta, const int depth, bool *solved) {
+static int FN(negamax)(Board *board, int alpha, int beta, const int depth, bool *solved, int thread_id) {
 #else
-static int FN(negamax)(Board *board, int alpha, int beta, const int depth) {
+static int FN(negamax)(Board *board, int alpha, int beta, const int depth, int thread_id) {
 #endif
+    if (atomic_load_explicit(&solver_abort_search, memory_order_relaxed)) {
+#if SOLVER_USE_CACHE
+        *solved = false;
+#endif
+        return 0;
+    }
+
     if (processBoardTerminal(board)) {
 #if SOLVER_USE_CACHE
         *solved = true;
@@ -76,7 +84,6 @@ static int FN(negamax)(Board *board, int alpha, int beta, const int depth) {
     const int end   = (board->color == 1) ? LBOUND_P1 : LBOUND_P2;
 
     Board allMoves[6];
-
     int keys[6];
     int valid = 0;
 
@@ -100,21 +107,27 @@ static int FN(negamax)(Board *board, int alpha, int beta, const int depth) {
     }
 
     for (int i = 0; i < valid; i++) {
-        Board *boardCopy = &allMoves[i];
+        // PV-Preserving Shift: Thread 0 does 0, 1, 2. Thread 1 does 0, 2, 1.
+        int idx = i;
+        if (i > 0 && valid > 2 && thread_id > 0) {
+            idx = 1 + ((i - 1 + thread_id) % (valid - 1));
+        }
+
+        Board *boardCopy = &allMoves[idx];
 
 #if SOLVER_USE_CACHE
         bool childSolved;
         if (board->color == boardCopy->color) {
-            score = FN(negamax)(boardCopy, alpha, beta, depth - 1, &childSolved);
+            score = FN(negamax)(boardCopy, alpha, beta, depth - 1, &childSolved, thread_id);
         } else {
-            score = -FN(negamax)(boardCopy, -beta, -alpha, depth - 1, &childSolved);
+            score = -FN(negamax)(boardCopy, -beta, -alpha, depth - 1, &childSolved, thread_id);
         }
         nodeSolved = nodeSolved && childSolved;
 #else
         if (board->color == boardCopy->color) {
-            score = FN(negamax)(boardCopy, alpha, beta, depth - 1);
+            score = FN(negamax)(boardCopy, alpha, beta, depth - 1, thread_id);
         } else {
-            score = -FN(negamax)(boardCopy, -beta, -alpha, depth - 1);
+            score = -FN(negamax)(boardCopy, -beta, -alpha, depth - 1, thread_id);
         }
 #endif
 
@@ -137,13 +150,19 @@ static int FN(negamax)(Board *board, int alpha, int beta, const int depth) {
     return reference;
 }
 
-// --- Helper: Negamax With Move (Root Helper) ---
-
 #if SOLVER_USE_CACHE
-int FN(negamaxWithMove)(Board *board, int *bestMove, int alpha, int beta, const int depth, bool *solved, int previousBestMove) {
+int FN(negamaxWithMove)(Board *board, int *bestMove, int alpha, int beta, const int depth, bool *solved, int previousBestMove, int thread_id) {
 #else
-int FN(negamaxWithMove)(Board *board, int *bestMove, int alpha, int beta, const int depth, int previousBestMove) {
+int FN(negamaxWithMove)(Board *board, int *bestMove, int alpha, int beta, const int depth, int previousBestMove, int thread_id) {
 #endif
+    if (atomic_load_explicit(&solver_abort_search, memory_order_relaxed)) {
+        *bestMove = -1;
+#if SOLVER_USE_CACHE
+        *solved = false;
+#endif
+        return 0;
+    }
+
     if (processBoardTerminal(board)) {
 #if SOLVER_USE_CACHE
         *solved = true;
@@ -185,13 +204,8 @@ int FN(negamaxWithMove)(Board *board, int *bestMove, int alpha, int beta, const 
         MAKE_MOVE(&newBoard, i);
 
         int k = FN(key)(&newBoard, board->color);
+        if (i == previousBestMove) k += 100000;
 
-        // Principal Variation
-        if (i == previousBestMove) {
-            k += 100000;
-        }
-
-        // Inline insertion sort descending by key
         int j = valid;
         while (j > 0 && keys[j - 1] < k) {
             keys[j] = keys[j - 1];
@@ -206,27 +220,32 @@ int FN(negamaxWithMove)(Board *board, int *bestMove, int alpha, int beta, const 
     }
 
     for (int i = 0; i < valid; i++) {
-        Board *boardCopy = &allMoves[i];
+        int idx = i;
+        if (i > 0 && valid > 2 && thread_id > 0) {
+            idx = 1 + ((i - 1 + thread_id) % (valid - 1));
+        }
+
+        Board *boardCopy = &allMoves[idx];
 
 #if SOLVER_USE_CACHE
         bool childSolved;
         if (board->color == boardCopy->color) {
-            score = FN(negamax)(boardCopy, alpha, beta, depth - 1, &childSolved);
+            score = FN(negamax)(boardCopy, alpha, beta, depth - 1, &childSolved, thread_id);
         } else {
-            score = -FN(negamax)(boardCopy, -beta, -alpha, depth - 1, &childSolved);
+            score = -FN(negamax)(boardCopy, -beta, -alpha, depth - 1, &childSolved, thread_id);
         }
         nodeSolved = nodeSolved && childSolved;
 #else
         if (board->color == boardCopy->color) {
-            score = FN(negamax)(boardCopy, alpha, beta, depth - 1);
+            score = FN(negamax)(boardCopy, alpha, beta, depth - 1, thread_id);
         } else {
-            score = -FN(negamax)(boardCopy, -beta, -alpha, depth - 1);
+            score = -FN(negamax)(boardCopy, -beta, -alpha, depth - 1, thread_id);
         }
 #endif
 
         if (score > reference) {
             reference = score;
-            *bestMove = moves[i];
+            *bestMove = moves[idx];
         }
 
         alpha = max(alpha, reference);
@@ -238,13 +257,13 @@ int FN(negamaxWithMove)(Board *board, int *bestMove, int alpha, int beta, const 
     return reference;
 }
 
-// --- Public: Distribution Root ---
-
 #if SOLVER_USE_CACHE
 void FN(distributionRoot)(Board *board, int *distribution, bool *solved, SolverConfig *config) {
 #else
 void FN(distributionRoot)(Board *board, int *distribution, bool *solvedOutput, SolverConfig *config) {
 #endif
+    atomic_store_explicit(&solver_abort_search, false, memory_order_relaxed);
+
     const int start = (board->color == 1) ? HBOUND_P1 : HBOUND_P2;
     const int end = (board->color == 1) ? LBOUND_P1 : LBOUND_P2;
 
@@ -285,16 +304,16 @@ void FN(distributionRoot)(Board *board, int *distribution, bool *solvedOutput, S
 #if SOLVER_USE_CACHE
         bool childSolved;
         if (board->color == boardCopy.color) {
-            score = FN(negamax)(&boardCopy, alpha, beta, depth, &childSolved);
+            score = FN(negamax)(&boardCopy, alpha, beta, depth, &childSolved, 0);
         } else {
-            score = -FN(negamax)(&boardCopy, -beta, -alpha, depth, &childSolved);
+            score = -FN(negamax)(&boardCopy, -beta, -alpha, depth, &childSolved, 0);
         }
         nodeSolved = nodeSolved && childSolved;
 #else
         if (board->color == boardCopy.color) {
-            score = FN(negamax)(&boardCopy, alpha, beta, depth);
+            score = FN(negamax)(&boardCopy, alpha, beta, depth, 0);
         } else {
-            score = -FN(negamax)(&boardCopy, -beta, -alpha, depth);
+            score = -FN(negamax)(&boardCopy, -beta, -alpha, depth, 0);
         }
 #endif
 
@@ -313,9 +332,77 @@ void FN(distributionRoot)(Board *board, int *distribution, bool *solvedOutput, S
 #endif
 }
 
-// --- Public: Aspiration Root ---
+// --- Thread Worker Logic ---
+typedef struct {
+    Context context;
+    SolverConfig config;
+    int thread_id;
+} FN(ThreadWorkerArgs);
 
+void* FN(aspirationWorker)(void* arg) {
+    FN(ThreadWorkerArgs)* args = (FN(ThreadWorkerArgs)*)arg;
+    nodeCount = 0;
+
+    int currentDepth = 1;
+    int alpha = INT32_MIN + 1;
+    int beta  = INT32_MAX;
+
+#if SOLVER_USE_CACHE
+    bool oneShot = false;
+    if (args->config.timeLimit == 0 && args->config.depth == 0) {
+        currentDepth = MAX_DEPTH;
+        oneShot = true;
+    }
+#endif
+
+    while (!atomic_load_explicit(&solver_abort_search, memory_order_relaxed)) {
+        bool solved = true;
+        int bestMove = -1;
+        bool searchValid = false;
+
+        if (args->config.clip) {
+#if SOLVER_USE_CACHE
+            FN(negamaxWithMove)(args->context.board, &bestMove, 0, 1, currentDepth, &solved, -1, args->thread_id);
+#else
+            FN(negamaxWithMove)(args->context.board, &bestMove, 0, 1, currentDepth, -1, args->thread_id);
+#endif
+            searchValid = true;
+        }
+#if SOLVER_USE_CACHE
+        else if (oneShot) {
+            FN(negamaxWithMove)(args->context.board, &bestMove, INT32_MIN + 1, INT32_MAX, currentDepth, &solved, -1, args->thread_id);
+            searchValid = true;
+        }
+#endif
+        else {
+#if SOLVER_USE_CACHE
+            FN(negamaxWithMove)(args->context.board, &bestMove, alpha, beta, currentDepth, &solved, -1, args->thread_id);
+#else
+            FN(negamaxWithMove)(args->context.board, &bestMove, alpha, beta, currentDepth, -1, args->thread_id);
+#endif
+            searchValid = true;
+        }
+
+        if (searchValid) {
+            if (solved) break;
+#if SOLVER_USE_CACHE
+            if (oneShot) break;
+#endif
+            if (args->config.depth > 0 && currentDepth >= args->config.depth) break;
+            currentDepth += 1;
+        }
+    }
+    
+    atomic_fetch_add_explicit(&globalNodeCount, nodeCount, memory_order_relaxed);
+    return NULL;
+}
+
+// --- Public: Aspiration Root ---
 void FN(aspirationRoot)(Context* context, SolverConfig *config) {
+    atomic_store_explicit(&solver_abort_search, false, memory_order_release);
+    globalNodeCount = 0;
+    nodeCount = 0;
+
     const int depthStep = 1;
     int currentDepth = 1;
 
@@ -324,7 +411,6 @@ void FN(aspirationRoot)(Context* context, SolverConfig *config) {
 #if SOLVER_USE_CACHE
     bool oneShot = false;
 
-    // Check for No Iterative Deepening
     if (config->timeLimit == 0 && config->depth == 0) {
         currentDepth = MAX_DEPTH;
         oneShot = true;
@@ -332,7 +418,6 @@ void FN(aspirationRoot)(Context* context, SolverConfig *config) {
     } else {
         setCacheMode(true, config->compressCache);
     }
-
     bool solved = false;
 #endif
 
@@ -344,7 +429,6 @@ void FN(aspirationRoot)(Context* context, SolverConfig *config) {
     int windowMisses = 0;
 
     clock_t start = clock();
-    nodeCount = 0;
 
     double* depthTimes = context->metadata.lastDepthTimes;
     if (depthTimes != NULL) {
@@ -354,48 +438,59 @@ void FN(aspirationRoot)(Context* context, SolverConfig *config) {
 
     startProgress(config, PLAY_PREFIX);
 
+    int num_threads = config->threads > 0 ? config->threads : 1;
+    pthread_t* threads = NULL;
+    FN(ThreadWorkerArgs)* worker_args = NULL;
+
+    if (num_threads > 1) {
+        threads = malloc(sizeof(pthread_t) * (num_threads - 1));
+        worker_args = malloc(sizeof(FN(ThreadWorkerArgs)) * (num_threads - 1));
+        for (int i = 0; i < num_threads - 1; i++) {
+            worker_args[i].context = *context;
+            worker_args[i].config = *config;
+            worker_args[i].thread_id = i + 1;
+            pthread_create(&threads[i], NULL, FN(aspirationWorker), &worker_args[i]);
+        }
+    }
+
     while (true) {
 #if SOLVER_USE_CACHE
         solved = true;
 #else
-        solved = true;
+        bool solved = true;
 #endif
         bool searchValid = false;
-
         int previousBest = bestMove;
 
         if (config->clip) {
 #if SOLVER_USE_CACHE
-            score = FN(negamaxWithMove)(context->board, &bestMove, 0, 1, currentDepth, &solved, previousBest);
+            score = FN(negamaxWithMove)(context->board, &bestMove, 0, 1, currentDepth, &solved, previousBest, 0);
 #else
-            score = FN(negamaxWithMove)(context->board, &bestMove, 0, 1, currentDepth, previousBest);
+            score = FN(negamaxWithMove)(context->board, &bestMove, 0, 1, currentDepth, previousBest, 0);
 #endif
             searchValid = true;
         }
 #if SOLVER_USE_CACHE
         else if (oneShot) {
-            score = FN(negamaxWithMove)(context->board, &bestMove, INT32_MIN + 1, INT32_MAX, currentDepth, &solved, previousBest);
+            score = FN(negamaxWithMove)(context->board, &bestMove, INT32_MIN + 1, INT32_MAX, currentDepth, &solved, previousBest, 0);
             searchValid = true;
         }
 #endif
         else {
 #if SOLVER_USE_CACHE
-            score = FN(negamaxWithMove)(context->board, &bestMove, alpha, beta, currentDepth, &solved, previousBest);
+            score = FN(negamaxWithMove)(context->board, &bestMove, alpha, beta, currentDepth, &solved, previousBest, 0);
 #else
-            score = FN(negamaxWithMove)(context->board, &bestMove, alpha, beta, currentDepth, previousBest);
+            score = FN(negamaxWithMove)(context->board, &bestMove, alpha, beta, currentDepth, previousBest, 0);
 #endif
 
             if (score > alpha && score < beta) {
                 searchValid = true;
                 window = windowSize;
-
                 alpha = score - window;
                 beta  = score + window;
             } else {
-                // Window Miss
                 windowMisses++;
                 window *= 2;
-
                 alpha = score - window;
                 beta  = score + window;
             }
@@ -416,7 +511,10 @@ void FN(aspirationRoot)(Context* context, SolverConfig *config) {
                 lastTimeCaptured = t;
             }
 
-            updateProgress(currentDepth, bestMove, score, nodeCount);
+            atomic_fetch_add_explicit(&globalNodeCount, nodeCount, memory_order_relaxed);
+            nodeCount = 0;
+
+            updateProgress(currentDepth, bestMove, score, atomic_load_explicit(&globalNodeCount, memory_order_relaxed));
 
             if (solved) break;
 #if SOLVER_USE_CACHE
@@ -429,16 +527,31 @@ void FN(aspirationRoot)(Context* context, SolverConfig *config) {
         }
     }
 
+    atomic_store_explicit(&solver_abort_search, true, memory_order_release);
+    
+    if (num_threads > 1) {
+        for (int i = 0; i < num_threads - 1; i++) {
+            pthread_join(threads[i], NULL);
+        }
+        free(threads);
+        free(worker_args);
+    }
+
     finishProgress();
+    atomic_fetch_add_explicit(&globalNodeCount, nodeCount, memory_order_relaxed);
 
     if (config->clip && score > 1) score = 1;
 
     context->metadata.lastTime = (double)(clock() - start) / CLOCKS_PER_SEC;
-    context->metadata.lastNodes = nodeCount;
+    context->metadata.lastNodes = atomic_load_explicit(&globalNodeCount, memory_order_relaxed);
     context->metadata.lastMove = bestMove;
     context->metadata.lastEvaluation = score;
     context->metadata.lastDepth = currentDepth;
+#if SOLVER_USE_CACHE
     context->metadata.lastSolved = solved;
+#else
+    context->metadata.lastSolved = false;
+#endif
 
     if (!config->clip && windowMisses > currentDepth) {
         renderOutput("[WARNING]: High window misses!", PLAY_PREFIX);

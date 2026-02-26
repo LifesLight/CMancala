@@ -3,6 +3,7 @@
  */
 
 #include "logic/solver/impl/macros.h"
+#include <stdatomic.h>
 
 #if CACHE_T32
 #define TAG_TYPE uint32_t
@@ -12,30 +13,20 @@
 
 // --- Struct Definition ---
 typedef struct {
-    TAG_TYPE tag_0;
-
+    _Atomic TAG_TYPE tag_0;
 #if CACHE_DEPTH
-    uint16_t depth_0;
+    _Atomic uint16_t depth_0;
 #endif
+    _Atomic int16_t value_0;
 
-    int16_t value_0;
-
-    int16_t value_1;
-
+    _Atomic int16_t value_1;
 #if CACHE_DEPTH
-    uint16_t depth_1;
+    _Atomic uint16_t depth_1;
 #endif
-
-    TAG_TYPE tag_1;
-
+    _Atomic TAG_TYPE tag_1;
 } FN(Bucket);
 
-// --- Unique Global Array ---
-
-// Physical size = logical_size / 2.
 static FN(Bucket)* FN(cache) = NULL;
-
-// --- Memory Management Helpers ---
 
 static void FN(freeCacheInternal)() {
     if (FN(cache) != NULL) {
@@ -48,28 +39,24 @@ static void FN(initCacheInternal)(uint64_t size) {
     FN(freeCacheInternal)();
     if (size == 0) return;
 
-    // Allocate half the number of structs, as each Bucket holds 2 entries
     uint64_t bucketCount = size >> 1;
     if (bucketCount == 0) bucketCount = 1;
 
     FN(cache) = malloc(sizeof(FN(Bucket)) * bucketCount);
-
     if (FN(cache) == NULL) return;
 
     for (uint64_t i = 0; i < bucketCount; i++) {
-        FN(cache)[i].value_0 = CACHE_VAL_UNSET;
-        FN(cache)[i].tag_0   = 0;
-        FN(cache)[i].value_1 = CACHE_VAL_UNSET;
-        FN(cache)[i].tag_1   = 0;
+        atomic_init(&FN(cache)[i].value_0, CACHE_VAL_UNSET);
+        atomic_init(&FN(cache)[i].tag_0, 0);
+        atomic_init(&FN(cache)[i].value_1, CACHE_VAL_UNSET);
+        atomic_init(&FN(cache)[i].tag_1, 0);
 
 #if CACHE_DEPTH
-        FN(cache)[i].depth_0 = 0;
-        FN(cache)[i].depth_1 = 0;
+        atomic_init(&FN(cache)[i].depth_0, 0);
+        atomic_init(&FN(cache)[i].depth_1, 0);
 #endif
     }
 }
-
-// --- Logic ---
 
 static inline bool FN(translateBoard)(Board* board, uint64_t *code) {
     uint64_t h = 0;
@@ -92,15 +79,12 @@ static inline bool FN(translateBoard)(Board* board, uint64_t *code) {
         offset += 5;
     }
 
-    // 60-bit mixer (Bijective on 60 bits)
     const uint64_t m = 0x0FFFFFFFFFFFFFFFULL;
-
     h ^= h >> 30;
     h = (h * 0xff51afd7ed558ccdULL) & m;
     h ^= h >> 30;
     h = (h * 0xc4ceb9fe1a85ec53ULL) & m;
     h ^= h >> 30;
-
 #else
     for (int i = 0; i < 6; i++) {
         uint8_t v = board->cells[a0 + i];
@@ -115,9 +99,7 @@ static inline bool FN(translateBoard)(Board* board, uint64_t *code) {
         offset += 4;
     }
 
-    // 48-bit mixer (Bijective on 48 bits)
     const uint64_t m = 0xFFFFFFFFFFFFULL;
-
     h ^= h >> 24;
     h = (h * 0xfd7ed558ccdULL) & m;
     h ^= h >> 24;
@@ -136,9 +118,7 @@ static inline Board FN(untranslateBoard)(uint64_t code) {
     int offset = 0;
 
 #if CACHE_B60
-    // Reverse 60-bit mixer
     const uint64_t m = 0x0FFFFFFFFFFFFFFFULL;
-
     h ^= h >> 30;
     h = (h * 0x0cb4b2f8129337dbULL) & m;
     h ^= h >> 30;
@@ -153,11 +133,8 @@ static inline Board FN(untranslateBoard)(uint64_t code) {
         board.cells[7 + i] = (uint8_t)((h >> offset) & 0x1F);
         offset += 5;
     }
-
 #else
-    // Reverse 48-bit mixer
     const uint64_t m = 0xFFFFFFFFFFFFULL;
-
     h ^= h >> 24;
     h = (h * 0x3f8129337dbULL) & m;
     h ^= h >> 24;
@@ -173,7 +150,6 @@ static inline Board FN(untranslateBoard)(uint64_t code) {
         offset += 4;
     }
 #endif
-
     return board;
 }
 
@@ -204,83 +180,89 @@ static inline void FN(cacheNodeHash)(Board* board, uint64_t boardRep, int evalua
     FN(Bucket) *b = &FN(cache)[index];
 
 #if CACHE_DEPTH
-    if (solved) {
-        depth = DEPTH_SOLVED;
-    }
+    if (solved) depth = DEPTH_SOLVED;
 #else
     (void)depth;
     (void)solved;
 #endif
 
-    // --- Same-key update ---
-    if (b->tag_0 == tag) {
+    TAG_TYPE t0 = atomic_load_explicit(&b->tag_0, memory_order_relaxed);
+    if (t0 == tag) {
 #if CACHE_DEPTH
-        if (b->depth_0 > depth) return;
-        b->depth_0 = depth;
+        uint16_t d0 = atomic_load_explicit(&b->depth_0, memory_order_relaxed);
+        if (d0 > depth) return;
+        atomic_store_explicit(&b->depth_0, depth, memory_order_relaxed);
 #endif
-        b->value_0 = PACK_VALUE(evaluation, boundType);
+        atomic_store_explicit(&b->value_0, PACK_VALUE(evaluation, boundType), memory_order_relaxed);
+        atomic_store_explicit(&b->tag_0, tag, memory_order_release);
         sameKeyOverwriteCount++;
         return;
     }
-    if (b->tag_1 == tag) {
+    
+    TAG_TYPE t1 = atomic_load_explicit(&b->tag_1, memory_order_relaxed);
+    if (t1 == tag) {
 #if CACHE_DEPTH
-        if (b->depth_1 > depth) return;
-        b->depth_1 = depth;
+        uint16_t d1 = atomic_load_explicit(&b->depth_1, memory_order_relaxed);
+        if (d1 > depth) return;
+        atomic_store_explicit(&b->depth_1, depth, memory_order_relaxed);
 #endif
-        b->value_1 = PACK_VALUE(evaluation, boundType);
+        atomic_store_explicit(&b->value_1, PACK_VALUE(evaluation, boundType), memory_order_relaxed);
+        atomic_store_explicit(&b->tag_1, tag, memory_order_release);
         sameKeyOverwriteCount++;
         return;
     }
 
-    // --- Empty slot ---
-    if (b->value_0 == CACHE_VAL_UNSET) {
-        b->value_0 = PACK_VALUE(evaluation, boundType);
-        b->tag_0 = tag;
+    int16_t v0 = atomic_load_explicit(&b->value_0, memory_order_relaxed);
+    if (v0 == CACHE_VAL_UNSET) {
 #if CACHE_DEPTH
-        b->depth_0 = depth;
+        atomic_store_explicit(&b->depth_0, depth, memory_order_relaxed);
 #endif
+        atomic_store_explicit(&b->value_0, PACK_VALUE(evaluation, boundType), memory_order_relaxed);
+        atomic_store_explicit(&b->tag_0, tag, memory_order_release);
         return;
     }
-    if (b->value_1 == CACHE_VAL_UNSET) {
-        b->value_1 = PACK_VALUE(evaluation, boundType);
-        b->tag_1 = tag;
+    
+    int16_t v1 = atomic_load_explicit(&b->value_1, memory_order_relaxed);
+    if (v1 == CACHE_VAL_UNSET) {
 #if CACHE_DEPTH
-        b->depth_1 = depth;
+        atomic_store_explicit(&b->depth_1, depth, memory_order_relaxed);
 #endif
+        atomic_store_explicit(&b->value_1, PACK_VALUE(evaluation, boundType), memory_order_relaxed);
+        atomic_store_explicit(&b->tag_1, tag, memory_order_release);
         return;
     }
 
-    // --- Victim selection ---
     int victim;
     victimOverwriteCount++;
 
 #if CACHE_DEPTH
-    if (b->depth_1 != b->depth_0) {
-        victim = (b->depth_1 < b->depth_0) ? 1 : 0;
+    uint16_t d0 = atomic_load_explicit(&b->depth_0, memory_order_relaxed);
+    uint16_t d1 = atomic_load_explicit(&b->depth_1, memory_order_relaxed);
+    if (d1 != d0) {
+        victim = (d1 < d0) ? 1 : 0;
     } else {
-        const int zeroExact = (UNPACK_BOUND(b->value_0) == EXACT_BOUND);
-        const int oneExact  = (UNPACK_BOUND(b->value_1) == EXACT_BOUND);
+        const int zeroExact = (UNPACK_BOUND(v0) == EXACT_BOUND);
+        const int oneExact  = (UNPACK_BOUND(v1) == EXACT_BOUND);
         victim = (zeroExact != oneExact) ? (zeroExact ? 1 : 0) : 1;
     }
 #else
-    const int zeroExact = (UNPACK_BOUND(b->value_0) == EXACT_BOUND);
-    const int oneExact  = (UNPACK_BOUND(b->value_1) == EXACT_BOUND);
+    const int zeroExact = (UNPACK_BOUND(v0) == EXACT_BOUND);
+    const int oneExact  = (UNPACK_BOUND(v1) == EXACT_BOUND);
     victim = (zeroExact != oneExact) ? (zeroExact ? 1 : 0) : 1;
 #endif
 
-
     if (victim == 0) {
-        b->tag_0 = tag;
-        b->value_0 = PACK_VALUE(evaluation, boundType);
 #if CACHE_DEPTH
-        b->depth_0 = depth;
+        atomic_store_explicit(&b->depth_0, depth, memory_order_relaxed);
 #endif
+        atomic_store_explicit(&b->value_0, PACK_VALUE(evaluation, boundType), memory_order_relaxed);
+        atomic_store_explicit(&b->tag_0, tag, memory_order_release);
     } else {
-        b->tag_1 = tag;
-        b->value_1 = PACK_VALUE(evaluation, boundType);
 #if CACHE_DEPTH
-        b->depth_1 = depth;
+        atomic_store_explicit(&b->depth_1, depth, memory_order_relaxed);
 #endif
+        atomic_store_explicit(&b->value_1, PACK_VALUE(evaluation, boundType), memory_order_relaxed);
+        atomic_store_explicit(&b->tag_1, tag, memory_order_release);
     }
 }
 
@@ -291,21 +273,51 @@ static inline bool FN(getCachedValueHash)(Board* board, uint64_t hashValue, int 
 
     FN(Bucket) *b = &FN(cache)[index];
 
-    int matchSlot = -1;
+    TAG_TYPE t0_first = atomic_load_explicit(&b->tag_0, memory_order_acquire);
+    TAG_TYPE t1_first = atomic_load_explicit(&b->tag_1, memory_order_acquire);
 
-    if (b->tag_0 == tag) matchSlot = 0;
-    else if (b->tag_1 == tag) matchSlot = 1;
+    int matchSlot = -1;
+    if (t0_first == tag) matchSlot = 0;
+    else if (t1_first == tag) matchSlot = 1;
     else return false;
 
-    int16_t valToCheck = (matchSlot == 0) ? b->value_0 : b->value_1;
-    if (valToCheck == CACHE_VAL_UNSET) return false;
-
-    // LRU Swap
-    if (matchSlot == 1) {
-        TAG_TYPE t = b->tag_0; b->tag_0 = b->tag_1; b->tag_1 = t;
-        int16_t v = b->value_0; b->value_0 = b->value_1; b->value_1 = v;
+    int16_t val;
 #if CACHE_DEPTH
-        uint16_t d = b->depth_0; b->depth_0 = b->depth_1; b->depth_1 = d;
+    uint16_t dep;
+#endif
+
+    if (matchSlot == 0) {
+        val = atomic_load_explicit(&b->value_0, memory_order_relaxed);
+#if CACHE_DEPTH
+        dep = atomic_load_explicit(&b->depth_0, memory_order_relaxed);
+#endif
+        if (atomic_load_explicit(&b->tag_0, memory_order_acquire) != t0_first) return false;
+    } else {
+        val = atomic_load_explicit(&b->value_1, memory_order_relaxed);
+#if CACHE_DEPTH
+        dep = atomic_load_explicit(&b->depth_1, memory_order_relaxed);
+#endif
+        if (atomic_load_explicit(&b->tag_1, memory_order_acquire) != t1_first) return false;
+    }
+
+    if (val == CACHE_VAL_UNSET) return false;
+
+    if (matchSlot == 1) {
+        TAG_TYPE st0 = atomic_load_explicit(&b->tag_0, memory_order_relaxed);
+        TAG_TYPE st1 = atomic_load_explicit(&b->tag_1, memory_order_relaxed);
+        int16_t sv0 = atomic_load_explicit(&b->value_0, memory_order_relaxed);
+        int16_t sv1 = atomic_load_explicit(&b->value_1, memory_order_relaxed);
+        
+        atomic_store_explicit(&b->tag_0, st1, memory_order_relaxed);
+        atomic_store_explicit(&b->tag_1, st0, memory_order_relaxed);
+        atomic_store_explicit(&b->value_0, sv1, memory_order_relaxed);
+        atomic_store_explicit(&b->value_1, sv0, memory_order_relaxed);
+
+#if CACHE_DEPTH
+        uint16_t sd0 = atomic_load_explicit(&b->depth_0, memory_order_relaxed);
+        uint16_t sd1 = atomic_load_explicit(&b->depth_1, memory_order_relaxed);
+        atomic_store_explicit(&b->depth_0, sd1, memory_order_relaxed);
+        atomic_store_explicit(&b->depth_1, sd0, memory_order_relaxed);
 #endif
         swapLRUCount++;
     }
@@ -313,8 +325,8 @@ static inline bool FN(getCachedValueHash)(Board* board, uint64_t hashValue, int 
     hits++;
 
 #if CACHE_DEPTH
-    if (b->depth_0 < currentDepth) return false;
-    *solved = (b->depth_0 == DEPTH_SOLVED);
+    if (dep < currentDepth) return false;
+    *solved = (dep == DEPTH_SOLVED);
 #else
     (void)currentDepth;
     *solved = true; 
@@ -325,13 +337,11 @@ static inline bool FN(getCachedValueHash)(Board* board, uint64_t hashValue, int 
     int scoreDelta = board->cells[SCORE_P1] - board->cells[SCORE_P2];
     scoreDelta *= board->color;
 
-    *eval = UNPACK_VALUE(b->value_0) + scoreDelta;
-    *boundType = UNPACK_BOUND(b->value_0);
+    *eval = UNPACK_VALUE(val) + scoreDelta;
+    *boundType = UNPACK_BOUND(val);
 
     return true;
 }
-
-// --- Stats Collector ---
 
 static void FN(collectCacheStats)(CacheStats* stats, bool calcFrag, bool calcStoneDist, bool calcDepthDist) {
     stats->cacheSize = cacheSize;
@@ -377,16 +387,14 @@ static void FN(collectCacheStats)(CacheStats* stats, bool calcFrag, bool calcSto
     uint64_t chunkStart = 0;
     uint64_t chunkSize = 0; 
 
-    int currentType = (FN(cache)[0].value_0 != CACHE_VAL_UNSET);
+    int currentType = (atomic_load_explicit(&FN(cache)[0].value_0, memory_order_relaxed) != CACHE_VAL_UNSET);
 
     uint64_t bucketCount = cacheSize >> 1;
 
     for (uint64_t i = 0; i < bucketCount; i++) {
         FN(Bucket)* b = &FN(cache)[i];
-
         for (int slot = 0; slot < 2; slot++) {
-
-            int16_t val = (slot == 0) ? b->value_0 : b->value_1;
+            int16_t val = (slot == 0) ? atomic_load_explicit(&b->value_0, memory_order_relaxed) : atomic_load_explicit(&b->value_1, memory_order_relaxed);
             int type = (val != CACHE_VAL_UNSET);
 
             if (calcFrag) {
@@ -412,7 +420,6 @@ static void FN(collectCacheStats)(CacheStats* stats, bool calcFrag, bool calcSto
             }
 
             if (!type) continue;
-
             setEntries++;
             int bt = UNPACK_BOUND(val);
             if (bt == EXACT_BOUND) exactCount++;
@@ -420,7 +427,7 @@ static void FN(collectCacheStats)(CacheStats* stats, bool calcFrag, bool calcSto
             else upperCount++;
 
 #if CACHE_DEPTH
-            uint16_t d = (slot == 0) ? b->depth_0 : b->depth_1;
+            uint16_t d = (slot == 0) ? atomic_load_explicit(&b->depth_0, memory_order_relaxed) : atomic_load_explicit(&b->depth_1, memory_order_relaxed);
             if (d == DEPTH_SOLVED) {
                 solvedEntries++;
             } else {
@@ -431,7 +438,7 @@ static void FN(collectCacheStats)(CacheStats* stats, bool calcFrag, bool calcSto
 #endif
 
             if (calcStoneDist) {
-                TAG_TYPE tag = (slot == 0) ? b->tag_0 : b->tag_1;
+                TAG_TYPE tag = (slot == 0) ? atomic_load_explicit(&b->tag_0, memory_order_relaxed) : atomic_load_explicit(&b->tag_1, memory_order_relaxed);
                 uint64_t code = FN(mergeBoard)(i, tag);
                 Board brd = FN(untranslateBoard)(code);
 
@@ -469,7 +476,6 @@ static void FN(collectCacheStats)(CacheStats* stats, bool calcFrag, bool calcSto
             for (int k = 1; k < topCount; k++) if (stats->topChunks[k].size < stats->topChunks[minIdx].size) minIdx = k;
             if (c.size > stats->topChunks[minIdx].size) stats->topChunks[minIdx] = c;
         }
-
         qsort(stats->topChunks, topCount, sizeof(CacheChunk), compareChunksStart);
         stats->chunkCount = topCount;
     } else {
@@ -484,14 +490,11 @@ static void FN(collectCacheStats)(CacheStats* stats, bool calcFrag, bool calcSto
 
         for (uint64_t i = 0; i < bucketCount; i++) {
             FN(Bucket)* b = &FN(cache)[i];
-
             for (int slot = 0; slot < 2; slot++) {
-                int16_t val = (slot == 0) ? b->value_0 : b->value_1;
+                int16_t val = (slot == 0) ? atomic_load_explicit(&b->value_0, memory_order_relaxed) : atomic_load_explicit(&b->value_1, memory_order_relaxed);
                 if (val == CACHE_VAL_UNSET) continue;
-
-                uint16_t d = (slot == 0) ? b->depth_0 : b->depth_1;
+                uint16_t d = (slot == 0) ? atomic_load_explicit(&b->depth_0, memory_order_relaxed) : atomic_load_explicit(&b->depth_1, memory_order_relaxed);
                 if (d == DEPTH_SOLVED) continue;
-
                 uint32_t bi = d / binW;
                 if (bi >= DEPTH_BINS) bi = DEPTH_BINS - 1;
                 stats->depthBins[bi]++;
@@ -508,7 +511,6 @@ static void FN(collectCacheStats)(CacheStats* stats, bool calcFrag, bool calcSto
             stats->over15[k] = 0;
             continue;
         }
-
         if (countStones[k] > 0) {
             stats->avgStones[k] = (double)sumStones[k] / (double)countStones[k];
             stats->maxStones[k] = (double)maxStones[k];
@@ -522,5 +524,4 @@ static void FN(collectCacheStats)(CacheStats* stats, bool calcFrag, bool calcSto
         }
     }
 }
-
 #undef TAG_TYPE
