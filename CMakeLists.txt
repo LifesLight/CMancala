@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 project(Mancala)
 
-set(MANCALA_VERSION "7.2" CACHE STRING "Current Version")
+set(MANCALA_VERSION "8.0" CACHE STRING "Current Version")
 
 # --- 1. Define Core Shared Files ---
 set(CORE_SOURCES

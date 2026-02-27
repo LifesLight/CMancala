@@ -72,6 +72,7 @@ All solvers use Negamax + Alpha-Beta. They handle double moves.
 
 * **GLOBAL:** Reference solver.
 * **LOCAL (default):** Way Faster in most cases. Uses a transposition table. At equal search depth it should be as strong or stronger than GLOBAL.
+* **EGDB:** Endgame Database. Faster than LOCAL, but needs to calculate a database once beforehand. Use `egdb [N]` in config to enable. No Avalanche support.
 
 ### Limitations
 
