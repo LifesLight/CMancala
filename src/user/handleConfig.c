@@ -164,8 +164,6 @@ void handleConfigInput(bool* requestedStart, Config* config) {
             return;
         }
 
-        // Just call generate. It handles checking file existence and progress bars.
-        // It will free internally if it needs to resize/reload, but let's be safe:
         if (loaded_egdb_max_stones > 0) freeEGDB();
 
         generateEGDB(stones);

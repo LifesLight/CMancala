@@ -180,8 +180,7 @@ void updateEGDBProgress(int stones, uint64_t current, uint64_t total) {
 
     char timeStr[32];
     formatTimeDuration(elapsed, timeStr, sizeof(timeStr));
-    printf("T:%s", timeStr);
-    printf(" " STAT_SEP " ");
+    printf("T:%s ", timeStr);
 
     printf("\033[K");
     fflush(stdout);

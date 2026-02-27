@@ -107,14 +107,12 @@ static void unhashToBoard(uint64_t index, int stones, Board* board) {
         pitsLeft--;
     }
     rel[11] = stonesLeft; 
-    
+
     memset(board, 0, sizeof(Board));
     board->color = 1;
     for(int i = 0; i <= 5; i++) board->cells[i] = rel[i];
     for(int i = 0; i <= 5; i++) board->cells[i+7] = rel[i+6];
 }
-
-extern void makeMoveOnBoardClassic(Board* board, const uint8_t actionIndex);
 
 static int8_t crunch(int stones, uint64_t index, Board* board) {
     if (egdb_tables[stones][index] == EGDB_VISITING) return 0;

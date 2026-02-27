@@ -9,11 +9,11 @@ static double currentTimeMs() {
 }
 
 static void runTest(
-    Context* context, 
-    int stones, 
-    int sizePow, 
-    CacheMode compress, 
-    int depth, 
+    Context* context,
+    int stones,
+    int sizePow,
+    CacheMode compress,
+    int depth,
     Solver type,
     const char* label,
     MoveFunction moveFunction
@@ -94,27 +94,27 @@ void runBenchmark() {
     // 4. GLOBAL CLASSIC
     runTest(&context, 2, 0, ALWAYS_COMPRESS, 0, GLOBAL_SOLVER, "Global Classic", CLASSIC_MOVE);
 
-    // --- PHASE 2: EGDB SOLVERS ---
-    // This covers: TT_EGDB_CLASSIC, EGDB_CLASSIC
-
     printf("----------------------------------------------------------------\n");
     printf("Generating EGDB for PGO Coverage...\n");
 
-    generateEGDB(4);
+    const int egdb_size = 18;
+    for (int s = 1; s <= egdb_size; s++) {
+        char filename[256];
+        snprintf(filename, sizeof(filename), "EGDB/egdb_%d.bin", s);
+        remove(filename); 
+    }
+
+    generateEGDB(egdb_size);
     configureStoneCountEGDB(2);
 
     // 5. GLOBAL + EGDB
-    // Should hit EGDB_CLASSIC path in algo.c
-    runTest(&context, 2, 0, ALWAYS_COMPRESS, 0, GLOBAL_SOLVER, "EGDB_CLASSIC (Global 4 Stones)", CLASSIC_MOVE);
+    runTest(&context, 2, 0, ALWAYS_COMPRESS, 0, GLOBAL_SOLVER, "EGDB_CLASSIC (Global 2 Stones)", CLASSIC_MOVE);
 
-    configureStoneCountEGDB(3);
+    configureStoneCountEGDB(4);
 
     // 6. LOCAL + EGDB
-    // Should hit TT_EGDB_CLASSIC path in algo.c
-    // Using a depth limit ensures we actually use the TT logic combined with EGDB probes
-    runTest(&context, 3, T32_B48, ALWAYS_COMPRESS, 20, LOCAL_SOLVER, "TT_EGDB_CLASSIC (Local 4 Stones)", CLASSIC_MOVE);
+    runTest(&context, 4, T32_B48, ALWAYS_COMPRESS, 0, LOCAL_SOLVER, "TT_EGDB_CLASSIC (Local 4 Stones)", CLASSIC_MOVE);
 
-    // Clean up
     freeEGDB();
 
     printf("----------------------------------------------------------------\n");
