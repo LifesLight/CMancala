@@ -364,6 +364,10 @@ void renderCacheOverview(const CacheStats* stats, bool showFrag, bool showStoneD
     snprintf(message, sizeof(message), "  Cache size: %-12"PRIu64" %s (%.2f%% Used)", stats->cacheSize, logBuffer, fillPct);
     renderOutput(message, CHEAT_PREFIX);
 
+    double cacheMB = ((double)stats->cacheSize * stats->entrySize) / 1048576.0;
+    snprintf(message, sizeof(message), "  Size (MB): %7.2f MB", cacheMB);
+    renderOutput(message, CHEAT_PREFIX);
+
     if (stats->hasDepth) {
         const double solvedPct = (stats->setEntries > 0) ? (double)stats->solvedEntries / (double)stats->setEntries * 100.0 : 0.0;
         getLogNotation(logBuffer, stats->solvedEntries);
