@@ -141,7 +141,19 @@ static int8_t crunch(int stones, uint64_t index, Board* board) {
             score = diff_gained;
         } else {
             uint64_t next_idx = getEGDBIndex(&next);
-            int8_t lookup = (next_stones < stones) ? egdb_tables[next_stones][next_idx] : crunch(next_stones, next_idx, &next);
+            int8_t lookup;
+
+            if (next_stones < stones) {
+                lookup = egdb_tables[next_stones][next_idx];
+            } else if (next.color == board->color) {
+                // extra turn
+                lookup = crunch(next_stones, next_idx, &next);
+            } else {
+                Board normalized;
+                unhashToBoard(next_idx, next_stones, &normalized);
+                lookup = crunch(next_stones, next_idx, &normalized);
+            }
+
             score = (next.color == board->color) ? (diff_gained + lookup) : (diff_gained - lookup);
         }
         if (score > best_score) best_score = score;
@@ -170,6 +182,12 @@ void generateEGDB(int max_stones) {
         if (f_in) {
             if (!egdb_tables[s]) egdb_tables[s] = malloc(size);
 
+            if (!egdb_tables[s]) {
+                renderOutput("OOM: Memory allocation failed for EGDB!", CONFIG_PREFIX);
+                fclose(f_in);
+                break;
+            }
+
             size_t read = fread(egdb_tables[s], 1, size, f_in);
             fclose(f_in);
 
@@ -189,6 +207,12 @@ void generateEGDB(int max_stones) {
             generation_occurred = true;
 
             if (!egdb_tables[s]) egdb_tables[s] = malloc(size);
+
+            if (!egdb_tables[s]) {
+                renderOutput("OOM: Memory allocation failed for EGDB generation!", CONFIG_PREFIX);
+                break;
+            }
+
             memset(egdb_tables[s], EGDB_UNCOMPUTED, size);
 
             // Start Progress Bar
@@ -235,6 +259,12 @@ void loadEGDB(int max_stones) {
         if (f) {
             uint64_t size = ways[s][12];
             egdb_tables[s] = malloc(size);
+
+            if (!egdb_tables[s]) {
+                fclose(f);
+                break;
+            }
+
             size_t read = fread(egdb_tables[s], 1, size, f);
             (void)read; 
             fclose(f);

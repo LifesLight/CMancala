@@ -159,12 +159,20 @@ void handleConfigInput(bool* requestedStart, Config* config) {
     if (strncmp(input, "egdb ", 5) == 0) {
         int stones = atoi(input + 5);
 
-        if (stones <= 0 || stones > EGDB_MAX_STONES) {
-            renderOutput("Invalid EGDB stones size", CONFIG_PREFIX);
+        if (stones < 0 || stones > EGDB_MAX_STONES) {
+            renderOutput("Invalid EGDB stones size (0 to disable)", CONFIG_PREFIX);
             return;
         }
 
-        if (loaded_egdb_max_stones > 0) freeEGDB();
+        if (stones == 0) {
+            freeEGDB();
+            renderOutput("EGDB Disabled.", CONFIG_PREFIX);
+            return;
+        }
+
+        if (loaded_egdb_max_stones > 0) {
+            freeEGDB();
+        }
 
         generateEGDB(stones);
         return;

@@ -55,6 +55,7 @@ def run_test(iteration):
         f"cache 24\n"
         f"start\n"
         f"analyze --solver local --depth {depth}\n"
+        f"cache 23"
         f"egdb {EGDB_SIZE}\n"
         f"analyze --solver local --depth {depth}\n"
         f"quit\n"
@@ -94,7 +95,6 @@ def log_mismatch(seed, depth, egdb_res, normal_res, full_output):
         f.write(f"Local + EGDB: {egdb_res}\n")
         f.write(f"Local Normal: {normal_res}\n")
         f.write("-" * 60 + "\n")
-        # Find the analyze sections in output to log specifically
         f.write(full_output) 
         f.write("\n" + "="*60 + "\n\n")
 
