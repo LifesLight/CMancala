@@ -13,6 +13,7 @@
 
 #include "containers.h"
 #include "logic/utility.h"
+#include "logic/solver/egdb.h"
 
 #ifdef _WIN32
 #define HL "-"

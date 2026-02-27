@@ -134,3 +134,10 @@ typedef struct {
     CacheChunk topChunks[OUTPUT_CHUNK_COUNT];
     int chunkCount;
 } CacheStats;
+
+typedef struct {
+    int maxStones;
+    uint64_t totalSize; // In bytes
+    uint64_t probes;
+    uint64_t hits;
+} EGDBStats;

@@ -316,6 +316,33 @@ void renderCacheOverview(const CacheStats* stats, bool showFrag, bool showStoneD
 
     renderOutput(stats->modeStr, CHEAT_PREFIX);
 
+    uint64_t egdbProbes, egdbHits, egdbSize;
+    int egdbMax;
+    getEGDBStats(&egdbSize, &egdbProbes, &egdbHits, &egdbMax);
+
+    if (egdbMax > 0) {
+        snprintf(message, sizeof(message), "  EGDB Status: Loaded (%d stones max)", egdbMax);
+        renderOutput(message, CHEAT_PREFIX);
+
+        if (egdbSize < 1024) snprintf(message, sizeof(message), "    Size:     %" PRIu64 " Bytes", egdbSize);
+        else if (egdbSize < 1048576) snprintf(message, sizeof(message), "    Size:     %.2f KB", (double)egdbSize/1024.0);
+        else snprintf(message, sizeof(message), "    Size:     %.2f MB", (double)egdbSize/1048576.0);
+        renderOutput(message, CHEAT_PREFIX);
+
+        getLogNotation(logBuffer, egdbProbes);
+        snprintf(message, sizeof(message), "    Probes:   %-12" PRIu64 " %s", egdbProbes, logBuffer);
+        renderOutput(message, CHEAT_PREFIX);
+
+        double hitRate = (egdbProbes > 0) ? ((double)egdbHits / egdbProbes * 100.0) : 0.0;
+        getLogNotation(logBuffer, egdbHits);
+        snprintf(message, sizeof(message), "    Hits:     %-12" PRIu64 " %s (%.2f%%)", egdbHits, logBuffer, hitRate);
+        renderOutput(message, CHEAT_PREFIX);
+        renderOutput("", CHEAT_PREFIX);
+    } else {
+        renderOutput("  EGDB Status: Disabled / Not Loaded", CHEAT_PREFIX);
+        renderOutput("", CHEAT_PREFIX);
+    }
+
     const double fillPct = (stats->cacheSize > 0) ? (double)stats->setEntries / (double)stats->cacheSize * 100.0 : 0.0;
     getLogNotation(logBuffer, stats->cacheSize);
     snprintf(message, sizeof(message), "  Cache size: %-12"PRIu64" %s (%.2f%% Used)", stats->cacheSize, logBuffer, fillPct);

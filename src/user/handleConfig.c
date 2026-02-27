@@ -3,6 +3,7 @@
  */
 
 #include "user/handleConfig.h"
+#include "logic/solver/egdb.h"
 
 void renderConfigHelp() {
     renderOutput("Commands:", CONFIG_PREFIX);
@@ -10,13 +11,14 @@ void renderConfigHelp() {
     renderOutput("  stones [number > 0]              : Set number of stones per pit", CONFIG_PREFIX);
     renderOutput("  distribution [uniform|random]    : Configure distribution of stones", CONFIG_PREFIX);
     renderOutput("  seed [number]                    : Set seed for random distribution, if 0 device time", CONFIG_PREFIX);
-    renderOutput("  mode [classic|avalanche]         : Set game mode", CONFIG_PREFIX);
-    renderOutput("  time [number >= 0]               : Set time limit for AI in seconds, if 0 unlimited", CONFIG_PREFIX);
+    renderOutput("  mode[classic|avalanche]          : Set game mode", CONFIG_PREFIX);
+    renderOutput("  time[number >= 0]                : Set time limit for AI in seconds, if 0 unlimited", CONFIG_PREFIX);
     renderOutput("  depth [number >= 0]              : Set depth limit for AI, if 0 solve mode", CONFIG_PREFIX);
     renderOutput("  solver [global|local]            : Set default solver for AI", CONFIG_PREFIX);
     renderOutput("  clip [true|false]                : Set clip on/off, clip only computes if a move is winning or losing", CONFIG_PREFIX);
-    renderOutput("  cache [number >= 17]             : Set cache size as power of two. If compression is off number needs to be >= 29", CONFIG_PREFIX);
+    renderOutput("  cache[number >= 17]              : Set cache size as power of two. If compression is off number needs to be >= 29", CONFIG_PREFIX);
     renderOutput("  compress [always|never|auto]     : Configure cache compression. Auto selects best mode for cache size.", CONFIG_PREFIX);
+    renderOutput("  egdb [number > 0]                : Generate and load Endgame Database up to X stones", CONFIG_PREFIX); // ADDED
     renderOutput("  starting [1|2]                   : Configure starting player", CONFIG_PREFIX);
     renderOutput("  player [1|2] [human|random|ai]   : Configure player", CONFIG_PREFIX);
     renderOutput("  display                          : Display current configuration", CONFIG_PREFIX);
@@ -92,6 +94,12 @@ void printConfig(Config* config) {
     }
     snprintf(message, sizeof(message), "  Compress: %s", compressStr);
     renderOutput(message, CONFIG_PREFIX);
+    
+    // ADDED EGDB STATUS
+    if (loaded_egdb_max_stones > 0) {
+        snprintf(message, sizeof(message), "  EGDB Loaded: %d stones", loaded_egdb_max_stones);
+        renderOutput(message, CONFIG_PREFIX);
+    }
 
     snprintf(message, sizeof(message), "  Starting: %d", config->gameSettings.startColor == 1 ? 1 : 2);
     renderOutput(message, CONFIG_PREFIX);
@@ -148,6 +156,29 @@ void handleConfigInput(bool* requestedStart, Config* config) {
         printConfig(config);
         return;
     }
+
+    // --- ADDED EGDB COMMAND ---
+    if (strncmp(input, "egdb ", 5) == 0) {
+        int stones = atoi(input + 5);
+
+        if (stones <= 0 || stones > EGDB_MAX_STONES) {
+            renderOutput("Invalid EGDB stones size", CONFIG_PREFIX);
+            return;
+        }
+
+        char msg[256];
+        snprintf(msg, sizeof(msg), "Generating EGDB up to %d stones. This might take a while...", stones);
+        renderOutput(msg, CONFIG_PREFIX);
+        
+        generateEGDB(stones);
+        
+        renderOutput("EGDB Generated! Loading into memory...", CONFIG_PREFIX);
+        freeEGDB();
+        loadEGDB(stones);
+        renderOutput("EGDB Successfully loaded.", CONFIG_PREFIX);
+        return;
+    }
+    // ---------------------------
 
     if (strncmp(input, "cache ", 6) == 0) {
         int cacheSize = atoi(input + 6);

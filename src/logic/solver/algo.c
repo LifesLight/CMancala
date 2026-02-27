@@ -3,86 +3,100 @@
  */
 
 #include "logic/solver/algo.h"
+#include "logic/solver/egdb.h" // ADDED FOR EGDB
 
 int64_t nodeCount;
 
-// 1. INSTANTIATE LOCAL SOLVER CLASSIC (With Cache)
-// FN(negamax) -> negamax_LOCAL_CLASSIC
-#define PREFIX LOCAL_CLASSIC
+// 1. TT ON | EGDB ON | CLASSIC 
+#define PREFIX TT_EGDB_CLASSIC
 #define SOLVER_USE_CACHE 1
+#define USE_EGDB 1
 #define MAKE_MOVE makeMoveOnBoardClassic
 #include "logic/solver/impl/solver_template.h"
 #undef PREFIX
 #undef SOLVER_USE_CACHE
+#undef USE_EGDB
 #undef MAKE_MOVE
 
-// 2. INSTANTIATE LOCAL SOLVER AVALANCHE (With Cache)
-// FN(negamax) -> negamax_LOCAL_AVALANCHE
-#define PREFIX LOCAL_AVALANCHE
+// 2. TT ON | EGDB OFF | CLASSIC 
+#define PREFIX TT_CLASSIC
 #define SOLVER_USE_CACHE 1
-#define MAKE_MOVE makeMoveOnBoardAvalanche
-#include "logic/solver/impl/solver_template.h"
-#undef PREFIX
-#undef SOLVER_USE_CACHE
-#undef MAKE_MOVE
-
-// 3. INSTANTIATE GLOBAL SOLVER CLASSIC (No Cache)
-// FN(negamax) -> negamax_GLOBAL_CLASSIC
-#define PREFIX GLOBAL_CLASSIC
-#define SOLVER_USE_CACHE 0
+#define USE_EGDB 0
 #define MAKE_MOVE makeMoveOnBoardClassic
 #include "logic/solver/impl/solver_template.h"
 #undef PREFIX
 #undef SOLVER_USE_CACHE
+#undef USE_EGDB
 #undef MAKE_MOVE
 
-// 4. INSTANTIATE GLOBAL SOLVER AVALANCHE (No Cache)
-// FN(negamax) -> negamax_GLOBAL_AVALANCHE
-#define PREFIX GLOBAL_AVALANCHE
-#define SOLVER_USE_CACHE 0
+// 3. TT ON | EGDB OFF | AVALANCHE 
+#define PREFIX TT_AVALANCHE
+#define SOLVER_USE_CACHE 1
+#define USE_EGDB 0
 #define MAKE_MOVE makeMoveOnBoardAvalanche
 #include "logic/solver/impl/solver_template.h"
 #undef PREFIX
 #undef SOLVER_USE_CACHE
+#undef USE_EGDB
 #undef MAKE_MOVE
 
+// 4. TT OFF | EGDB ON | CLASSIC 
+#define PREFIX EGDB_CLASSIC
+#define SOLVER_USE_CACHE 0
+#define USE_EGDB 1
+#define MAKE_MOVE makeMoveOnBoardClassic
+#include "logic/solver/impl/solver_template.h"
+#undef PREFIX
+#undef SOLVER_USE_CACHE
+#undef USE_EGDB
+#undef MAKE_MOVE
+
+// 5. TT OFF | EGDB OFF | CLASSIC 
+#define PREFIX CLASSIC
+#define SOLVER_USE_CACHE 0
+#define USE_EGDB 0
+#define MAKE_MOVE makeMoveOnBoardClassic
+#include "logic/solver/impl/solver_template.h"
+#undef PREFIX
+#undef SOLVER_USE_CACHE
+#undef USE_EGDB
+#undef MAKE_MOVE
+
+// 6. TT OFF | EGDB OFF | AVALANCHE 
+#define PREFIX AVALANCHE
+#define SOLVER_USE_CACHE 0
+#define USE_EGDB 0
+#define MAKE_MOVE makeMoveOnBoardAvalanche
+#include "logic/solver/impl/solver_template.h"
+#undef PREFIX
+#undef SOLVER_USE_CACHE
+#undef USE_EGDB
+#undef MAKE_MOVE
 
 void aspirationRoot(Context* context, SolverConfig *config) {
-    switch (config->solver) {
-        case GLOBAL_SOLVER:
-            if (getMoveFunction() == CLASSIC_MOVE) {
-                aspirationRoot_GLOBAL_CLASSIC(context, config);
-            } else {
-                aspirationRoot_GLOBAL_AVALANCHE(context, config);
-            }
-            break;
-        case LOCAL_SOLVER:
-            if (getMoveFunction() == CLASSIC_MOVE) {
-                aspirationRoot_LOCAL_CLASSIC(context, config);
-            } else {
-                aspirationRoot_LOCAL_AVALANCHE(context, config);
-            }
-            break;
-    }
+    bool use_tt = (config->solver == LOCAL_SOLVER);
+    bool use_egdb = (loaded_egdb_max_stones > 0); // Implicitly switch to EGDB solver if DB is loaded
+    bool is_classic = (getMoveFunction() == CLASSIC_MOVE);
+
+    if (use_tt && use_egdb && is_classic)        aspirationRoot_TT_EGDB_CLASSIC(context, config);
+    else if (use_tt && !use_egdb && is_classic)  aspirationRoot_TT_CLASSIC(context, config);
+    else if (use_tt && !is_classic)              aspirationRoot_TT_AVALANCHE(context, config); // Avalanche doesn't support EGDB currently
+    else if (!use_tt && use_egdb && is_classic)  aspirationRoot_EGDB_CLASSIC(context, config);
+    else if (!use_tt && !use_egdb && is_classic) aspirationRoot_CLASSIC(context, config);
+    else if (!use_tt && !is_classic)             aspirationRoot_AVALANCHE(context, config);
 }
 
 void distributionRoot(Board *board, int32_t* distribution, bool *solved, SolverConfig *config) {
-    switch (config->solver) {
-        case GLOBAL_SOLVER:
-            if (getMoveFunction() == CLASSIC_MOVE) {
-                distributionRoot_GLOBAL_CLASSIC(board, distribution, solved, config);
-            } else {
-                distributionRoot_GLOBAL_AVALANCHE(board, distribution, solved, config);
-            }
-            break;
-        case LOCAL_SOLVER:
-            if (getMoveFunction() == CLASSIC_MOVE) {
-                distributionRoot_LOCAL_CLASSIC(board, distribution, solved, config);
-            } else {
-                distributionRoot_LOCAL_AVALANCHE(board, distribution, solved, config);
-            }
-            break;
-    }
+    bool use_tt = (config->solver == LOCAL_SOLVER);
+    bool use_egdb = (loaded_egdb_max_stones > 0); // Implicitly switch to EGDB solver if DB is loaded
+    bool is_classic = (getMoveFunction() == CLASSIC_MOVE);
+
+    if (use_tt && use_egdb && is_classic)        distributionRoot_TT_EGDB_CLASSIC(board, distribution, solved, config);
+    else if (use_tt && !use_egdb && is_classic)  distributionRoot_TT_CLASSIC(board, distribution, solved, config);
+    else if (use_tt && !is_classic)              distributionRoot_TT_AVALANCHE(board, distribution, solved, config); // Avalanche doesn't support EGDB currently
+    else if (!use_tt && use_egdb && is_classic)  distributionRoot_EGDB_CLASSIC(board, distribution, solved, config);
+    else if (!use_tt && !use_egdb && is_classic) distributionRoot_CLASSIC(board, distribution, solved, config);
+    else if (!use_tt && !is_classic)             distributionRoot_AVALANCHE(board, distribution, solved, config);
 }
 
 NegamaxTrace negamaxWithTrace(Board *board, int alpha, const int beta, const int depth) {

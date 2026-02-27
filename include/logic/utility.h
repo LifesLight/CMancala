@@ -34,6 +34,12 @@ int max(const int a, const int b);
 #define min(a,b) ((a) < (b) ? (a) : (b))
 #endif
 
+#ifdef _WIN32
+#include <direct.h>
+#define MKDIR(path) _mkdir(path)
+#else
+#define MKDIR(path) mkdir(path, 0777)
+#endif
 
 void getInput(char* input, const char* prefix);
 void initializeBoardFromConfig(Board* board, Config* config);

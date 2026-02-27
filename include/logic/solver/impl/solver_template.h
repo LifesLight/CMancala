@@ -4,6 +4,7 @@
 
 #include "logic/solver/impl/macros.h"
 #include "logic/utility.h"
+#include "logic/solver/egdb.h" // ADDED FOR EGDB
 
 #if !SOLVER_USE_CACHE
 static bool solved;
@@ -32,6 +33,16 @@ static int FN(negamax)(Board *board, int alpha, int beta, const int depth) {
     }
 
     nodeCount++;
+
+#if USE_EGDB
+    int egdb_score;
+    if (EGDB_probe(board, &egdb_score)) {
+#if SOLVER_USE_CACHE
+        *solved = true;
+#endif
+        return egdb_score;
+    }
+#endif
 
 #if SOLVER_USE_CACHE
     uint64_t boardHash = 0;
