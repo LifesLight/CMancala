@@ -7,12 +7,11 @@
 uint64_t ways[EGDB_MAX_STONES + 1][13];
 int8_t* egdb_tables[EGDB_MAX_STONES + 1] = {NULL};
 int loaded_egdb_max_stones = 0;
-int egdb_total_stones_configured = 48;
-
+int egdb_total_stones_configured = 48; 
 uint64_t egdb_probes = 0;
 uint64_t egdb_hits = 0;
 
-void configureEGDB(int stonesPerPit) {
+void configureStoneCountEGDB(int stonesPerPit) {
     egdb_total_stones_configured = stonesPerPit * 12;
 }
 
@@ -54,10 +53,8 @@ static inline uint64_t getEGDBIndex(const Board* board) {
     return index;
 }
 
-// FULLY OPTIMIZED PROBE
 bool EGDB_probe(Board* board, int* score) {
     egdb_probes++;
-
     int stonesLeft = egdb_total_stones_configured - board->cells[SCORE_P1] - board->cells[SCORE_P2];
 
     if (stonesLeft > 0 && stonesLeft <= loaded_egdb_max_stones) {
@@ -83,7 +80,7 @@ void getEGDBStats(uint64_t* sizeBytes, uint64_t* probes, uint64_t* hits, int* ma
     *maxStones = loaded_egdb_max_stones;
     *sizeBytes = 0;
     for (int s = 1; s <= loaded_egdb_max_stones; s++) {
-        *sizeBytes += ways[s][12];
+        if (ways[s][12] > 0) *sizeBytes += ways[s][12];
     }
 }
 
@@ -91,8 +88,6 @@ void resetEGDBStats() {
     egdb_probes = 0;
     egdb_hits = 0;
 }
-
-// --- Generator Logic ---
 
 static void unhashToBoard(uint64_t index, int stones, Board* board) {
     uint8_t rel[12];
@@ -112,7 +107,7 @@ static void unhashToBoard(uint64_t index, int stones, Board* board) {
         pitsLeft--;
     }
     rel[11] = stonesLeft; 
-
+    
     memset(board, 0, sizeof(Board));
     board->color = 1;
     for(int i = 0; i <= 5; i++) board->cells[i] = rel[i];
@@ -163,53 +158,72 @@ void generateEGDB(int max_stones) {
     initWaysTable();
     MKDIR("EGDB");
 
+    bool generation_occurred = false;
+
     for (int s = 1; s <= max_stones; s++) {
         uint64_t size = ways[s][12];
         char filename[256];
         snprintf(filename, sizeof(filename), "EGDB/egdb_%d.bin", s);
 
+        // Try to Load Existing
         FILE* f_in = fopen(filename, "rb");
+        bool needs_generation = true;
+
         if (f_in) {
             if (!egdb_tables[s]) egdb_tables[s] = malloc(size);
+
             size_t read = fread(egdb_tables[s], 1, size, f_in);
             fclose(f_in);
+
             if (read == size) {
-                printf("Loaded existing EGDB/%d stones (%" PRIu64 " states).\n", s, size);
+                if (!generation_occurred) {
+                    renderOutput("Loading EGDB from disk...", CONFIG_PREFIX);
+                    generation_occurred = true; 
+                }
                 loaded_egdb_max_stones = s;
-                continue;
+                needs_generation = false;
             } else {
-                printf("Corrupt file %s. Regenerating...\n", filename);
+                renderOutput("Corrupt database found. Regenerating...", CONFIG_PREFIX);
             }
         }
 
-        if (!egdb_tables[s]) egdb_tables[s] = malloc(size);
-        memset(egdb_tables[s], EGDB_UNCOMPUTED, size);
+        if (needs_generation) {
+            generation_occurred = true;
 
-        printf("Generating EGDB/%d stones (%" PRIu64 " states)... ", s, size);
-        fflush(stdout);
+            if (!egdb_tables[s]) egdb_tables[s] = malloc(size);
+            memset(egdb_tables[s], EGDB_UNCOMPUTED, size);
 
-        uint64_t progress_interval = size / 100;
-        if (progress_interval == 0) progress_interval = 1;
+            // Start Progress Bar
+            startEGDBProgress();
+            uint64_t progress_interval = size / 200;
+            if (progress_interval == 0) progress_interval = 1;
 
-        for (uint64_t idx = 0; idx < size; idx++) {
-            if (idx % progress_interval == 0) {
-                printf("\rGenerating EGDB/%d stones... %.1f%%   ", s, (double)idx / size * 100.0);
-                fflush(stdout);
+            for (uint64_t idx = 0; idx < size; idx++) {
+                if (idx % progress_interval == 0) {
+                    updateEGDBProgress(s, idx, size);
+                }
+
+                if (egdb_tables[s][idx] == EGDB_UNCOMPUTED) {
+                    Board b;
+                    unhashToBoard(idx, s, &b);
+                    crunch(s, idx, &b);
+                }
             }
-            if (egdb_tables[s][idx] == EGDB_UNCOMPUTED) {
-                Board b;
-                unhashToBoard(idx, s, &b);
-                crunch(s, idx, &b);
-            }
-        }
-        printf("\rGenerating EGDB/%d stones... 100.0%% - Done.\n", s);
+            updateEGDBProgress(s, size, size);
+            finishEGDBProgress();
 
-        FILE* f_out = fopen(filename, "wb");
-        if (f_out) {
-            fwrite(egdb_tables[s], 1, size, f_out);
-            fclose(f_out);
+            // Save to disk
+            FILE* f_out = fopen(filename, "wb");
+            if (f_out) {
+                fwrite(egdb_tables[s], 1, size, f_out);
+                fclose(f_out);
+            }
+            loaded_egdb_max_stones = s;
         }
-        loaded_egdb_max_stones = s;
+    }
+
+    if (generation_occurred) {
+        renderOutput("EGDB Loaded.", CONFIG_PREFIX);
     }
 }
 

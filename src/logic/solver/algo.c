@@ -74,13 +74,16 @@ int64_t nodeCount;
 #undef MAKE_MOVE
 
 void aspirationRoot(Context* context, SolverConfig *config) {
+
     bool use_tt = (config->solver == LOCAL_SOLVER);
-    bool use_egdb = (loaded_egdb_max_stones > 0); // Implicitly switch to EGDB solver if DB is loaded
+
+    bool use_egdb = (loaded_egdb_max_stones > 0);
+
     bool is_classic = (getMoveFunction() == CLASSIC_MOVE);
 
     if (use_tt && use_egdb && is_classic)        aspirationRoot_TT_EGDB_CLASSIC(context, config);
     else if (use_tt && !use_egdb && is_classic)  aspirationRoot_TT_CLASSIC(context, config);
-    else if (use_tt && !is_classic)              aspirationRoot_TT_AVALANCHE(context, config); // Avalanche doesn't support EGDB currently
+    else if (use_tt && !is_classic)              aspirationRoot_TT_AVALANCHE(context, config);
     else if (!use_tt && use_egdb && is_classic)  aspirationRoot_EGDB_CLASSIC(context, config);
     else if (!use_tt && !use_egdb && is_classic) aspirationRoot_CLASSIC(context, config);
     else if (!use_tt && !is_classic)             aspirationRoot_AVALANCHE(context, config);
@@ -88,12 +91,14 @@ void aspirationRoot(Context* context, SolverConfig *config) {
 
 void distributionRoot(Board *board, int32_t* distribution, bool *solved, SolverConfig *config) {
     bool use_tt = (config->solver == LOCAL_SOLVER);
-    bool use_egdb = (loaded_egdb_max_stones > 0); // Implicitly switch to EGDB solver if DB is loaded
+
+    bool use_egdb = (loaded_egdb_max_stones > 0);
+
     bool is_classic = (getMoveFunction() == CLASSIC_MOVE);
 
     if (use_tt && use_egdb && is_classic)        distributionRoot_TT_EGDB_CLASSIC(board, distribution, solved, config);
     else if (use_tt && !use_egdb && is_classic)  distributionRoot_TT_CLASSIC(board, distribution, solved, config);
-    else if (use_tt && !is_classic)              distributionRoot_TT_AVALANCHE(board, distribution, solved, config); // Avalanche doesn't support EGDB currently
+    else if (use_tt && !is_classic)              distributionRoot_TT_AVALANCHE(board, distribution, solved, config);
     else if (!use_tt && use_egdb && is_classic)  distributionRoot_EGDB_CLASSIC(board, distribution, solved, config);
     else if (!use_tt && !use_egdb && is_classic) distributionRoot_CLASSIC(board, distribution, solved, config);
     else if (!use_tt && !is_classic)             distributionRoot_AVALANCHE(board, distribution, solved, config);

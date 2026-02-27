@@ -1,5 +1,3 @@
-set -e
-
 source ~/coding/emsdk/emsdk_env.sh
 
 echo "Building Standard Release..."

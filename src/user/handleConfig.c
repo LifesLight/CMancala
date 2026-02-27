@@ -94,8 +94,7 @@ void printConfig(Config* config) {
     }
     snprintf(message, sizeof(message), "  Compress: %s", compressStr);
     renderOutput(message, CONFIG_PREFIX);
-    
-    // ADDED EGDB STATUS
+
     if (loaded_egdb_max_stones > 0) {
         snprintf(message, sizeof(message), "  EGDB Loaded: %d stones", loaded_egdb_max_stones);
         renderOutput(message, CONFIG_PREFIX);
@@ -157,7 +156,6 @@ void handleConfigInput(bool* requestedStart, Config* config) {
         return;
     }
 
-    // --- ADDED EGDB COMMAND ---
     if (strncmp(input, "egdb ", 5) == 0) {
         int stones = atoi(input + 5);
 
@@ -166,19 +164,13 @@ void handleConfigInput(bool* requestedStart, Config* config) {
             return;
         }
 
-        char msg[256];
-        snprintf(msg, sizeof(msg), "Generating EGDB up to %d stones. This might take a while...", stones);
-        renderOutput(msg, CONFIG_PREFIX);
-        
+        // Just call generate. It handles checking file existence and progress bars.
+        // It will free internally if it needs to resize/reload, but let's be safe:
+        if (loaded_egdb_max_stones > 0) freeEGDB();
+
         generateEGDB(stones);
-        
-        renderOutput("EGDB Generated! Loading into memory...", CONFIG_PREFIX);
-        freeEGDB();
-        loadEGDB(stones);
-        renderOutput("EGDB Successfully loaded.", CONFIG_PREFIX);
         return;
     }
-    // ---------------------------
 
     if (strncmp(input, "cache ", 6) == 0) {
         int cacheSize = atoi(input + 6);
@@ -225,7 +217,6 @@ void handleConfigInput(bool* requestedStart, Config* config) {
 
         // Check for state change
         if (newMode == currentMode) {
-            // Provide feedback based on what it is currently
             const char* modeStr = (currentMode == ALWAYS_COMPRESS) ? "always" : 
                                   (currentMode == NEVER_COMPRESS) ? "never" : "auto";
             char message[256];
@@ -233,7 +224,7 @@ void handleConfigInput(bool* requestedStart, Config* config) {
             renderOutput(message, CONFIG_PREFIX);
         } else {
             config->solverConfig.compressCache = newMode;
-            
+
             const char* modeStr = (newMode == ALWAYS_COMPRESS) ? "always" : 
                                   (newMode == NEVER_COMPRESS) ? "never" : "auto";
             char message[256];
@@ -340,6 +331,7 @@ void handleConfigInput(bool* requestedStart, Config* config) {
         }
 
         config->gameSettings.stones = stones;
+        configureStoneCountEGDB(stones);
 
         char message[256];
         snprintf(message, sizeof(message), "Updated stones to %d", stones);

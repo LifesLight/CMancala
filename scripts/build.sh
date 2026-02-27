@@ -1,5 +1,3 @@
-set -e
-
 rm -r ~/coding/CMancala/build
 mkdir ~/coding/CMancala/build
 cd ~/coding/CMancala/build

@@ -147,6 +147,50 @@ void finishProgress() {
     printf("\n");
 }
 
+void startEGDBProgress() {
+    progressStartTime = clock();
+    progressFirstUpdate = true;
+    progressPrefix = CONFIG_PREFIX; 
+}
+
+void updateEGDBProgress(int stones, uint64_t current, uint64_t total) {
+    double elapsed = (double)(clock() - progressStartTime) / CLOCKS_PER_SEC;
+    double percentage = (total > 0) ? (double)current / (double)total : 0.0;
+
+    if (percentage > 1.0) percentage = 1.0;
+
+    if (!progressFirstUpdate) {
+        printf("\033[A\r");
+    }
+    progressFirstUpdate = false;
+
+    int filledLen = (int)(percentage * BAR_WIDTH);
+
+    printf("%s>> " BAR_CAP_L, progressPrefix);
+    for (int i = 0; i < BAR_WIDTH; i++) {
+        if (i < filledLen) printf(BAR_FILL);
+        else               printf(BAR_EMPTY);
+    }
+    printf(BAR_CAP_R " %3d%%\033[K\n", (int)(percentage * 100));
+
+    printf("%s>>  ", progressPrefix);
+
+    printf("S:%d", stones);
+    printf(" " STAT_SEP " ");
+
+    char timeStr[32];
+    formatTimeDuration(elapsed, timeStr, sizeof(timeStr));
+    printf("T:%s", timeStr);
+    printf(" " STAT_SEP " ");
+
+    printf("\033[K");
+    fflush(stdout);
+}
+
+void finishEGDBProgress() {
+    printf("\n");
+}
+
 void renderCustomBoard(const int32_t *cells, const int8_t color, const char* prefix, const GameSettings* settings) {
     char* playerDescriptor = "Unknown";
     if (color == 1) {
@@ -316,33 +360,6 @@ void renderCacheOverview(const CacheStats* stats, bool showFrag, bool showStoneD
 
     renderOutput(stats->modeStr, CHEAT_PREFIX);
 
-    uint64_t egdbProbes, egdbHits, egdbSize;
-    int egdbMax;
-    getEGDBStats(&egdbSize, &egdbProbes, &egdbHits, &egdbMax);
-
-    if (egdbMax > 0) {
-        snprintf(message, sizeof(message), "  EGDB Status: Loaded (%d stones max)", egdbMax);
-        renderOutput(message, CHEAT_PREFIX);
-
-        if (egdbSize < 1024) snprintf(message, sizeof(message), "    Size:     %" PRIu64 " Bytes", egdbSize);
-        else if (egdbSize < 1048576) snprintf(message, sizeof(message), "    Size:     %.2f KB", (double)egdbSize/1024.0);
-        else snprintf(message, sizeof(message), "    Size:     %.2f MB", (double)egdbSize/1048576.0);
-        renderOutput(message, CHEAT_PREFIX);
-
-        getLogNotation(logBuffer, egdbProbes);
-        snprintf(message, sizeof(message), "    Probes:   %-12" PRIu64 " %s", egdbProbes, logBuffer);
-        renderOutput(message, CHEAT_PREFIX);
-
-        double hitRate = (egdbProbes > 0) ? ((double)egdbHits / egdbProbes * 100.0) : 0.0;
-        getLogNotation(logBuffer, egdbHits);
-        snprintf(message, sizeof(message), "    Hits:     %-12" PRIu64 " %s (%.2f%%)", egdbHits, logBuffer, hitRate);
-        renderOutput(message, CHEAT_PREFIX);
-        renderOutput("", CHEAT_PREFIX);
-    } else {
-        renderOutput("  EGDB Status: Disabled / Not Loaded", CHEAT_PREFIX);
-        renderOutput("", CHEAT_PREFIX);
-    }
-
     const double fillPct = (stats->cacheSize > 0) ? (double)stats->setEntries / (double)stats->cacheSize * 100.0 : 0.0;
     getLogNotation(logBuffer, stats->cacheSize);
     snprintf(message, sizeof(message), "  Cache size: %-12"PRIu64" %s (%.2f%% Used)", stats->cacheSize, logBuffer, fillPct);
@@ -400,6 +417,29 @@ void renderCacheOverview(const CacheStats* stats, bool showFrag, bool showStoneD
         snprintf(message, sizeof(message), "  Bounds:     E 0.00%% | L 0.00%% | U 0.00%%");
     }
     renderOutput(message, CHEAT_PREFIX);
+
+   uint64_t egdbProbes, egdbHits, egdbSize;
+    int egdbMax;
+    getEGDBStats(&egdbSize, &egdbProbes, &egdbHits, &egdbMax);
+
+    if (egdbMax > 0) {
+        snprintf(message, sizeof(message), "  EGDB Status: Loaded (%d stones max)", egdbMax);
+        renderOutput(message, CHEAT_PREFIX);
+
+        if (egdbSize < 1024) snprintf(message, sizeof(message), "    Size:     %" PRIu64 " Bytes", egdbSize);
+        else if (egdbSize < 1048576) snprintf(message, sizeof(message), "    Size:     %.2f KB", (double)egdbSize/1024.0);
+        else snprintf(message, sizeof(message), "    Size:     %.2f MB", (double)egdbSize/1048576.0);
+        renderOutput(message, CHEAT_PREFIX);
+
+        getLogNotation(logBuffer, egdbProbes);
+        snprintf(message, sizeof(message), "    Probes:   %-12" PRIu64 " %s", egdbProbes, logBuffer);
+        renderOutput(message, CHEAT_PREFIX);
+
+        double hitRate = (egdbProbes > 0) ? ((double)egdbHits / egdbProbes * 100.0) : 0.0;
+        getLogNotation(logBuffer, egdbHits);
+        snprintf(message, sizeof(message), "    Hits:     %-12" PRIu64 " %s (%.2f%%)", egdbHits, logBuffer, hitRate);
+        renderOutput(message, CHEAT_PREFIX);
+    }
 
     if (showStoneDist && stats->setEntries > 0) {
         renderStatBoard(stats->avgStones, "Average Stones", "%7.1f", CHEAT_PREFIX);
