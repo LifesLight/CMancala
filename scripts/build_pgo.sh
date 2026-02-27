@@ -7,7 +7,7 @@ echo "CC=${CC}"
 echo "CXX=${CXX}"
 echo "BUILD_DIR=${BUILD_DIR}"
 
-rm -r ~/coding/CMancala/build
+rm -r ~/coding/CMancala/build_pgo
 
 cmake -S . -B "${BUILD_DIR}" \
   -DCMAKE_C_COMPILER="${CC}" \
