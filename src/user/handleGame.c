@@ -22,6 +22,7 @@ void renderCheatHelp() {
     renderOutput("  analyze --solver --depth --clip  : Run analysis on the board, solver, depth and clip can be specified", CHEAT_PREFIX);
     renderOutput("  last                             : Fetch the last moves metadata", CHEAT_PREFIX);
     renderOutput("  cache [-f] [-sd] [-dd]           : Fetch the cache stats (fragmentation, stone count dist, depth dist)", CHEAT_PREFIX);
+    renderOutput("  egdb                             : Fetch the endgame database stats", CHEAT_PREFIX);
     renderOutput("  store [file name]                : Writes performance characteristics of the last \"step\" to a file", CHEAT_PREFIX);
     renderOutput("  trace                            : Compute move trace of the last move (requires cached evaluation)", CHEAT_PREFIX);
     renderOutput("  autoplay [true|false]            : If enabled the game loop will automatically continue", CHEAT_PREFIX);
@@ -383,6 +384,12 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
         bool calcDepthDist = (strstr(input, "-dd") != NULL);
 
         renderCacheStats(calcFrag, calcStoneDist, calcDepthDist);
+        return;
+    }
+
+    // Check for egdb
+    if (strcmp(input, "egdb") == 0) {
+        renderEGDBOverview();
         return;
     }
 
