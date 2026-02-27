@@ -3,7 +3,10 @@
 */
 
 #include "user/interface.h"
+
+#ifndef WEB_BUILD
 #include "user/runBenchmark.h"
+#endif
 
 /**
  * Program entry point
@@ -11,7 +14,9 @@
 int main(int argc, char const* argv[]) {
     if (argc > 1) {
         if (strcmp(argv[1], "--benchmark") == 0) {
+#ifndef WEB_BUILD
             runBenchmark();
+#endif
             return 0;
         }
 

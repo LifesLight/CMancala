@@ -3,9 +3,12 @@
  */
 
 #include "logic/solver/algo.h"
-#include "logic/solver/egdb.h" // ADDED FOR EGDB
 
 int64_t nodeCount;
+
+// --- Instantiations ---
+
+#ifndef WEB_BUILD
 
 // 1. TT ON | EGDB ON | CLASSIC 
 #define PREFIX TT_EGDB_CLASSIC
@@ -17,6 +20,8 @@ int64_t nodeCount;
 #undef SOLVER_USE_CACHE
 #undef USE_EGDB
 #undef MAKE_MOVE
+
+#endif
 
 // 2. TT ON | EGDB OFF | CLASSIC 
 #define PREFIX TT_CLASSIC
@@ -39,6 +44,8 @@ int64_t nodeCount;
 #undef SOLVER_USE_CACHE
 #undef USE_EGDB
 #undef MAKE_MOVE
+
+#ifndef WEB_BUILD
 
 // 4. TT OFF | EGDB ON | CLASSIC 
 #define PREFIX EGDB_CLASSIC
@@ -73,13 +80,17 @@ int64_t nodeCount;
 #undef USE_EGDB
 #undef MAKE_MOVE
 
+#endif
+
 void aspirationRoot(Context* context, SolverConfig *config) {
-
-    bool use_tt = (config->solver == LOCAL_SOLVER);
-
-    bool use_egdb = (loaded_egdb_max_stones > 0);
-
     bool is_classic = (getMoveFunction() == CLASSIC_MOVE);
+
+#ifdef WEB_BUILD
+    if (is_classic) aspirationRoot_TT_CLASSIC(context, config);
+    else            aspirationRoot_TT_AVALANCHE(context, config);
+#else
+    bool use_tt = (config->solver == LOCAL_SOLVER);
+    bool use_egdb = (loaded_egdb_max_stones > 0);
 
     if (use_tt && use_egdb && is_classic)        aspirationRoot_TT_EGDB_CLASSIC(context, config);
     else if (use_tt && !use_egdb && is_classic)  aspirationRoot_TT_CLASSIC(context, config);
@@ -87,14 +98,18 @@ void aspirationRoot(Context* context, SolverConfig *config) {
     else if (!use_tt && use_egdb && is_classic)  aspirationRoot_EGDB_CLASSIC(context, config);
     else if (!use_tt && !use_egdb && is_classic) aspirationRoot_CLASSIC(context, config);
     else if (!use_tt && !is_classic)             aspirationRoot_AVALANCHE(context, config);
+#endif
 }
 
 void distributionRoot(Board *board, int32_t* distribution, bool *solved, SolverConfig *config) {
-    bool use_tt = (config->solver == LOCAL_SOLVER);
-
-    bool use_egdb = (loaded_egdb_max_stones > 0);
-
     bool is_classic = (getMoveFunction() == CLASSIC_MOVE);
+
+#ifdef WEB_BUILD
+    if (is_classic) distributionRoot_TT_CLASSIC(board, distribution, solved, config);
+    else            distributionRoot_TT_AVALANCHE(board, distribution, solved, config);
+#else
+    bool use_tt = (config->solver == LOCAL_SOLVER);
+    bool use_egdb = (loaded_egdb_max_stones > 0);
 
     if (use_tt && use_egdb && is_classic)        distributionRoot_TT_EGDB_CLASSIC(board, distribution, solved, config);
     else if (use_tt && !use_egdb && is_classic)  distributionRoot_TT_CLASSIC(board, distribution, solved, config);
@@ -102,6 +117,7 @@ void distributionRoot(Board *board, int32_t* distribution, bool *solved, SolverC
     else if (!use_tt && use_egdb && is_classic)  distributionRoot_EGDB_CLASSIC(board, distribution, solved, config);
     else if (!use_tt && !use_egdb && is_classic) distributionRoot_CLASSIC(board, distribution, solved, config);
     else if (!use_tt && !is_classic)             distributionRoot_AVALANCHE(board, distribution, solved, config);
+#endif
 }
 
 NegamaxTrace negamaxWithTrace(Board *board, int alpha, const int beta, const int depth) {

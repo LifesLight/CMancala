@@ -9,20 +9,24 @@ set(CORE_SOURCES
     src/logic/utility.c
     src/logic/board.c
     src/logic/solver/algo.c
-    src/logic/solver/egdb.c
     src/logic/solver/cache.c
     src/user/render.c
-    src/user/runBenchmark.c
     src/user/handleConfig.c
     src/user/handleGame.c
     src/user/handlePlaying.c
 )
+
+if(NOT EMSCRIPTEN)
+    list(APPEND CORE_SOURCES src/logic/solver/egdb.c src/user/runBenchmark.c)
+endif()
 
 include_directories(include)
 
 # --- 2. Platform Specific Configuration ---
 if(EMSCRIPTEN)
     message(STATUS "Configuring for WebAssembly (Emscripten)")
+
+    add_compile_definitions(WEB_BUILD)
 
     set(CMAKE_C_STANDARD 17)
     set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -88,11 +92,10 @@ else()
 
     # --- Profiling Logic ---
     if(ENABLE_PROFILING)
-        # Keeps O3 but adds symbols and frame pointers for 'perf'
         set(GCC_COMMON_FLAGS "${GCC_COMMON_FLAGS} -g -fno-omit-frame-pointer")
     endif()
 
-    set(LTO_FLAG "-flto")
+    set(LTO_FLAG "-flto=auto")
 
     if(NOT WIN32)
         set(BASE_OPT_FLAGS "${GCC_COMMON_FLAGS}")

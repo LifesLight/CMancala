@@ -16,6 +16,10 @@
 #include "user/render.h"
 #include "config.h"
 
+#ifndef WEB_BUILD
+#include "logic/solver/egdb.h"
+#endif
+
 /**
  * Here are global algorithms, regardless the solver
 */

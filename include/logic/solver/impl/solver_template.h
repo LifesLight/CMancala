@@ -3,8 +3,6 @@
  */
 
 #include "logic/solver/impl/macros.h"
-#include "logic/utility.h"
-#include "logic/solver/egdb.h" // ADDED FOR EGDB
 
 #if !SOLVER_USE_CACHE
 static bool solved;
