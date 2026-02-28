@@ -365,7 +365,7 @@ void renderCacheOverview(const CacheStats* stats, bool showFrag, bool showStoneD
     renderOutput(message, CHEAT_PREFIX);
 
     double cacheMB = ((double)stats->cacheSize * stats->entrySize) / 1048576.0;
-    snprintf(message, sizeof(message), "  Size (MB):  %7.2f MB", cacheMB);
+    snprintf(message, sizeof(message), "  Size (MB):  %.2f MB", cacheMB);
     renderOutput(message, CHEAT_PREFIX);
 
     if (stats->hasDepth) {

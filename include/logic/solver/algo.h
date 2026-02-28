@@ -17,7 +17,7 @@
 #include "config.h"
 
 #ifndef WEB_BUILD
-#include "logic/solver/egdb.h"
+#include "logic/solver/egdb/core.h"
 #endif
 
 /**
