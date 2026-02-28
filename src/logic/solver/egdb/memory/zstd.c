@@ -14,9 +14,9 @@
 #include <zstd.h>
 #include <zdict.h>
 
-#define EGDB_ZSTD_MAGIC 0x4454535A // "ZSTD"
-#define EGDB_ZSTD_BLOCK_SIZE 1024
-#define EGDB_ZSTD_DICT_CAPACITY (110 * 1024) // 110KB is usually max for ZSTD dicts
+#define EGDB_ZSTD_MAGIC 0x4454535A
+#define EGDB_ZSTD_BLOCK_SIZE 256
+#define EGDB_ZSTD_DICT_CAPACITY (110 * 1024) 
 
 // Global arrays to hold EGDB data
 static bool egdb_is_compressed[EGDB_MAX_STONES + 1] = {false};

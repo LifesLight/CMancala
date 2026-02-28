@@ -302,6 +302,46 @@ static void init_game_with_config(int stones, int distribution, int moveFunc, do
     push_history(globalContext.board, -1, 0, 0);
 }
 
+EMSCRIPTEN_KEEPALIVE
+void set_custom_board(int c0, int c1, int c2, int c3, int c4, int c5, int c6,
+                      int c7, int c8, int c9, int c10, int c11, int c12, int c13,
+                      int startColor) {
+    if (!isGameInitialized) return;
+    globalBoard.cells[0] = c0;   globalBoard.cells[1] = c1;
+    globalBoard.cells[2] = c2;   globalBoard.cells[3] = c3;
+    globalBoard.cells[4] = c4;   globalBoard.cells[5] = c5;
+    globalBoard.cells[6] = c6;   globalBoard.cells[7] = c7;
+    globalBoard.cells[8] = c8;   globalBoard.cells[9] = c9;
+    globalBoard.cells[10] = c10; globalBoard.cells[11] = c11;
+    globalBoard.cells[12] = c12; globalBoard.cells[13] = c13;
+    globalBoard.color = startColor;
+    isCheated = true;
+    historyCount = 0;
+    push_history(globalContext.board, -1, 0, 0);
+}
+
+EMSCRIPTEN_KEEPALIVE
+void finalize_board() {
+    if (!isGameInitialized) return;
+    if (isBoardTerminal(globalContext.board)) {
+        processBoardTerminal(globalContext.board);
+        historyCount = 0;
+        push_history(globalContext.board, -1, 0, 0);
+    }
+}
+
+EMSCRIPTEN_KEEPALIVE
+int get_last_seed() {
+    return globalContext.config.gameSettings.seed;
+}
+
+EMSCRIPTEN_KEEPALIVE
+void clear_highlights() {
+    currentCaptureMask = 0;
+    currentModifiedMask = 0;
+    globalContext.metadata.lastMove = -1;
+}
+
 #ifdef __EMSCRIPTEN__
 static void ai_think_callback(void *arg) {
     (void)arg;
@@ -354,7 +394,6 @@ void restart_game(int stones, int distribution, int moveFunc, double timeLimit, 
     init_game_with_config(stones, distribution, moveFunc, timeLimit, startColor, seed);
 #ifdef __EMSCRIPTEN__
     EM_ASM({ updateView(); });
-    if (globalContext.board->color == -1 && isAutoplay) kick_off_ai();
 #endif
 }
 
@@ -380,6 +419,9 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
     };
     window.lastHistoryCount = -1;
     window.hoverTimeout = null;
+    window.customEditMode = false;
+    window.inSetup = false;
+    window.lastUsedSeed = 0;
 
     const css = `
         * { box-sizing: border-box; }
@@ -400,6 +442,10 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
         .cfg-label { color: #969696; font-size: 12px; display: block; margin-bottom: 4px; }
         .cfg-row input, .cfg-row select { width: 100%; padding: 6px; background: #444; color: #fff; border: 1px solid #646464; border-radius: 4px; }
         .cfg-btn { width: 100%; padding: 10px; margin-top: 10px; background: #0a0; color: #000; border: none; cursor: pointer; font-size: 16px; font-weight: bold; border-radius: 10px; }
+        .cfg-btn.disabled { opacity: .4; pointer-events: none; }
+        .cfg-btn-reset { width: 100%; padding: 10px; margin-top: 14px; background: transparent; color: #c55; border: 1px solid #c55; cursor: pointer; font-size: 14px; font-weight: bold; border-radius: 10px; }
+        .cfg-btn-reset:hover { background: #c55; color: #000; }
+        .cfg-btn-reset.disabled { opacity: .4; pointer-events: none; }
         .bottom-btn { background: transparent; border: none; color: #888; font-size: 14px; cursor: pointer; font-family: monospace; }
         .bottom-btn:hover { color: #fff; text-decoration: underline; }
         .main-content { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
@@ -439,6 +485,12 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
         body.expert-mode .expert-only { display: block; }
         .expert-btn { background: transparent; border: 1px solid #444; color: #666; font-size: 10px; margin-left: 10px; cursor: pointer; padding: 2px 5px; border-radius: 4px; pointer-events: auto; }
         body.expert-mode .expert-btn { color: #0f0; border-color: #0f0; }
+
+        .pit-input, .store-input { background: transparent; border: none; outline: none; color: #fff; text-align: center; font-family: monospace; width: 100%; height: 100%; -moz-appearance: textfield; }
+        .pit-input::-webkit-outer-spin-button, .pit-input::-webkit-inner-spin-button,
+        .store-input::-webkit-outer-spin-button, .store-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        .pit-input { font-size: 24px; }
+        .store-input { font-size: 32px; }
     `;
     const style = document.createElement("style"); style.textContent = css; document.head.appendChild(style);
 
@@ -458,12 +510,14 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
             const p = document.createElement("div"); p.className = "pit player-pit"; p.id = prefix + i;
             if (!isMini) {
                 p.onclick = () => { 
+                    if (window.customEditMode || window.inSetup) return;
                     if (Module._get_ai_thinking() || Module._get_current_player() !== 1) return; 
                     if (window.hoverTimeout) { clearTimeout(window.hoverTimeout); window.hoverTimeout = null; }
                     window.hoveredPit = -1; 
                     Module._do_web_move(i); 
                 };
                 p.onmouseenter = () => { 
+                    if (window.customEditMode || window.inSetup) return;
                     if (!window.isTouchDevice) { 
                         if (window.hoverTimeout) { clearTimeout(window.hoverTimeout); window.hoverTimeout = null; }
                         window.hoveredPit = i; 
@@ -471,6 +525,7 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
                     } 
                 };
                 p.onmouseleave = () => { 
+                    if (window.customEditMode || window.inSetup) return;
                     if (!window.isTouchDevice) { 
                         window.hoverTimeout = setTimeout(() => {
                             window.hoveredPit = -1; 
@@ -487,6 +542,85 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
         container.appendChild(wrap);
     };
 
+    window.clearBoardHighlights = function() {
+        for (let i = 0; i < 14; i++) {
+            const el = document.getElementById("main-" + i);
+            if (!el) continue;
+            const old = el.getAttribute("data-hl") || "";
+            if (old) { el.classList.remove(old); el.setAttribute("data-hl", ""); }
+        }
+    };
+
+    window.enterCustomEdit = function(values) {
+        window.customEditMode = true;
+        window.domCache = {};
+        Module._clear_highlights();
+        window.clearBoardHighlights();
+        for (let i = 0; i < 14; i++) {
+            const el = document.getElementById("main-" + i);
+            if (!el) continue;
+            const isStore = (i === 6 || i === 13);
+            const val = values ? values[i] : 0;
+            const inp = document.createElement("input");
+            inp.type = "number";
+            inp.className = isStore ? "store-input" : "pit-input";
+            inp.value = val;
+            inp.min = 0;
+            inp.max = 16;
+            inp.inputMode = "numeric";
+            inp.id = "cst-" + i;
+            inp.onclick = (e) => { e.stopPropagation(); };
+            el.textContent = "";
+            el.appendChild(inp);
+        }
+        const mBoard = document.getElementById("main-board");
+        if (mBoard) { mBoard.classList.remove("disabled"); mBoard.classList.add("cheated"); }
+    };
+
+    window.exitCustomEdit = function() {
+        window.customEditMode = false;
+        window.domCache = {};
+        for (let i = 0; i < 14; i++) {
+            const el = document.getElementById("main-" + i);
+            if (!el) continue;
+            el.innerHTML = "";
+            el.textContent = String(Module._get_stone_count(i));
+        }
+    };
+
+    window.readCustomBoard = function() {
+        const cells = [];
+        for (let i = 0; i < 14; i++) {
+            const inp = document.getElementById("cst-" + i);
+            let v = inp ? parseInt(inp.value) : 0;
+            if (isNaN(v) || v < 0) v = 0;
+            if (v > 16) v = 16;
+            cells.push(v);
+        }
+        return cells;
+    };
+
+    window.updateButtons = function() {
+        const goBtn = document.getElementById("cfg-go");
+        const resetBtn = document.getElementById("cfg-reset");
+        const dist = parseInt(document.getElementById("cfg-dist").value);
+        const isCustom = (dist === 2);
+        if (goBtn) goBtn.classList.toggle("disabled", isCustom && !window.inSetup);
+        if (resetBtn) resetBtn.classList.toggle("disabled", window.inSetup);
+    };
+
+    window.readSettings = function() {
+        clampInput("cfg-stones", 1, 18);
+        return {
+            stones: parseInt(document.getElementById("cfg-stones").value),
+            dist: parseInt(document.getElementById("cfg-dist").value),
+            moveFunc: parseInt(document.getElementById("cfg-mode").value),
+            timeVal: (function() { let t = parseFloat(document.getElementById("cfg-time").value); if (isNaN(t) || t < 0) { t = 0; document.getElementById("cfg-time").value = "0"; } return t; })(),
+            startColor: parseInt(document.getElementById("cfg-start").value),
+            seed: parseInt(document.getElementById("cfg-seed").value) || 0
+        };
+    };
+
     const sideL = document.createElement("div"); sideL.className = "sidebar sidebar-left";
     let statsHtml = `<h3>SOLVER STATS</h3><div class='stat-box'><span class='stat-label'>STATUS</span><span id='s-status' class='stat-val'>-</span></div><div class='stat-box'><span class='stat-label'>EVALUATION</span><span id='s-eval' class='stat-val'>-</span></div><div class='stat-box'><span class='stat-label'>LAST NODES</span><span id='s-nodes' class='stat-val'>-</span></div><div class='stat-box'><span class='stat-label'>TOTAL NODES</span><span id='s-total-nodes' class='stat-val'>-</span></div><div class='stat-box'><span class='stat-label'>THROUGHPUT</span><span id='s-tput' class='stat-val'>-</span></div>`;
     
@@ -501,32 +635,105 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
     
     const sideR = document.createElement("div"); sideR.className = "sidebar sidebar-right";
     
-    let html = `<h3>GAME SETTINGS</h3><div class='cfg-row'><span class='cfg-label'>STONES (1-18)</span><input id='cfg-stones' type='number' value='4' min='1' max='18' oninput="if(this.value > 18) this.value = 18; if(this.value < 1 && this.value !== '') this.value = 1;"></div><div class='cfg-row'><span class='cfg-label'>DISTRIBUTION</span><select id='cfg-dist'><option value='0'>Uniform</option><option value='1'>Random</option></select></div><div class='cfg-row' id='seed-row' style='display:none'><span class='cfg-label'>SEED (0=rand)</span><input id='cfg-seed' type='number' value='0'></div><div class='cfg-row'><span class='cfg-label'>MODE</span><select id='cfg-mode'><option value='0'>Classic</option><option value='1'>Avalanche</option></select></div><div class='cfg-row'><span class='cfg-label'>AI TIME LIMIT (s, 0=inf)</span><input id='cfg-time' type='number' value='1' min='0' oninput="if(this.value < 0) this.value = 0;"></div><div class='cfg-row'><span class='cfg-label'>STARTING PLAYER</span><select id='cfg-start'><option value='1'>Player</option><option value='-1'>AI</option></select></div>`;
+    let html = `<h3>GAME SETTINGS</h3><div class='cfg-row'><span class='cfg-label'>STONES (1-18)</span><input id='cfg-stones' type='number' value='4' min='1' max='18'></div><div class='cfg-row'><span class='cfg-label'>DISTRIBUTION</span><select id='cfg-dist'><option value='0'>Uniform</option><option value='1'>Random</option><option value='2'>Custom</option></select></div><div class='cfg-row' id='seed-row' style='display:none'><span class='cfg-label'>SEED (0=rand)</span><input id='cfg-seed' type='number' value='0'></div><div class='cfg-row'><span class='cfg-label'>MODE</span><select id='cfg-mode'><option value='0'>Classic</option><option value='1'>Avalanche</option></select></div><div class='cfg-row'><span class='cfg-label'>AI TIME LIMIT (s, 0=inf)</span><input id='cfg-time' type='number' value='1' min='0'></div><div class='cfg-row'><span class='cfg-label'>STARTING PLAYER</span><select id='cfg-start'><option value='1'>Player</option><option value='-1'>AI</option></select></div>`;
 
-    html += `<div class='expert-only'><div class='cfg-row'><span class='cfg-label'>CACHE SIZE EXP (18-28)</span><input id='cfg-cache' type='number' value='24' min='18' max='28' oninput="if(this.value > 28) this.value = 28; if(this.value < 18 && this.value !== '') this.value = 18;"></div><div class='chk-row'><span class='cfg-label'>AI AUTOPLAY</span><input id='cfg-autoplay' type='checkbox' checked></div></div>`;
+    html += `<div class='expert-only'><div class='cfg-row'><span class='cfg-label'>CACHE SIZE EXP (18-28)</span><input id='cfg-cache' type='number' value='24' min='18' max='28'></div><div class='chk-row'><span class='cfg-label'>AI AUTOPLAY</span><input id='cfg-autoplay' type='checkbox' checked></div></div>`;
 
     html += `<button id='cfg-go' class='cfg-btn'>START GAME</button>`;
+    html += `<button id='cfg-reset' class='cfg-btn-reset disabled'>RESET</button>`;
     
     sideR.innerHTML = html;
     document.body.appendChild(sideR);
     
-    document.getElementById('cfg-dist').onchange = (e) => { document.getElementById('seed-row').style.display = e.target.value == '1' ? 'block' : 'none'; };
+    document.getElementById('cfg-dist').onchange = (e) => {
+        document.getElementById('seed-row').style.display = e.target.value == '1' ? 'block' : 'none';
+        if (window.inSetup) {
+            if (window.customEditMode) window.exitCustomEdit();
+            if (e.target.value == '2') window.enterCustomEdit(null);
+        }
+        window.updateButtons();
+    };
     const togR = document.createElement("button"); togR.className = "side-toggle toggle-right"; togR.innerText = "SETTINGS";
     togR.onclick = () => sideR.classList.toggle("open"); document.body.appendChild(togR);
     
     const apChk = document.getElementById("cfg-autoplay");
     if(apChk) apChk.onchange = (e) => { Module._set_autoplay(e.target.checked ? 1 : 0); };
 
+    window.clampInput = function(id, min, max) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        let v = parseInt(el.value);
+        if (isNaN(v)) return;
+        if (v < min) { el.value = min; }
+        if (v > max) { el.value = max; }
+    };
+
     document.getElementById("cfg-go").onclick = () => {
         if (Module._get_ai_thinking()) return;
-        
+
+        const cfg = window.readSettings();
+        const isCustom = (cfg.dist === 2);
+        if (isCustom && !window.inSetup) return;
+
         const cacheInput = document.getElementById("cfg-cache");
-        if (cacheInput) Module._set_web_cache_size(parseInt(cacheInput.value));
+        if (cacheInput) {
+            clampInput("cfg-cache", 18, 28);
+            Module._set_web_cache_size(parseInt(cacheInput.value));
+        }
         const apInput = document.getElementById("cfg-autoplay");
         if (apInput) Module._set_autoplay(apInput.checked ? 1 : 0);
 
-        Module._restart_game(parseInt(document.getElementById("cfg-stones").value), parseInt(document.getElementById("cfg-dist").value), parseInt(document.getElementById("cfg-mode").value), parseFloat(document.getElementById("cfg-time").value), parseInt(document.getElementById("cfg-start").value), parseInt(document.getElementById("cfg-seed").value));
-        sideR.classList.remove("open");
+        if (isCustom) {
+            const cells = window.readCustomBoard();
+            window.customEditMode = false;
+            window.domCache = {};
+            Module._restart_game(cfg.stones, 0, cfg.moveFunc, cfg.timeVal, cfg.startColor, 0);
+            Module._set_custom_board(cells[0], cells[1], cells[2], cells[3], cells[4], cells[5], cells[6],
+                                     cells[7], cells[8], cells[9], cells[10], cells[11], cells[12], cells[13],
+                                     cfg.startColor);
+            Module._finalize_board();
+        } else if (cfg.dist === 1) {
+            if (window.customEditMode) { window.customEditMode = false; window.domCache = {}; }
+            const useSeed = window.inSetup ? window.lastUsedSeed : cfg.seed;
+            Module._restart_game(cfg.stones, 1, cfg.moveFunc, cfg.timeVal, cfg.startColor, useSeed);
+        } else {
+            if (window.customEditMode) { window.customEditMode = false; window.domCache = {}; }
+            Module._restart_game(cfg.stones, 0, cfg.moveFunc, cfg.timeVal, cfg.startColor, 0);
+        }
+
+        window.lastUsedSeed = Module._get_last_seed();
+        window.inSetup = false;
+        window.lastHistoryCount = -1;
+        window.updateButtons();
+        updateView();
+        document.querySelector(".sidebar-right").classList.remove("open");
+
+        if (!Module._get_game_over() && Module._get_current_player() === -1 && Module._get_autoplay()) {
+            Module._do_ai_step();
+        }
+    };
+
+    document.getElementById("cfg-reset").onclick = () => {
+        if (window.inSetup || Module._get_ai_thinking()) return;
+
+        Module._clear_highlights();
+        window.clearBoardHighlights();
+        window.lastHistoryCount = -1;
+
+        const cfg = window.readSettings();
+
+        if (cfg.dist === 2) {
+            window.inSetup = true;
+            window.enterCustomEdit(null);
+        } else if (cfg.dist === 1) {
+            window.inSetup = true;
+            Module._restart_game(cfg.stones, 1, cfg.moveFunc, cfg.timeVal, cfg.startColor, window.lastUsedSeed);
+        } else {
+            Module._restart_game(cfg.stones, 0, cfg.moveFunc, cfg.timeVal, cfg.startColor, 0);
+        }
+
+        window.updateButtons();
+        window.updateView();
     };
     
     const main = document.createElement("div"); main.className = "main-content"; document.body.appendChild(main);
@@ -601,6 +808,13 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
     };
 
     window.updateView = function() {
+        if (window.customEditMode) {
+            const stEl = window.getEl("status-text");
+            if (stEl && stEl.textContent !== ">> CUSTOM EDIT") stEl.textContent = ">> CUSTOM EDIT";
+            window.updateButtons();
+            return;
+        }
+
         const thinking = Module._get_ai_thinking(); 
         const gameOver = Module._get_game_over();
         const currentPlayer = Module._get_current_player();
@@ -609,32 +823,32 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
         const fmt = (n) => n >= 1e6 ? (n/1e6).toFixed(2)+"M" : (n >= 1e3 ? (n/1e3).toFixed(1)+"k" : String(n));
 
         const mBoard = window.getEl("main-board");
-        const isDis = !!(thinking || gameOver);
+        const isDis = !!(thinking || gameOver || window.inSetup);
         if (mBoard.classList.contains("disabled") !== isDis) mBoard.classList.toggle("disabled", isDis);
         const isCheat = !!Module._get_is_cheated();
         if (mBoard.classList.contains("cheated") !== isCheat) mBoard.classList.toggle("cheated", isCheat);
         
         const undoBtn = window.getEl("undo-btn");
-        const cannotUndo = !Module._can_undo();
+        const cannotUndo = !Module._can_undo() || window.inSetup;
         if (undoBtn.classList.contains("disabled") !== cannotUndo) undoBtn.classList.toggle("disabled", cannotUndo);
         
-        const showStep = (!autoplay && currentPlayer === -1 && !thinking && !gameOver);
+        const showStep = (!autoplay && currentPlayer === -1 && !thinking && !gameOver && !window.inSetup);
         const sBtn = window.getEl("step-btn");
         if(sBtn) {
             const disp = showStep ? "block" : "none";
             if (sBtn.style.display !== disp) sBtn.style.display = disp;
         }
 
-        const lastMove = Module._get_last_move();
-        const captures = Module._get_current_captures();
-        const modified = Module._get_current_modified();
+        const lastMove = window.inSetup ? -1 : Module._get_last_move();
+        const captures = window.inSetup ? 0 : Module._get_current_captures();
+        const modified = window.inSetup ? 0 : Module._get_current_modified();
 
         const hoveredPit = window.hoveredPit !== undefined ? window.hoveredPit : -1;
         
         let drops = 0;
         let lastDrop = -1;
         
-        if (hoveredPit >= 0 && !thinking && !gameOver && currentPlayer === 1) {
+        if (hoveredPit >= 0 && !thinking && !gameOver && !window.inSetup && currentPlayer === 1) {
             let stones = Module._get_stone_count(hoveredPit);
             if (stones > 0) {
                 let curr = hoveredPit;
@@ -703,15 +917,18 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
 
         const stEl = window.getEl("status-text");
         let stStr = "";
-        if (gameOver) stStr = ">> GAME OVER"; 
+        if (window.inSetup) stStr = ">> PRESS START";
+        else if (gameOver) stStr = ">> GAME OVER"; 
         else if (thinking) stStr = ">> AI THINKING..."; 
         else if (currentPlayer === -1 && !autoplay) stStr = ">> WAITING FOR STEP";
         else stStr = (currentPlayer === 1) ? ">> YOUR TURN" : ">> AI TURN";
         if (stEl && stEl.textContent !== stStr) stEl.textContent = stStr;
         
+        window.updateButtons();
         window.syncHistory();
     };
     
+    window.lastUsedSeed = Module._get_last_seed();
     setTimeout(updateView, 100);
 });
 #endif

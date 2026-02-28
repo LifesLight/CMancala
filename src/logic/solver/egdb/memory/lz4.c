@@ -186,7 +186,7 @@ void egdb_mem_save(int s, uint64_t size) {
     if (compressBufferToRuntime(s, egdb_tables[s], size)) {
         saveCompressedRuntimeToDisk(s, size);
     }
-    
+
     free(egdb_tables[s]);
     egdb_tables[s] = NULL;
 }

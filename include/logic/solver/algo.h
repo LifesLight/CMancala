@@ -4,8 +4,6 @@
  * Copyright (c) Alexander Kurtz 2026
  */
 
-// TODO Solve caching per branch
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
