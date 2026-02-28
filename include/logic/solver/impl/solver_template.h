@@ -260,6 +260,10 @@ void FN(distributionRoot)(Board *board, int *distribution, bool *solvedOutput, S
     int index = 5;
     int score;
 
+#if USE_EGDB
+    resetEGDBStats();
+#endif
+
 #if SOLVER_USE_CACHE
     int depth = config->depth;
     if (config->depth == 0) {
@@ -327,6 +331,10 @@ void FN(distributionRoot)(Board *board, int *distribution, bool *solvedOutput, S
 void FN(aspirationRoot)(Context* context, SolverConfig *config) {
     const int depthStep = 1;
     int currentDepth = 1;
+
+#if USE_EGDB
+    resetEGDBStats();
+#endif
 
     int bestMove = -1;
     int score = 0;

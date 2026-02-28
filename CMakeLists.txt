@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 project(Mancala)
 
-set(MANCALA_VERSION "8.1" CACHE STRING "Current Version")
+set(MANCALA_VERSION "8.3" CACHE STRING "Current Version")
 
 # --- 1. Define Core Shared Files ---
 set(CORE_SOURCES
@@ -75,10 +75,28 @@ else()
 
     target_compile_definitions(Mancala PRIVATE MANCALA_VERSION=\"${MANCALA_VERSION}\")
 
-    # --- Build Options ---
+    # --- Feature Options ---
+    option(ENABLE_LZ4 "Enable LZ4 compression for EGDB" OFF)
     option(ENABLE_PGO "Enable profile guided optimization" OFF)
     option(ENABLE_PROFILING "Enable debug symbols for perf analysis" OFF)
 
+    # --- LZ4 Configuration ---
+    if(ENABLE_LZ4)
+        find_package(PkgConfig REQUIRED)
+        pkg_check_modules(lz4 IMPORTED_TARGET liblz4)
+
+        if(lz4_FOUND)
+            message(STATUS "LZ4 Enabled")
+            target_link_libraries(${PROJECT_NAME} PkgConfig::lz4)
+            target_compile_definitions(${PROJECT_NAME} PRIVATE LZ4)
+        else()
+            message(WARNING "LZ4 enabled but not found. Disabling compression support.")
+        endif()
+    else()
+        message(STATUS "LZ4 Disabled")
+    endif()
+
+    # --- Optimization / PGO ---
     set(PGO_STAGE "generate" CACHE STRING "PGO stage: generate or use")
 
     message(STATUS "ENABLE_PGO=${ENABLE_PGO}")
@@ -87,10 +105,8 @@ else()
         message(STATUS "PGO_STAGE=${PGO_STAGE}")
     endif()
 
-    # Base optimization flags
     set(GCC_COMMON_FLAGS "-O3 -march=native -fno-stack-protector -Wall -Wextra -pedantic")
 
-    # --- Profiling Logic ---
     if(ENABLE_PROFILING)
         set(GCC_COMMON_FLAGS "${GCC_COMMON_FLAGS} -g -fno-omit-frame-pointer")
     endif()

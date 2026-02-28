@@ -18,7 +18,7 @@ void renderConfigHelp() {
     renderOutput("  clip [true|false]                : Set clip on/off, clip only computes if a move is winning or losing", CONFIG_PREFIX);
     renderOutput("  cache[number >= 17]              : Set cache size as power of two. If compression is off number needs to be >= 29", CONFIG_PREFIX);
     renderOutput("  compress [always|never|auto]     : Configure cache compression. Auto selects best mode for cache size.", CONFIG_PREFIX);
-    renderOutput("  egdb [number > 0]                : Generate and load Endgame Database up to X stones", CONFIG_PREFIX); // ADDED
+    renderOutput("  egdb [N] [--compressed|-c]       : Load/Gen EGDB. Use -c to compress/load to RAM.", CONFIG_PREFIX);
     renderOutput("  starting [1|2]                   : Configure starting player", CONFIG_PREFIX);
     renderOutput("  player [1|2] [human|random|ai]   : Configure player", CONFIG_PREFIX);
     renderOutput("  display                          : Display current configuration", CONFIG_PREFIX);
@@ -157,7 +157,19 @@ void handleConfigInput(bool* requestedStart, Config* config) {
     }
 
     if (strncmp(input, "egdb ", 5) == 0) {
-        int stones = atoi(input + 5);
+        int stones = 0;
+        bool compressed = false;
+
+        char* token = strtok(input + 5, " ");
+        if (token) {
+            stones = atoi(token);
+            token = strtok(NULL, " ");
+            if (token) {
+                if (strcmp(token, "--compressed") == 0 || strcmp(token, "-c") == 0 || strcmp(token, "comp") == 0) {
+                    compressed = true;
+                }
+            }
+        }
 
         if (stones < 0 || stones > EGDB_MAX_STONES) {
             renderOutput("Invalid EGDB stones size (0 to disable)", CONFIG_PREFIX);
@@ -174,7 +186,7 @@ void handleConfigInput(bool* requestedStart, Config* config) {
             freeEGDB();
         }
 
-        generateEGDB(stones);
+        generateEGDB(stones, compressed);
         return;
     }
 
