@@ -6,11 +6,11 @@ import os
 
 # --- CONFIGURATION ---
 EXECUTABLE_PATH = "./build_pgo/Mancala"
-ITERATIONS = 250
+ITERATIONS = 1000
 BASE_DEPTH = 0
 DEPTH_VARIATION = 0
 LOG_FILE = "egdb_mismatch_log.txt"
-EGDB_SIZE = 28
+EGDB_SIZE = 24
 # ---------------------
 
 def get_random_depth():

@@ -30,5 +30,5 @@ void loadEGDB(int max_stones);
 void freeEGDB();
 
 bool EGDB_probe(Board* board, int* score);
-void getEGDBStats(uint64_t* sizeBytes, uint64_t* probes, uint64_t* hits, int* maxStones);
+void getEGDBStats(uint64_t* sizeBytes, uint64_t* hits, int* minStones, int* maxStones);
 void resetEGDBStats();

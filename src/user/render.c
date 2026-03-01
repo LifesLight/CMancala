@@ -474,9 +474,10 @@ void renderCacheOverview(const CacheStats* stats, bool showFrag, bool showStoneD
 }
 
 void renderEGDBOverview() {
-    uint64_t egdbProbes, egdbHits, egdbSize;
-    int egdbMax;
-    getEGDBStats(&egdbSize, &egdbProbes, &egdbHits, &egdbMax);
+    uint64_t egdbHits, egdbSize;
+    int egdbMin, egdbMax;
+    
+    getEGDBStats(&egdbSize, &egdbHits, &egdbMin, &egdbMax);
 
     if (egdbMax <= 0) {
         renderOutput("  EGDB not loaded or disabled", CHEAT_PREFIX);
@@ -486,20 +487,21 @@ void renderEGDBOverview() {
     char message[256];
     char logBuffer[32];
 
-    snprintf(message, sizeof(message), "  EGDB Status: Loaded (%d stones max)", egdbMax);
+    snprintf(message, sizeof(message), "  EGDB Status: Loaded (%d to %d stones)", egdbMin, egdbMax);
     renderOutput(message, CHEAT_PREFIX);
 
-    if (egdbSize < 1024) snprintf(message, sizeof(message), "    Size:     %" PRIu64 " Bytes", egdbSize);
-    else if (egdbSize < 1048576) snprintf(message, sizeof(message), "    Size:     %.2f KB", (double)egdbSize/1024.0);
-    else snprintf(message, sizeof(message), "    Size:     %.2f MB", (double)egdbSize/1048576.0);
+    if (egdbSize < 1024) {
+        snprintf(message, sizeof(message), "    Size:     %" PRIu64 " Bytes", egdbSize);
+    } else if (egdbSize < 1048576) {
+        snprintf(message, sizeof(message), "    Size:     %.2f KB", (double)egdbSize / 1024.0);
+    } else if (egdbSize < 1073741824) {
+        snprintf(message, sizeof(message), "    Size:     %.2f MB", (double)egdbSize / 1048576.0);
+    } else {
+        snprintf(message, sizeof(message), "    Size:     %.2f GB", (double)egdbSize / 1073741824.0);
+    }
     renderOutput(message, CHEAT_PREFIX);
 
-    getLogNotation(logBuffer, egdbProbes);
-    snprintf(message, sizeof(message), "    Probes:   %-12" PRIu64 " %s", egdbProbes, logBuffer);
-    renderOutput(message, CHEAT_PREFIX);
-
-    double hitRate = (egdbProbes > 0) ? ((double)egdbHits / egdbProbes * 100.0) : 0.0;
     getLogNotation(logBuffer, egdbHits);
-    snprintf(message, sizeof(message), "    Hits:     %-12" PRIu64 " %s (%.2f%%)", egdbHits, logBuffer, hitRate);
+    snprintf(message, sizeof(message), "    Hits:     %-12" PRIu64 " %s", egdbHits, logBuffer);
     renderOutput(message, CHEAT_PREFIX);
 }

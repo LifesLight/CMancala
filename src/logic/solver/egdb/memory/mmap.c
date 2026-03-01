@@ -21,20 +21,24 @@ bool egdb_mem_load(int s, uint64_t size) {
 
     if (access(bin_filename, F_OK) != 0) return false;
 
+    // Open file descriptors and attempt to map it
     int fd = open(bin_filename, O_RDONLY);
     if (fd != -1) {
         void* mapped = mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
         close(fd);
+
         if (mapped != MAP_FAILED) {
             egdb_tables[s] = (int8_t*)mapped;
             egdb_is_mmapped[s] = true;
             return true;
         }
     }
+
     return false;
 }
 
 void egdb_mem_alloc(int s, uint64_t size) {
+    // Generate new layers unmapped via generic malloc
     egdb_tables[s] = malloc(size);
     egdb_is_mmapped[s] = false;
 }
@@ -43,15 +47,18 @@ void egdb_mem_save(int s, uint64_t size) {
     char bin_filename[256];
     snprintf(bin_filename, sizeof(bin_filename), "EGDB/egdb_%d.bin", s);
 
+    // Save out fully generated block to file
     FILE* f_out = fopen(bin_filename, "wb");
     if (f_out) {
         fwrite(egdb_tables[s], 1, size, f_out);
         fclose(f_out);
     }
 
+    // Free volatile allocation
     free(egdb_tables[s]);
     egdb_tables[s] = NULL;
 
+    // Immediately reload layer using efficient mapping
     int fd = open(bin_filename, O_RDONLY);
     if (fd != -1) {
         egdb_tables[s] = mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
@@ -62,11 +69,13 @@ void egdb_mem_save(int s, uint64_t size) {
 
 void egdb_mem_free_layer(int s, uint64_t size) {
     if (egdb_tables[s]) {
+        // Dispose safely based on internal state
         if (egdb_is_mmapped[s]) {
             munmap(egdb_tables[s], size);
         } else {
             free(egdb_tables[s]);
         }
+
         egdb_tables[s] = NULL;
         egdb_is_mmapped[s] = false;
     }
@@ -77,6 +86,7 @@ bool egdb_mem_probe(int s, uint64_t idx, int8_t* val) {
         *val = egdb_tables[s][idx];
         return true;
     }
+
     return false;
 }
 
