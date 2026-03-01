@@ -71,7 +71,11 @@ if(EMSCRIPTEN)
     set_target_properties(Mancala PROPERTIES SUFFIX ".html")
     target_compile_options(Mancala PRIVATE -O3)
 
+    # Configure HTML Template
     configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/web/shell.html ${CMAKE_CURRENT_BINARY_DIR}/shell.html @ONLY)
+    
+    # !!! ADDED: Copy CSS to build directory !!!
+    configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/web/style.css ${CMAKE_CURRENT_BINARY_DIR}/style.css COPYONLY)
 
     # Base Emscripten Flags
     set(EM_FLAGS 

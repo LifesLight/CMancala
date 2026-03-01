@@ -15,7 +15,7 @@
  * Requires Prebuild EGDB's
  * 
  * Example:
- * cat EGDB/egdb_{17..20}.bin > egdb_bundl_upgrade.bin
+ * cat EGDB/egdb_{17..20}.bin > egdb_bundle_upgrade.bin
  * zstd -19 egdb_bundle_upgrade.bin -o egdb17-20.zst
  */
 
@@ -489,12 +489,10 @@ void restart_game(int stones, int distribution, int moveFunc, double timeLimit, 
 
 #ifdef __EMSCRIPTEN__
 EM_JS(void, launch_gui, (const char* v_ptr), {
-    document.body.innerHTML = "";
+    document.body.innerHTML = ""; // Remove loading text
+    document.body.classList.remove("loading");
+    
     const vStr = UTF8ToString(v_ptr);
-    const meta = document.createElement('meta');
-    meta.name = "viewport";
-    meta.content = "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0";
-    document.head.appendChild(meta);
 
     window.isTouchDevice = false;
     window.addEventListener('touchstart', () => { window.isTouchDevice = true; }, { passive: true });
@@ -512,76 +510,7 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
     window.lastUsedSeed = 0;
     window.egdbReady = false;
 
-    const css = `
-        * { box-sizing: border-box; }
-        body { background: #222; color: #fff; font-family: monospace; margin: 0; overflow: hidden; }
-        .sidebar { position: fixed; top: 0; width: 280px; height: 100%; background: #2d2d2d; padding: 20px; padding-top: 50px; transition: transform .3s; z-index: 10; overflow-y: auto; }
-        .sidebar-left { left: 0; border-right: 2px solid #505050; transform: translateX(-100%); }
-        .sidebar-left.open { transform: translateX(0); }
-        .sidebar-right { right: 0; border-left: 2px solid #505050; transform: translateX(100%); }
-        .sidebar-right.open { transform: translateX(0); }
-        .side-toggle { position: fixed; top: 10px; padding: 10px 15px; background: #3c3c3c; cursor: pointer; z-index: 11; border: 1px solid #646464; color: #fff; border-radius: 20px; }
-        .toggle-left { left: 10px; }
-        .toggle-right { right: 10px; }
-        .stat-box { margin-bottom: 20px; border-bottom: 1px solid #464646; padding-bottom: 10px; }
-        .stat-label { color: #969696; font-size: 12px; display: block; }
-        .stat-val { font-size: 18px; color: #0f0; }
-        .stat-sub { font-size: 13px; color: #ccc; display: block; margin-top: 3px; }
-        .cfg-row { margin-bottom: 14px; }
-        .cfg-label { color: #969696; font-size: 12px; display: block; margin-bottom: 4px; }
-        .cfg-row input, .cfg-row select { width: 100%; padding: 6px; background: #444; color: #fff; border: 1px solid #646464; border-radius: 4px; }
-        .cfg-btn { width: 100%; padding: 10px; margin-top: 10px; background: #0a0; color: #000; border: none; cursor: pointer; font-size: 16px; font-weight: bold; border-radius: 10px; }
-        .cfg-btn.disabled { opacity: .4; pointer-events: none; }
-        .cfg-btn-reset { width: 100%; padding: 10px; margin-top: 14px; background: transparent; color: #c55; border: 1px solid #c55; cursor: pointer; font-size: 14px; font-weight: bold; border-radius: 10px; }
-        .cfg-btn-reset:hover { background: #c55; color: #000; }
-        .cfg-btn-reset.disabled { opacity: .4; pointer-events: none; }
-        .bottom-btn { background: transparent; border: none; color: #888; font-size: 14px; cursor: pointer; font-family: monospace; }
-        .bottom-btn:hover { color: #fff; text-decoration: underline; }
-        .main-content { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
-        .board-container-relative { position: relative; }
-        .board-wrapper { display: flex; background: #333; border-radius: 10px; transition: background 0.5s; }
-        .board-wrapper.cheated { background: #3d3336; }
-        .board-wrapper.main { padding: 20px; gap: 20px; }
-        .board-wrapper.mini { padding: 10px; gap: 10px; border-radius: 6px; background: #2a2a2a; }
-        .pit { border-radius: 50%; display: flex; align-items: center; justify-content: center; background-color: #444; transition: background-color 0.25s ease, color 0.25s ease; }
-        .store { border-radius: 20px; display: flex; align-items: center; justify-content: center; background-color: #555; transition: background-color 0.25s ease, color 0.25s ease; }
-        .row { display: flex; }
-        .main .pit { width: 60px; height: 60px; font-size: 24px; border: 2px solid #555; }
-        .main .store { width: 80px; font-size: 32px; border: 2px solid #666; }
-        .main .row { gap: 10px; margin: 10px 0; }
-        .mini .pit { width: 38px; height: 38px; font-size: 14px; border: 1px solid #444; }
-        .mini .store { width: 50px; font-size: 18px; border: 1px solid #555; border-radius: 10px; }
-        .mini .row { gap: 5px; margin: 5px 0; }
-        .player-pit { cursor: pointer; border-color: #0f0 !important; }
-        .ai-pit { border-color: #f00 !important; }
-        .highlight-modified { background-color: #5a5a5a !important; color: #fff; }
-        .highlight-move { background-color: #999 !important; color: #fff; }
-        .highlight-capture { background-color: #e73121 !important; color: #fff; }
-        .highlight-last-drop { background-color: #6e6e6e !important; color: #fff; }
-        .disabled { opacity: .5; pointer-events: none; }
-        .undo-pos { position: absolute; bottom: -35px; left: 30px; }
-        .step-pos { position: absolute; bottom: -35px; right: 30px; }
-        .history-container { display: none; flex-direction: column; gap: 20px; padding: 15px; background: #1a1a1a; border-radius: 10px; max-height: 35vh; overflow-y: auto; margin-top: 10px; border: 1px solid #444; }
-        .hist-item { display: flex; justify-content: center; border-bottom: 1px solid #333; padding-bottom: 15px; }
-        .hist-item:last-child { border-bottom: none; padding-bottom: 0; }
-        .footer { position: fixed; bottom: 10px; width: 100%; text-align: center; pointer-events: none; }
-        .footer a { color: #888; text-decoration: none; font-size: 14px; pointer-events: auto; }
-        .chk-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
-        .chk-row input { width: auto; }
-        .chk-row .cfg-label { margin-bottom: 0; }
-        
-        .expert-only { display: none; }
-        body.expert-mode .expert-only { display: block; }
-        .expert-btn { background: transparent; border: 1px solid #444; color: #666; font-size: 10px; margin-left: 10px; cursor: pointer; padding: 2px 5px; border-radius: 4px; pointer-events: auto; }
-        body.expert-mode .expert-btn { color: #0f0; border-color: #0f0; }
-
-        .pit-input, .store-input { background: transparent; border: none; outline: none; color: #fff; text-align: center; font-family: monospace; width: 100%; height: 100%; -moz-appearance: textfield; }
-        .pit-input::-webkit-outer-spin-button, .pit-input::-webkit-inner-spin-button,
-        .store-input::-webkit-outer-spin-button, .store-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-        .pit-input { font-size: 24px; }
-        .store-input { font-size: 32px; }
-    `;
-    const style = document.createElement("style"); style.textContent = css; document.head.appendChild(style);
+    // CSS WAS HERE - REMOVED
 
     window.createBoardDOM = function(container, prefix, isMini) {
         container.innerHTML = "";
