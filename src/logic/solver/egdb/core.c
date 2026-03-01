@@ -167,15 +167,8 @@ static int8_t crunch(int stones, uint64_t index, Board* board) {
 
             // Probe smaller layer if stones were captured
             if (next_stones < stones) {
-                int tmp_val;
-                if (EGDB_probe(&next, &tmp_val)) {
-                    int cur_diff = (next.color == 1)
-                        ? (next.cells[SCORE_P1] - next.cells[SCORE_P2])
-                        : (next.cells[SCORE_P2] - next.cells[SCORE_P1]);
-                    lookup = tmp_val - cur_diff;
-                } else {
-                    lookup = 0;
-                }
+                // Layer next_stones is guaranteed to be fully computed already
+                lookup = egdb_tables[next_stones][getEGDBIndex(&next)];
             } else if (next.color == board->color) {
                 // Next turn is same player
                 lookup = crunch(next_stones, getEGDBIndex(&next), &next);
@@ -277,3 +270,24 @@ void getEGDBStats(uint64_t* sizeBytes, uint64_t* hits, int* minStones, int* maxS
 void resetEGDBStats() {
     egdb_hits = 0;
 }
+
+#ifdef WEB_BUILD
+void loadEGDBFromPtr(uint8_t* rawData, size_t dataSize, int max_stones) {
+    initWaysTable();
+
+    size_t offset = 0;
+
+    for (int s = 1; s <= max_stones; s++) {
+        uint64_t layer_size = ways[s][12];
+
+        if (offset + layer_size > dataSize) {
+            break;
+        }
+
+        egdb_tables[s] = (int8_t*)(rawData + offset);
+
+        offset += layer_size;
+        loaded_egdb_max_stones = s;
+    }
+}
+#endif

@@ -5,7 +5,7 @@ import sys
 import os
 
 # --- CONFIGURATION ---
-EXECUTABLE_PATH = "./build_pgo/Mancala"
+EXECUTABLE_PATH = "./build/Mancala"
 ITERATIONS = 100
 LOG_FILE = "mismatch_step_log.txt"
 # ---------------------
@@ -41,20 +41,21 @@ def run_test(iteration):
 
     input_commands = (
         f"autoplay false\n"
-        f"stones 2\n"
+        f"stones 3\n"
         f"time 0\n"
-        f"depth 100\n"
-        f"cache 17\n"
-        f"compress true\n"
+        f"depth 0\n"
+        f"cache 24\n"
         f"distribution random\n"
         f"seed {seed}\n"
         f"player 1 ai\n"
-        f"solver global\n"
+        f"solver local\n"
         f"start\n"
         f"step\n"
         f"last\n"
         f"config\n"
         f"solver local\n"
+        f"cache 23\n"
+        f"egdb 21\n"
         f"start\n"
         f"step\n"
         f"last\n"

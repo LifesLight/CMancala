@@ -12,7 +12,7 @@ rm -r ~/coding/CMancala/build_pgo
 cmake -S . -B "${BUILD_DIR}" \
   -DCMAKE_C_COMPILER="${CC}" \
   -DCMAKE_CXX_COMPILER="${CXX}" \
-  -DENABLE_PGO=ON -DPGO_STAGE=generate
+  -DENABLE_PGO=ON -DPGO_STAGE=generate -DENABLE_LZ4="ON"
 
 cmake --build "${BUILD_DIR}" -j "${JOBS}"
 
@@ -24,7 +24,7 @@ echo "Running: ${BUILD_DIR}/Mancala --benchmark"
 cmake -S . -B "${BUILD_DIR}" \
   -DCMAKE_C_COMPILER="${CC}" \
   -DCMAKE_CXX_COMPILER="${CXX}" \
-  -DENABLE_PGO=ON -DPGO_STAGE=use
+  -DENABLE_PGO=ON -DPGO_STAGE=use -DENABLE_LZ4="ON"
 
 cmake --build "${BUILD_DIR}" -j "${JOBS}"
 

@@ -32,3 +32,7 @@ void freeEGDB();
 bool EGDB_probe(Board* board, int* score);
 void getEGDBStats(uint64_t* sizeBytes, uint64_t* hits, int* minStones, int* maxStones);
 void resetEGDBStats();
+
+#ifdef WEB_BUILD
+void loadEGDBFromPtr(uint8_t* rawData, size_t dataSize, int max_stones);
+#endif
