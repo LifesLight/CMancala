@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.20)
 project(Mancala)
 
-set(MANCALA_VERSION "9.0" CACHE STRING "Current Version")
+set(MANCALA_VERSION "9.1" CACHE STRING "Current Version")
 
-# --- 1. Define Core Shared Files ---
+# --- Core Shared Files ---
 set(CORE_SOURCES
     src/main.c
     src/logic/utility.c
@@ -22,21 +22,51 @@ endif()
 
 include_directories(include)
 
-# --- 2. Platform Specific Configuration ---
+# --- Platform Specific Configuration ---
 if(EMSCRIPTEN)
     message(STATUS "Configuring for WebAssembly (Emscripten)")
+
+    # --- ZSTD Source Embedding ---
+    include(FetchContent)
+    FetchContent_Declare(
+        zstd
+        GIT_REPOSITORY https://github.com/facebook/zstd.git
+        GIT_TAG        v1.5.5
+    )
+    FetchContent_GetProperties(zstd)
+    if(NOT zstd_POPULATED)
+        FetchContent_Populate(zstd)
+    endif()
+    file(GLOB ZSTD_SOURCES 
+        "${zstd_SOURCE_DIR}/lib/common/*.c"
+        "${zstd_SOURCE_DIR}/lib/compress/*.c"
+        "${zstd_SOURCE_DIR}/lib/decompress/*.c"
+        "${zstd_SOURCE_DIR}/lib/dictBuilder/*.c"
+    )
 
     add_compile_definitions(WEB_BUILD)
 
     set(CMAKE_C_STANDARD 17)
     set(CMAKE_C_STANDARD_REQUIRED ON)
 
-    set(UI_SOURCES src/web/interface.c)
+    set(UI_SOURCES 
+        src/web/interface.c
+        src/logic/solver/egdb/core.c
+        src/logic/solver/egdb/memory/direct.c
+    )
 
-    add_executable(Mancala ${CORE_SOURCES} ${UI_SOURCES})
+    add_executable(Mancala ${CORE_SOURCES} ${UI_SOURCES} ${ZSTD_SOURCES})
     target_link_libraries(Mancala m)
 
-    target_compile_definitions(Mancala PRIVATE MANCALA_VERSION=\"${MANCALA_VERSION}\")
+    # Add ZSTD include path and necessary defines
+    target_include_directories(Mancala PRIVATE "${zstd_SOURCE_DIR}/lib")
+    target_compile_definitions(Mancala PRIVATE 
+        MANCALA_VERSION=\"${MANCALA_VERSION}\"
+        EGDB_BACKEND_NAME=\"RAM\"
+        ZSTD_DISABLE_ASM
+        ZSTD_LIB_DEPRECATED=0
+        XXH_NAMESPACE=ZSTD_
+    )
 
     set_target_properties(Mancala PROPERTIES SUFFIX ".html")
     target_compile_options(Mancala PRIVATE -O3)
@@ -49,13 +79,13 @@ if(EMSCRIPTEN)
         "-flto"
         "-s WASM=1"
         "-s ASSERTIONS=0"
-        "-s INITIAL_MEMORY=205520896"
+        "-s INITIAL_MEMORY=268435456"
         "-s NO_EXIT_RUNTIME=1"
         "-s ALLOW_MEMORY_GROWTH=1"
         "-s MAXIMUM_MEMORY=2684354560"
         "-s ENVIRONMENT=web"
         "-s EXPORTED_RUNTIME_METHODS=['ccall','cwrap','stringToUTF8','UTF8ToString']"
-        "-s EXPORTED_FUNCTIONS=['_main','_malloc','_free']"
+        # Removed explicit EXPORTED_FUNCTIONS to let KEEPALIVE work
         "--shell-file ${CMAKE_CURRENT_BINARY_DIR}/shell.html"
     )
 

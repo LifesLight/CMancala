@@ -7,11 +7,17 @@
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
+#include <zstd.h>
+#include <sys/stat.h>
 #endif
 
 // Extern reference
 extern void setCacheSize(int size);
 extern void fillCacheStats(CacheStats* stats, bool calcFrag, bool calcStoneDist, bool calcDepthDist);
+extern void generateEGDB(int max_stones);
+extern void getEGDBStats(uint64_t* sizeBytes, uint64_t* hits, int* minStones, int* maxStones);
+extern void configureStoneCountEGDB(int totalStones);
+extern void freeEGDB(void);
 
 #define MAX_HISTORY 512
 
@@ -99,6 +105,57 @@ static int calc_modified_mask(const Board* prev, const Board* curr, int capMask)
 }
 
 /* ================== EMSCRIPTEN EXPORTS ================== */
+
+#ifdef __EMSCRIPTEN__
+EMSCRIPTEN_KEEPALIVE void* web_malloc(size_t size) { return malloc(size); }
+EMSCRIPTEN_KEEPALIVE void web_free(void* ptr) { free(ptr); }
+
+EMSCRIPTEN_KEEPALIVE 
+int load_egdb_to_vfs(uint8_t* comp_data, size_t comp_size, int min_stones, int max_stones) {
+    uint64_t ways[21][13] = {0};
+    for (int p = 1; p <= 12; p++) ways[0][p] = 1;
+    for (int s = 0; s <= 20; s++) ways[s][1] = 1;
+    for (int p = 2; p <= 12; p++) {
+        for (int s = 1; s <= 20; s++) {
+            ways[s][p] = ways[s][p - 1] + ways[s - 1][p];
+        }
+    }
+
+    unsigned long long const dSize = ZSTD_getFrameContentSize(comp_data, comp_size);
+    if (dSize == ZSTD_CONTENTSIZE_ERROR || dSize == ZSTD_CONTENTSIZE_UNKNOWN) return 0;
+
+    uint8_t* d_data = malloc(dSize);
+    if (!d_data) return 0;
+
+    size_t const dec_size = ZSTD_decompress(d_data, dSize, comp_data, comp_size);
+    if (ZSTD_isError(dec_size)) {
+        free(d_data);
+        return 0;
+    }
+
+    mkdir("EGDB", 0777); 
+
+    size_t offset = 0;
+    for (int s = min_stones; s <= max_stones; s++) {
+        size_t layer_size = ways[s][12];
+        if (offset + layer_size > dec_size) break;
+
+        char path[256];
+        snprintf(path, sizeof(path), "EGDB/egdb_%d.bin", s);
+        FILE* f = fopen(path, "wb");
+        if (f) {
+            fwrite(d_data + offset, 1, layer_size, f);
+            fclose(f);
+        }
+        offset += layer_size;
+    }
+    free(d_data);
+
+    freeEGDB();
+    generateEGDB(max_stones);
+    return 1;
+}
+#endif
 
 EMSCRIPTEN_KEEPALIVE int  get_stone_count(int i) { return isGameInitialized ? globalContext.board->cells[i] : 0; }
 EMSCRIPTEN_KEEPALIVE int  get_current_player()   { return isGameInitialized ? globalContext.board->color : 0; }
@@ -217,6 +274,22 @@ EMSCRIPTEN_KEEPALIVE double get_c_lower()  { return webStatLower; }
 EMSCRIPTEN_KEEPALIVE double get_c_upper()  { return webStatUpper; }
 EMSCRIPTEN_KEEPALIVE int    get_c_has_depth() { return webStatHasDepth; }
 
+EMSCRIPTEN_KEEPALIVE double get_egdb_hits() {
+    uint64_t size, hits; int minS, maxS;
+    getEGDBStats(&size, &hits, &minS, &maxS);
+    return (double)hits;
+}
+EMSCRIPTEN_KEEPALIVE double get_egdb_size_mb() {
+    uint64_t size, hits; int minS, maxS;
+    getEGDBStats(&size, &hits, &minS, &maxS);
+    return (double)size / 1048576.0;
+}
+EMSCRIPTEN_KEEPALIVE int get_egdb_max_stones() {
+    uint64_t size, hits; int minS, maxS;
+    getEGDBStats(&size, &hits, &minS, &maxS);
+    return maxS;
+}
+
 /* ================== GAME ENGINE ================== */
 
 static void push_history(Board* b, int move, int capMask, int modMask) {
@@ -262,6 +335,9 @@ void undo_move() {
 static void init_game_with_config(int stones, int distribution, int moveFunc, double timeLimit, int startColor, int seedInput) {
     if (stones < 1) stones = 1;
     if (stones > 18) stones = 18;
+
+    configureStoneCountEGDB(stones * 12);
+
     SolverConfig solverConfig = {
         .solver = LOCAL_SOLVER, 
         .depth = 0, 
@@ -315,6 +391,10 @@ void set_custom_board(int c0, int c1, int c2, int c3, int c4, int c5, int c6,
     globalBoard.cells[10] = c10; globalBoard.cells[11] = c11;
     globalBoard.cells[12] = c12; globalBoard.cells[13] = c13;
     globalBoard.color = startColor;
+
+    configureStoneCountEGDB(c0 + c1 + c2 + c3 + c4 + c5 + c6 + 
+                            c7 + c8 + c9 + c10 + c11 + c12 + c13);
+
     isCheated = true;
     historyCount = 0;
     push_history(globalContext.board, -1, 0, 0);
@@ -383,7 +463,7 @@ void do_web_move(int index) {
     currentModifiedMask = calc_modified_mask(globalContext.lastBoard, globalContext.board, currentCaptureMask);
     push_history(globalContext.board, index, currentCaptureMask, currentModifiedMask);
     EM_ASM({ updateView(); });
-    
+
     if (!isBoardTerminal(globalContext.board) && globalContext.board->color == -1) {
         if (isAutoplay) kick_off_ai();
     }
@@ -410,7 +490,7 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
 
     window.isTouchDevice = false;
     window.addEventListener('touchstart', () => { window.isTouchDevice = true; }, { passive: true });
-    
+
     window.domCache = {};
     window.getEl = function(id) {
         let el = window.domCache[id];
@@ -422,6 +502,7 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
     window.customEditMode = false;
     window.inSetup = false;
     window.lastUsedSeed = 0;
+    window.egdbReady = false;
 
     const css = `
         * { box-sizing: border-box; }
@@ -510,14 +591,14 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
             const p = document.createElement("div"); p.className = "pit player-pit"; p.id = prefix + i;
             if (!isMini) {
                 p.onclick = () => { 
-                    if (window.customEditMode || window.inSetup) return;
+                    if (window.customEditMode || window.inSetup || !window.egdbReady) return;
                     if (Module._get_ai_thinking() || Module._get_current_player() !== 1) return; 
                     if (window.hoverTimeout) { clearTimeout(window.hoverTimeout); window.hoverTimeout = null; }
                     window.hoveredPit = -1; 
                     Module._do_web_move(i); 
                 };
                 p.onmouseenter = () => { 
-                    if (window.customEditMode || window.inSetup) return;
+                    if (window.customEditMode || window.inSetup || !window.egdbReady) return;
                     if (!window.isTouchDevice) { 
                         if (window.hoverTimeout) { clearTimeout(window.hoverTimeout); window.hoverTimeout = null; }
                         window.hoveredPit = i; 
@@ -525,7 +606,7 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
                     } 
                 };
                 p.onmouseleave = () => { 
-                    if (window.customEditMode || window.inSetup) return;
+                    if (window.customEditMode || window.inSetup || !window.egdbReady) return;
                     if (!window.isTouchDevice) { 
                         window.hoverTimeout = setTimeout(() => {
                             window.hoveredPit = -1; 
@@ -625,7 +706,7 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
     let statsHtml = `<h3>SOLVER STATS</h3><div class='stat-box'><span class='stat-label'>STATUS</span><span id='s-status' class='stat-val'>-</span></div><div class='stat-box'><span class='stat-label'>EVALUATION</span><span id='s-eval' class='stat-val'>-</span></div><div class='stat-box'><span class='stat-label'>LAST NODES</span><span id='s-nodes' class='stat-val'>-</span></div><div class='stat-box'><span class='stat-label'>TOTAL NODES</span><span id='s-total-nodes' class='stat-val'>-</span></div><div class='stat-box'><span class='stat-label'>THROUGHPUT</span><span id='s-tput' class='stat-val'>-</span></div>`;
     
     statsHtml += `<div class='stat-box'><span class='stat-label'>LAST TIME</span><span id='s-time' class='stat-val'>-</span></div>`;
-    statsHtml += `<div class='expert-only'><h3>CACHE STATS</h3><div class='stat-box'><span class='stat-label'>CACHE USED</span><span id='c-fill' class='stat-val'>0.00%</span></div><div class='stat-box'><span class='stat-label'>CACHE SOLVED</span><span id='c-solved' class='stat-val'>0.00%</span></div><div class='stat-box'><span class='stat-label'>LAST CACHE HITS</span><span id='c-hits' class='stat-val'>0</span></div><div class='stat-box'><span class='stat-label'>LRU SWAP RATE</span><span id='c-swap' class='stat-val'>0.00%</span></div><div class='stat-box'><span class='stat-label'>OVERWRITES</span><span class='stat-sub'>IMPROVE: <span id='c-imp'>0</span></span><span class='stat-sub'>EVICT: <span id='c-evi'>0</span></span></div><div class='stat-box'><span class='stat-label'>BOUNDS</span><span class='stat-sub'>EXACT: <span id='c-ex'>0.0</span>%</span><span class='stat-sub'>LOWER: <span id='c-lo'>0.0</span>%</span><span class='stat-sub'>UPPER: <span id='c-up'>0.0</span>%</span></div></div>`;
+    statsHtml += `<div class='expert-only'><h3>CACHE STATS</h3><div class='stat-box'><span class='stat-label'>CACHE USED</span><span id='c-fill' class='stat-val'>0.00%</span></div><div class='stat-box'><span class='stat-label'>CACHE SOLVED</span><span id='c-solved' class='stat-val'>0.00%</span></div><div class='stat-box'><span class='stat-label'>LAST CACHE HITS</span><span id='c-hits' class='stat-val'>0</span></div><div class='stat-box'><span class='stat-label'>LRU SWAP RATE</span><span id='c-swap' class='stat-val'>0.00%</span></div><div class='stat-box'><span class='stat-label'>OVERWRITES</span><span class='stat-sub'>IMPROVE: <span id='c-imp'>0</span></span><span class='stat-sub'>EVICT: <span id='c-evi'>0</span></span></div><div class='stat-box'><span class='stat-label'>BOUNDS</span><span class='stat-sub'>EXACT: <span id='c-ex'>0.0</span>%</span><span class='stat-sub'>LOWER: <span id='c-lo'>0.0</span>%</span><span class='stat-sub'>UPPER: <span id='c-up'>0.0</span>%</span></div><h3>EGDB STATS</h3><div class='stat-box'><span class='stat-label'>LOADED</span><span id='e-loaded' class='stat-val'>-</span></div><div class='stat-box'><span class='stat-label'>HITS</span><span id='e-hits' class='stat-val'>0</span></div></div>`;
 
     sideL.innerHTML = statsHtml;
     document.body.appendChild(sideL);
@@ -637,7 +718,7 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
     
     let html = `<h3>GAME SETTINGS</h3><div class='cfg-row'><span class='cfg-label'>STONES (1-18)</span><input id='cfg-stones' type='number' value='4' min='1' max='18'></div><div class='cfg-row'><span class='cfg-label'>DISTRIBUTION</span><select id='cfg-dist'><option value='0'>Uniform</option><option value='1'>Random</option><option value='2'>Custom</option></select></div><div class='cfg-row' id='seed-row' style='display:none'><span class='cfg-label'>SEED (0=rand)</span><input id='cfg-seed' type='number' value='0'></div><div class='cfg-row'><span class='cfg-label'>MODE</span><select id='cfg-mode'><option value='0'>Classic</option><option value='1'>Avalanche</option></select></div><div class='cfg-row'><span class='cfg-label'>AI TIME LIMIT (s, 0=inf)</span><input id='cfg-time' type='number' value='1' min='0'></div><div class='cfg-row'><span class='cfg-label'>STARTING PLAYER</span><select id='cfg-start'><option value='1'>Player</option><option value='-1'>AI</option></select></div>`;
 
-    html += `<div class='expert-only'><div class='cfg-row'><span class='cfg-label'>CACHE SIZE EXP (18-28)</span><input id='cfg-cache' type='number' value='24' min='18' max='28'></div><div class='chk-row'><span class='cfg-label'>AI AUTOPLAY</span><input id='cfg-autoplay' type='checkbox' checked></div></div>`;
+    html += `<div class='expert-only'><div class='cfg-row'><span class='cfg-label'>CACHE SIZE EXP (18-28)</span><input id='cfg-cache' type='number' value='24' min='18' max='28'></div><div class='cfg-row'><button id='cfg-egdb' class='cfg-btn' style='background:#05a; color:#fff;'>LOAD EGDB 20</button></div><div class='chk-row'><span class='cfg-label'>AI AUTOPLAY</span><input id='cfg-autoplay' type='checkbox' checked></div></div>`;
 
     html += `<button id='cfg-go' class='cfg-btn'>START GAME</button>`;
     html += `<button id='cfg-reset' class='cfg-btn-reset disabled'>RESET</button>`;
@@ -669,7 +750,7 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
     };
 
     document.getElementById("cfg-go").onclick = () => {
-        if (Module._get_ai_thinking()) return;
+        if (!window.egdbReady || Module._get_ai_thinking()) return;
 
         const cfg = window.readSettings();
         const isCustom = (cfg.dist === 2);
@@ -714,7 +795,7 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
     };
 
     document.getElementById("cfg-reset").onclick = () => {
-        if (window.inSetup || Module._get_ai_thinking()) return;
+        if (!window.egdbReady || window.inSetup || Module._get_ai_thinking()) return;
 
         Module._clear_highlights();
         window.clearBoardHighlights();
@@ -734,6 +815,57 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
 
         window.updateButtons();
         window.updateView();
+    };
+    
+    window.downloadEGDB = async function(minStones, maxStones, filename, btnEl) {
+        if (btnEl) window.egdbReady = false;
+        if (btnEl) btnEl.classList.add("disabled");
+        window.updateView();
+
+        try {
+            let stEl = window.getEl("status-text");
+            if (stEl) stEl.textContent = ">> LOADING...";
+            if (btnEl) btnEl.innerText = "LOADING...";
+            
+            const res = await fetch(filename);
+            if (!res.ok) throw new Error("Fetch failed");
+            const buf = await res.arrayBuffer();
+            
+            await new Promise(r => setTimeout(r, 10)); 
+            
+            const u8 = new Uint8Array(buf);
+            const ptr = Module._web_malloc(u8.length);
+            HEAPU8.set(u8, ptr);
+            
+            const success = Module._load_egdb_to_vfs(ptr, u8.length, minStones, maxStones);
+            Module._web_free(ptr);
+            
+            if (success) {
+                window.egdbReady = true;
+                if (btnEl) {
+                    btnEl.innerText = "EGDB " + maxStones + " READY";
+                    btnEl.style.background = "#444";
+                    btnEl.style.color = "#888";
+                }
+            } else {
+                if (stEl) stEl.textContent = ">> ERROR";
+                if (btnEl) btnEl.innerText = "ERROR";
+            }
+        } catch(e) {
+            console.error(e);
+            let stEl = window.getEl("status-text");
+            if (stEl) stEl.textContent = ">> ERROR";
+            if (btnEl) {
+                btnEl.innerText = "FAILED";
+                btnEl.classList.remove("disabled");
+            }
+        }
+        window.updateView();
+    };
+
+    document.getElementById("cfg-egdb").onclick = function() {
+        if (this.classList.contains("disabled")) return;
+        window.downloadEGDB(17, 20, 'egdb17-20.zst', this);
     };
     
     const main = document.createElement("div"); main.className = "main-content"; document.body.appendChild(main);
@@ -823,7 +955,7 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
         const fmt = (n) => n >= 1e6 ? (n/1e6).toFixed(2)+"M" : (n >= 1e3 ? (n/1e3).toFixed(1)+"k" : String(n));
 
         const mBoard = window.getEl("main-board");
-        const isDis = !!(thinking || gameOver || window.inSetup);
+        const isDis = !!(thinking || gameOver || window.inSetup || !window.egdbReady);
         if (mBoard.classList.contains("disabled") !== isDis) mBoard.classList.toggle("disabled", isDis);
         const isCheat = !!Module._get_is_cheated();
         if (mBoard.classList.contains("cheated") !== isCheat) mBoard.classList.toggle("cheated", isCheat);
@@ -913,23 +1045,29 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
             setTxt("c-ex", Module._get_c_exact().toFixed(1));
             setTxt("c-lo", Module._get_c_lower().toFixed(1));
             setTxt("c-up", Module._get_c_upper().toFixed(1));
+
+            const eMax = Module._get_egdb_max_stones();
+            setTxt("e-loaded", eMax > 0 ? (eMax + " Stones (" + Module._get_egdb_size_mb().toFixed(1) + "MB)") : "None");
+            setTxt("e-hits", fmt(Module._get_egdb_hits()));
         }
 
         const stEl = window.getEl("status-text");
-        let stStr = "";
-        if (window.inSetup) stStr = ">> PRESS START";
-        else if (gameOver) stStr = ">> GAME OVER"; 
-        else if (thinking) stStr = ">> AI THINKING..."; 
-        else if (currentPlayer === -1 && !autoplay) stStr = ">> WAITING FOR STEP";
-        else stStr = (currentPlayer === 1) ? ">> YOUR TURN" : ">> AI TURN";
-        if (stEl && stEl.textContent !== stStr) stEl.textContent = stStr;
+        if (window.egdbReady) {
+            let stStr = "";
+            if (window.inSetup) stStr = ">> PRESS START";
+            else if (gameOver) stStr = ">> GAME OVER"; 
+            else if (thinking) stStr = ">> AI THINKING..."; 
+            else if (currentPlayer === -1 && !autoplay) stStr = ">> WAITING FOR STEP";
+            else stStr = (currentPlayer === 1) ? ">> YOUR TURN" : ">> AI TURN";
+            if (stEl && stEl.textContent !== stStr) stEl.textContent = stStr;
+        }
         
         window.updateButtons();
         window.syncHistory();
     };
     
     window.lastUsedSeed = Module._get_last_seed();
-    setTimeout(updateView, 100);
+    window.downloadEGDB(1, 16, 'egdb16.zst', null);
 });
 #endif
 

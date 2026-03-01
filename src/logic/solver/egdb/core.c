@@ -13,8 +13,8 @@ int loaded_egdb_max_stones = 0;
 int egdb_total_stones_configured = 48;
 uint64_t egdb_hits = 0;
 
-void configureStoneCountEGDB(int stonesPerPit) {
-    egdb_total_stones_configured = stonesPerPit * 12;
+void configureStoneCountEGDB(int totalStones) {
+    egdb_total_stones_configured = totalStones;
 }
 
 static void initWaysTable() {
@@ -270,24 +270,3 @@ void getEGDBStats(uint64_t* sizeBytes, uint64_t* hits, int* minStones, int* maxS
 void resetEGDBStats() {
     egdb_hits = 0;
 }
-
-#ifdef WEB_BUILD
-void loadEGDBFromPtr(uint8_t* rawData, size_t dataSize, int max_stones) {
-    initWaysTable();
-
-    size_t offset = 0;
-
-    for (int s = 1; s <= max_stones; s++) {
-        uint64_t layer_size = ways[s][12];
-
-        if (offset + layer_size > dataSize) {
-            break;
-        }
-
-        egdb_tables[s] = (int8_t*)(rawData + offset);
-
-        offset += layer_size;
-        loaded_egdb_max_stones = s;
-    }
-}
-#endif

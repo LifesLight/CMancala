@@ -8,7 +8,7 @@ int64_t nodeCount;
 
 // --- Instantiations ---
 
-#ifndef WEB_BUILD
+#ifdef WEB_BUILD
 
 // 1. TT ON | EGDB ON | CLASSIC 
 #define PREFIX TT_EGDB_CLASSIC
@@ -21,7 +21,29 @@ int64_t nodeCount;
 #undef USE_EGDB
 #undef MAKE_MOVE
 
-#endif
+// 2. TT ON | EGDB OFF | AVALANCHE 
+#define PREFIX TT_AVALANCHE
+#define SOLVER_USE_CACHE 1
+#define USE_EGDB 0
+#define MAKE_MOVE makeMoveOnBoardAvalanche
+#include "logic/solver/impl/solver_template.h"
+#undef PREFIX
+#undef SOLVER_USE_CACHE
+#undef USE_EGDB
+#undef MAKE_MOVE
+
+#else
+
+// 1. TT ON | EGDB ON | CLASSIC 
+#define PREFIX TT_EGDB_CLASSIC
+#define SOLVER_USE_CACHE 1
+#define USE_EGDB 1
+#define MAKE_MOVE makeMoveOnBoardClassic
+#include "logic/solver/impl/solver_template.h"
+#undef PREFIX
+#undef SOLVER_USE_CACHE
+#undef USE_EGDB
+#undef MAKE_MOVE
 
 // 2. TT ON | EGDB OFF | CLASSIC 
 #define PREFIX TT_CLASSIC
@@ -44,8 +66,6 @@ int64_t nodeCount;
 #undef SOLVER_USE_CACHE
 #undef USE_EGDB
 #undef MAKE_MOVE
-
-#ifndef WEB_BUILD
 
 // 4. TT OFF | EGDB ON | CLASSIC 
 #define PREFIX EGDB_CLASSIC
@@ -86,7 +106,7 @@ void aspirationRoot(Context* context, SolverConfig *config) {
     bool is_classic = (getMoveFunction() == CLASSIC_MOVE);
 
 #ifdef WEB_BUILD
-    if (is_classic) aspirationRoot_TT_CLASSIC(context, config);
+    if (is_classic) aspirationRoot_TT_EGDB_CLASSIC(context, config);
     else            aspirationRoot_TT_AVALANCHE(context, config);
 #else
     bool use_tt = (config->solver == LOCAL_SOLVER);
@@ -105,7 +125,7 @@ void distributionRoot(Board *board, int32_t* distribution, bool *solved, SolverC
     bool is_classic = (getMoveFunction() == CLASSIC_MOVE);
 
 #ifdef WEB_BUILD
-    if (is_classic) distributionRoot_TT_CLASSIC(board, distribution, solved, config);
+    if (is_classic) distributionRoot_TT_EGDB_CLASSIC(board, distribution, solved, config);
     else            distributionRoot_TT_AVALANCHE(board, distribution, solved, config);
 #else
     bool use_tt = (config->solver == LOCAL_SOLVER);
