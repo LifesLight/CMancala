@@ -105,6 +105,8 @@ int64_t nodeCount;
 void aspirationRoot(Context* context, SolverConfig *config) {
     bool is_classic = (getMoveFunction() == CLASSIC_MOVE);
 
+    resetEGDBStats();
+
 #ifdef WEB_BUILD
     if (is_classic) aspirationRoot_TT_EGDB_CLASSIC(context, config);
     else            aspirationRoot_TT_AVALANCHE(context, config);
@@ -119,10 +121,14 @@ void aspirationRoot(Context* context, SolverConfig *config) {
     else if (!use_tt && !use_egdb && is_classic) aspirationRoot_CLASSIC(context, config);
     else if (!use_tt && !is_classic)             aspirationRoot_AVALANCHE(context, config);
 #endif
+
+    resetCacheStats();
 }
 
 void distributionRoot(Board *board, int32_t* distribution, bool *solved, SolverConfig *config) {
     bool is_classic = (getMoveFunction() == CLASSIC_MOVE);
+
+    resetEGDBStats();
 
 #ifdef WEB_BUILD
     if (is_classic) distributionRoot_TT_EGDB_CLASSIC(board, distribution, solved, config);
@@ -138,6 +144,7 @@ void distributionRoot(Board *board, int32_t* distribution, bool *solved, SolverC
     else if (!use_tt && !use_egdb && is_classic) distributionRoot_CLASSIC(board, distribution, solved, config);
     else if (!use_tt && !is_classic)             distributionRoot_AVALANCHE(board, distribution, solved, config);
 #endif
+    resetCacheStats();
 }
 
 NegamaxTrace negamaxWithTrace(Board *board, int alpha, const int beta, const int depth) {

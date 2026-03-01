@@ -260,10 +260,6 @@ void FN(distributionRoot)(Board *board, int *distribution, bool *solvedOutput, S
     int index = 5;
     int score;
 
-#if USE_EGDB
-    resetEGDBStats();
-#endif
-
 #if SOLVER_USE_CACHE
     int depth = config->depth;
     if (config->depth == 0) {
@@ -320,7 +316,6 @@ void FN(distributionRoot)(Board *board, int *distribution, bool *solvedOutput, S
 #if SOLVER_USE_CACHE
     *solved = nodeSolved;
     stepCache();
-    resetCacheStats();
 #else
     *solvedOutput = solved;
 #endif
@@ -331,10 +326,6 @@ void FN(distributionRoot)(Board *board, int *distribution, bool *solvedOutput, S
 void FN(aspirationRoot)(Context* context, SolverConfig *config) {
     const int depthStep = 1;
     int currentDepth = 1;
-
-#if USE_EGDB
-    resetEGDBStats();
-#endif
 
     int bestMove = -1;
     int score = 0;
@@ -463,8 +454,4 @@ void FN(aspirationRoot)(Context* context, SolverConfig *config) {
     if (config->clip && score < 0) {
         renderOutput("[WARNING]: Clipped solver used in losing position!", CHEAT_PREFIX);
     }
-
-#if SOLVER_USE_CACHE
-    resetCacheStats();
-#endif
 }
