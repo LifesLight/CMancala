@@ -11,6 +11,14 @@
 #include <sys/stat.h>
 #endif
 
+/**
+ * Requires Prebuild EGDB's
+ * 
+ * Example:
+ * cat EGDB/egdb_{17..20}.bin > egdb_bundl_upgrade.bin
+ * zstd -19 egdb_bundle_upgrade.bin -o egdb17-20.zst
+ */
+
 // Extern reference
 extern void setCacheSize(int size);
 extern void fillCacheStats(CacheStats* stats, bool calcFrag, bool calcStoneDist, bool calcDepthDist);
