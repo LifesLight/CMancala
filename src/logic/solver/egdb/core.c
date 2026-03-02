@@ -1,5 +1,7 @@
 /**
  * Copyright (c) Alexander Kurtz 2026
+ * 
+ * The EGDB code is strongly inspired by https://github.com/girving/kalah
  */
 
 #include "logic/solver/egdb/core.h"
