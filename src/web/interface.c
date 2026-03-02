@@ -366,7 +366,6 @@ static void init_game_with_config(int stones, int distribution, int moveFunc, do
     };
     Config config = {.autoplay = false, .gameSettings = gameSettings, .solverConfig = solverConfig};
     
-    // Set the single source of truth for the move function
     setMoveFunction(moveFunc ? AVALANCHE_MOVE : CLASSIC_MOVE);
 
     srand(gameSettings.seed);
@@ -489,7 +488,7 @@ void restart_game(int stones, int distribution, int moveFunc, double timeLimit, 
 
 #ifdef __EMSCRIPTEN__
 EM_JS(void, launch_gui, (const char* v_ptr), {
-    document.body.innerHTML = ""; // Remove loading text
+    document.body.innerHTML = "";
     document.body.classList.remove("loading");
     
     const vStr = UTF8ToString(v_ptr);
@@ -509,8 +508,6 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
     window.inSetup = false;
     window.lastUsedSeed = 0;
     window.egdbReady = false;
-
-    // CSS WAS HERE - REMOVED
 
     window.createBoardDOM = function(container, prefix, isMini) {
         container.innerHTML = "";
@@ -655,7 +652,7 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
     
     let html = `<h3>GAME SETTINGS</h3><div class='cfg-row'><span class='cfg-label'>STONES (1-18)</span><input id='cfg-stones' type='number' value='4' min='1' max='18'></div><div class='cfg-row'><span class='cfg-label'>DISTRIBUTION</span><select id='cfg-dist'><option value='0'>Uniform</option><option value='1'>Random</option><option value='2'>Custom</option></select></div><div class='cfg-row' id='seed-row' style='display:none'><span class='cfg-label'>SEED (0=rand)</span><input id='cfg-seed' type='number' value='0'></div><div class='cfg-row'><span class='cfg-label'>MODE</span><select id='cfg-mode'><option value='0'>Classic</option><option value='1'>Avalanche</option></select></div><div class='cfg-row'><span class='cfg-label'>AI TIME LIMIT (s, 0=inf)</span><input id='cfg-time' type='number' value='1' min='0'></div><div class='cfg-row'><span class='cfg-label'>STARTING PLAYER</span><select id='cfg-start'><option value='1'>Player</option><option value='-1'>AI</option></select></div>`;
 
-    html += `<div class='expert-only'><div class='cfg-row'><span class='cfg-label'>CACHE SIZE EXP (18-28)</span><input id='cfg-cache' type='number' value='24' min='18' max='28'></div><div class='cfg-row'><button id='cfg-egdb' class='cfg-btn' style='background:#05a; color:#fff;'>LOAD EGDB 20</button></div><div class='chk-row'><span class='cfg-label'>AI AUTOPLAY</span><input id='cfg-autoplay' type='checkbox' checked></div></div>`;
+    html += `<div class='expert-only'><div class='cfg-row'><span class='cfg-label'>CACHE SIZE EXP (18-28)</span><input id='cfg-cache' type='number' value='24' min='18' max='28'></div><div class='cfg-row'><button id='cfg-egdb' class='cfg-btn' style='background:#05a; color:#fff;'>LOAD EGDB 18</button></div><div class='chk-row'><span class='cfg-label'>AI AUTOPLAY</span><input id='cfg-autoplay' type='checkbox' checked></div></div>`;
 
     html += `<button id='cfg-go' class='cfg-btn'>START GAME</button>`;
     html += `<button id='cfg-reset' class='cfg-btn-reset disabled'>RESET</button>`;
@@ -802,7 +799,7 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
 
     document.getElementById("cfg-egdb").onclick = function() {
         if (this.classList.contains("disabled")) return;
-        window.downloadEGDB(17, 20, 'egdb17-20.zst', this);
+        window.downloadEGDB(11, 18, 'egdb11-18.zst', this);
     };
     
     const main = document.createElement("div"); main.className = "main-content"; document.body.appendChild(main);
@@ -830,7 +827,7 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
     main.appendChild(hBtn);
 
     const hCont = document.createElement("div"); hCont.id = "history-container"; hCont.className = "history-container"; main.appendChild(hCont);
-    window.toggleExpert = function() {
+window.toggleExpert = function() {
         const isExpert = document.body.classList.toggle("expert-mode");
         if (!isExpert) {
             const cInput = document.getElementById("cfg-cache");
@@ -842,7 +839,53 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
         }
     };
     
-    document.body.insertAdjacentHTML('beforeend', "<div class='footer'><a href='https://github.com/LifesLight/CMancala' target='_blank'>CMancala v" + vStr + "</a><button class='expert-btn' onclick='window.toggleExpert()'>EXP</button></div>");
+    window.openAbout = function() {
+        const modal = window.getEl('about-modal');
+        if (modal) modal.style.display = 'flex';
+    };
+    window.closeAbout = function(e) {
+        if (e) e.stopPropagation();
+        const modal = window.getEl('about-modal');
+        if (modal) modal.style.display = 'none';
+    };
+
+    let modalHtml = "<div id='about-modal' class='modal-overlay' style='display:none;' onclick='window.closeAbout(event)'>";
+    modalHtml += "<div class='modal-content' onclick='event.stopPropagation()'>";
+    modalHtml += "<h2>About CMancala</h2>";
+    modalHtml += "<p><strong>Version:</strong> " + vStr + "</p>";
+    modalHtml += "<p><strong>Source Code:</strong> <a href='https://github.com/LifesLight/CMancala' target='_blank'>github.com/LifesLight/CMancala</a></p>";
+    modalHtml += "<p><strong>Copyright:</strong> &copy; Alexander Kurtz</p>";
+    modalHtml += "<p><strong>License:</strong> MIT License</p>";
+    
+    modalHtml += "<hr style='border-color:#444; margin:15px 0;'>";
+    modalHtml += "<h3>Acknowledgments & Third-Party Code</h3>";
+    
+    modalHtml += "<p>EGDB generation algorithm inspired by <a href='https://github.com/girving/kalah' target='_blank'>girving/kalah</a>:</p>";
+    modalHtml += "<div class='license-box'>";
+    modalHtml += "Copyright 2009, Geoffrey Irving.<br>All rights reserved.<br><br>";
+    modalHtml += "Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:<br><br>";
+    modalHtml += "1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.<br>";
+    modalHtml += "2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.<br>";
+    modalHtml += "3. The name of the author may not be used to endorse or promote products derived from this software without specific prior written permission.<br><br>";
+    modalHtml += "THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.";
+    modalHtml += "</div>";
+
+    modalHtml += "<p style='margin-top:15px'>This software uses <strong>Zstandard (zstd)</strong>.</p>";
+    modalHtml += "<div class='license-box'>";
+    modalHtml += "BSD License<br>For Zstandard software<br><br>";
+    modalHtml += "Copyright (c) Meta Platforms, Inc. and affiliates. All rights reserved.<br><br>";
+    modalHtml += "Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:<br><br>";
+    modalHtml += "* Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.<br>";
+    modalHtml += "* Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.<br>";
+    modalHtml += "* Neither the name Facebook, nor Meta, nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.<br><br>";
+    modalHtml += "THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS &quot;AS IS&quot; AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.";
+    modalHtml += "</div>";
+
+    modalHtml += "<button onclick='window.closeAbout(event)' class='modal-close-btn'>Close</button>";
+    modalHtml += "</div></div>";
+
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    document.body.insertAdjacentHTML('beforeend', "<div class='footer'><button class='bottom-btn' onclick='window.openAbout()'>About CMancala</button><button class='expert-btn' onclick='window.toggleExpert()'>EXP</button></div>");
     
     window.syncHistory = function() {
         const hc = window.getEl("history-container"); 
@@ -1004,7 +1047,7 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
     };
     
     window.lastUsedSeed = Module._get_last_seed();
-    window.downloadEGDB(1, 16, 'egdb16.zst', null);
+    window.downloadEGDB(1, 10, 'egdb10.zst', null);
 });
 #endif
 
