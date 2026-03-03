@@ -6,6 +6,7 @@
 
 #include "logic/board.h"
 #include "logic/utility.h"
+#include "logic/solver/egdb/egdb_mem.h"
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -25,7 +26,7 @@ extern int loaded_egdb_max_stones;
 extern int egdb_total_stones_configured;
 
 void configureStoneCountEGDB(int stonesPerPit);
-void generateEGDB(int max_stones);
+void generateEGDB(int max_stones, bool is_avalanche);
 void loadEGDB(int max_stones);
 void freeEGDB();
 

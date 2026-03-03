@@ -158,6 +158,7 @@ void handleConfigInput(bool* requestedStart, Config* config) {
 
     if (strncmp(input, "egdb ", 5) == 0) {
         int stones = atoi(input + 5);
+        bool is_avalanche = (strstr(input, "--avalanche") != NULL);
 
         if (stones < 0 || stones > EGDB_MAX_STONES) {
             renderOutput("Invalid EGDB stones size (0 to disable)", CONFIG_PREFIX);
@@ -174,7 +175,7 @@ void handleConfigInput(bool* requestedStart, Config* config) {
             freeEGDB();
         }
 
-        generateEGDB(stones);
+        generateEGDB(stones, is_avalanche);
         return;
     }
 

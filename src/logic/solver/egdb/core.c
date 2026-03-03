@@ -5,13 +5,13 @@
  */
 
 #include "logic/solver/egdb/core.h"
-#include "logic/solver/egdb/egdb_mem.h"
 
 
 uint64_t ways[EGDB_MAX_STONES + 1][13];
 int8_t* egdb_tables[EGDB_MAX_STONES + 1] = {NULL};
 
 int loaded_egdb_max_stones = 0;
+bool loaded_egdb_is_avalanche = false;
 int egdb_total_stones_configured = 48;
 uint64_t egdb_hits = 0;
 
@@ -72,6 +72,12 @@ static inline uint64_t getEGDBIndex(const Board* board) {
 }
 
 bool EGDB_probe(Board* board, int* score) {
+    // Prevent probing mismatched DBs (e.g. asking for Classic moves when Avalanche DB is loaded)
+    bool current_is_avalanche = (getMoveFunction() != CLASSIC_MOVE);
+    if (current_is_avalanche != loaded_egdb_is_avalanche) {
+        return false;
+    }
+
     int stonesLeft = egdb_total_stones_configured - board->cells[SCORE_P1] - board->cells[SCORE_P2];
 
     // Check if the board is within currently loaded bounds
@@ -148,7 +154,11 @@ static int8_t crunch(int stones, uint64_t index, Board* board) {
 
         // Make copied board with move made
         Board next = *board;
-        makeMoveOnBoardClassic(&next, i);
+        if (loaded_egdb_is_avalanche) {
+            makeMoveOnBoardAvalanche(&next, i);
+        } else {
+            makeMoveOnBoardClassic(&next, i);
+        }
         processBoardTerminal(&next);
 
         // Count stones remaining after move
@@ -196,12 +206,13 @@ static int8_t crunch(int stones, uint64_t index, Board* board) {
     return best_score;
 }
 
-void generateEGDB(int max_stones) {
+void generateEGDB(int max_stones, bool is_avalanche) {
     initWaysTable();
+    loaded_egdb_is_avalanche = is_avalanche;
     MKDIR("EGDB");
     char msg[128];
 
-    snprintf(msg, sizeof(msg), "Checking EGDB (1..%d) [%s]...", max_stones, EGDB_BACKEND_NAME);
+    snprintf(msg, sizeof(msg), "Checking EGDB %s(1..%d) [%s]...", is_avalanche ? "Avalanche " : "", max_stones, EGDB_BACKEND_NAME);
     renderOutput(msg, CONFIG_PREFIX);
 
     // Build layers iteratively
@@ -209,7 +220,7 @@ void generateEGDB(int max_stones) {
         uint64_t size = ways[s][12];
 
         // If not found on disk, we must compute it
-        if (!egdb_mem_load(s, size)) {
+        if (!egdb_mem_load(s, size, is_avalanche)) {
             snprintf(msg, sizeof(msg), "Generating layer %d...", s);
             renderOutput(msg, CONFIG_PREFIX);
 
@@ -238,7 +249,7 @@ void generateEGDB(int max_stones) {
             updateEGDBProgress(s, size, size);
             finishEGDBProgress();
 
-            egdb_mem_save(s, size);
+            egdb_mem_save(s, size, is_avalanche);
         }
 
         loaded_egdb_max_stones = s;
@@ -254,6 +265,7 @@ void freeEGDB() {
     }
 
     loaded_egdb_max_stones = 0;
+    loaded_egdb_is_avalanche = false;
     resetEGDBStats();
 }
 

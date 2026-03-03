@@ -21,10 +21,10 @@ int64_t nodeCount;
 #undef USE_EGDB
 #undef MAKE_MOVE
 
-// 2. TT ON | EGDB OFF | AVALANCHE 
-#define PREFIX TT_AVALANCHE
+// 2. TT ON | EGDB ON | AVALANCHE 
+#define PREFIX TT_EGDB_AVALANCHE
 #define SOLVER_USE_CACHE 1
-#define USE_EGDB 0
+#define USE_EGDB 1
 #define MAKE_MOVE makeMoveOnBoardAvalanche
 #include "logic/solver/impl/solver_template.h"
 #undef PREFIX
@@ -56,7 +56,18 @@ int64_t nodeCount;
 #undef USE_EGDB
 #undef MAKE_MOVE
 
-// 3. TT ON | EGDB OFF | AVALANCHE 
+// 3. TT ON | EGDB ON | AVALANCHE 
+#define PREFIX TT_EGDB_AVALANCHE
+#define SOLVER_USE_CACHE 1
+#define USE_EGDB 1
+#define MAKE_MOVE makeMoveOnBoardAvalanche
+#include "logic/solver/impl/solver_template.h"
+#undef PREFIX
+#undef SOLVER_USE_CACHE
+#undef USE_EGDB
+#undef MAKE_MOVE
+
+// 4. TT ON | EGDB OFF | AVALANCHE 
 #define PREFIX TT_AVALANCHE
 #define SOLVER_USE_CACHE 1
 #define USE_EGDB 0
@@ -67,7 +78,7 @@ int64_t nodeCount;
 #undef USE_EGDB
 #undef MAKE_MOVE
 
-// 4. TT OFF | EGDB ON | CLASSIC 
+// 5. TT OFF | EGDB ON | CLASSIC 
 #define PREFIX EGDB_CLASSIC
 #define SOLVER_USE_CACHE 0
 #define USE_EGDB 1
@@ -78,7 +89,7 @@ int64_t nodeCount;
 #undef USE_EGDB
 #undef MAKE_MOVE
 
-// 5. TT OFF | EGDB OFF | CLASSIC 
+// 6. TT OFF | EGDB OFF | CLASSIC 
 #define PREFIX CLASSIC
 #define SOLVER_USE_CACHE 0
 #define USE_EGDB 0
@@ -89,7 +100,18 @@ int64_t nodeCount;
 #undef USE_EGDB
 #undef MAKE_MOVE
 
-// 6. TT OFF | EGDB OFF | AVALANCHE 
+// 7. TT OFF | EGDB ON | AVALANCHE 
+#define PREFIX EGDB_AVALANCHE
+#define SOLVER_USE_CACHE 0
+#define USE_EGDB 1
+#define MAKE_MOVE makeMoveOnBoardAvalanche
+#include "logic/solver/impl/solver_template.h"
+#undef PREFIX
+#undef SOLVER_USE_CACHE
+#undef USE_EGDB
+#undef MAKE_MOVE
+
+// 8. TT OFF | EGDB OFF | AVALANCHE 
 #define PREFIX AVALANCHE
 #define SOLVER_USE_CACHE 0
 #define USE_EGDB 0
@@ -109,17 +131,19 @@ void aspirationRoot(Context* context, SolverConfig *config) {
 
 #ifdef WEB_BUILD
     if (is_classic) aspirationRoot_TT_EGDB_CLASSIC(context, config);
-    else            aspirationRoot_TT_AVALANCHE(context, config);
+    else            aspirationRoot_TT_EGDB_AVALANCHE(context, config);
 #else
     bool use_tt = (config->solver == LOCAL_SOLVER);
     bool use_egdb = (loaded_egdb_max_stones > 0);
 
-    if (use_tt && use_egdb && is_classic)        aspirationRoot_TT_EGDB_CLASSIC(context, config);
-    else if (use_tt && !use_egdb && is_classic)  aspirationRoot_TT_CLASSIC(context, config);
-    else if (use_tt && !is_classic)              aspirationRoot_TT_AVALANCHE(context, config);
-    else if (!use_tt && use_egdb && is_classic)  aspirationRoot_EGDB_CLASSIC(context, config);
-    else if (!use_tt && !use_egdb && is_classic) aspirationRoot_CLASSIC(context, config);
-    else if (!use_tt && !is_classic)             aspirationRoot_AVALANCHE(context, config);
+    if (use_tt && use_egdb && is_classic)         aspirationRoot_TT_EGDB_CLASSIC(context, config);
+    else if (use_tt && !use_egdb && is_classic)   aspirationRoot_TT_CLASSIC(context, config);
+    else if (use_tt && use_egdb && !is_classic)   aspirationRoot_TT_EGDB_AVALANCHE(context, config);
+    else if (use_tt && !use_egdb && !is_classic)  aspirationRoot_TT_AVALANCHE(context, config);
+    else if (!use_tt && use_egdb && is_classic)   aspirationRoot_EGDB_CLASSIC(context, config);
+    else if (!use_tt && !use_egdb && is_classic)  aspirationRoot_CLASSIC(context, config);
+    else if (!use_tt && use_egdb && !is_classic)  aspirationRoot_EGDB_AVALANCHE(context, config);
+    else if (!use_tt && !use_egdb && !is_classic) aspirationRoot_AVALANCHE(context, config);
 #endif
 
     resetCacheStats();
@@ -132,17 +156,19 @@ void distributionRoot(Board *board, int32_t* distribution, bool *solved, SolverC
 
 #ifdef WEB_BUILD
     if (is_classic) distributionRoot_TT_EGDB_CLASSIC(board, distribution, solved, config);
-    else            distributionRoot_TT_AVALANCHE(board, distribution, solved, config);
+    else            distributionRoot_TT_EGDB_AVALANCHE(board, distribution, solved, config);
 #else
     bool use_tt = (config->solver == LOCAL_SOLVER);
     bool use_egdb = (loaded_egdb_max_stones > 0);
 
-    if (use_tt && use_egdb && is_classic)        distributionRoot_TT_EGDB_CLASSIC(board, distribution, solved, config);
-    else if (use_tt && !use_egdb && is_classic)  distributionRoot_TT_CLASSIC(board, distribution, solved, config);
-    else if (use_tt && !is_classic)              distributionRoot_TT_AVALANCHE(board, distribution, solved, config);
-    else if (!use_tt && use_egdb && is_classic)  distributionRoot_EGDB_CLASSIC(board, distribution, solved, config);
-    else if (!use_tt && !use_egdb && is_classic) distributionRoot_CLASSIC(board, distribution, solved, config);
-    else if (!use_tt && !is_classic)             distributionRoot_AVALANCHE(board, distribution, solved, config);
+    if (use_tt && use_egdb && is_classic)         distributionRoot_TT_EGDB_CLASSIC(board, distribution, solved, config);
+    else if (use_tt && !use_egdb && is_classic)   distributionRoot_TT_CLASSIC(board, distribution, solved, config);
+    else if (use_tt && use_egdb && !is_classic)   distributionRoot_TT_EGDB_AVALANCHE(board, distribution, solved, config);
+    else if (use_tt && !use_egdb && !is_classic)  distributionRoot_TT_AVALANCHE(board, distribution, solved, config);
+    else if (!use_tt && use_egdb && is_classic)   distributionRoot_EGDB_CLASSIC(board, distribution, solved, config);
+    else if (!use_tt && !use_egdb && is_classic)  distributionRoot_CLASSIC(board, distribution, solved, config);
+    else if (!use_tt && use_egdb && !is_classic)  distributionRoot_EGDB_AVALANCHE(board, distribution, solved, config);
+    else if (!use_tt && !use_egdb && !is_classic) distributionRoot_AVALANCHE(board, distribution, solved, config);
 #endif
     resetCacheStats();
 }

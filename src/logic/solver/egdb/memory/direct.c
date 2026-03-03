@@ -11,9 +11,9 @@
 
 void egdb_mem_init(void) {}
 
-bool egdb_mem_load(int s, uint64_t size) {
+bool egdb_mem_load(int s, uint64_t size, bool is_avalanche) {
     char bin_filename[256];
-    snprintf(bin_filename, sizeof(bin_filename), "EGDB/egdb_%d.bin", s);
+    snprintf(bin_filename, sizeof(bin_filename), "EGDB/egdb_%s%d.bin", is_avalanche ? "av_" : "", s);
 
     // Check if file exists first
     if (access(bin_filename, F_OK) != 0) return false;
@@ -44,9 +44,9 @@ void egdb_mem_alloc(int s, uint64_t size) {
     egdb_tables[s] = malloc(size);
 }
 
-void egdb_mem_save(int s, uint64_t size) {
+void egdb_mem_save(int s, uint64_t size, bool is_avalanche) {
     char bin_filename[256];
-    snprintf(bin_filename, sizeof(bin_filename), "EGDB/egdb_%d.bin", s);
+    snprintf(bin_filename, sizeof(bin_filename), "EGDB/egdb_%s%d.bin", is_avalanche ? "av_" : "", s);
 
     // Save directly to raw binary
     FILE* f_out = fopen(bin_filename, "wb");

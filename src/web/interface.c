@@ -3,12 +3,14 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
+#include <stdbool.h>
 #include "logic/solver/cache.h"
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #include <zstd.h>
 #include <sys/stat.h>
+#include <unistd.h>
 #endif
 
 /**
@@ -22,7 +24,7 @@
 // Extern reference
 extern void setCacheSize(int size);
 extern void fillCacheStats(CacheStats* stats, bool calcFrag, bool calcStoneDist, bool calcDepthDist);
-extern void generateEGDB(int max_stones);
+extern void generateEGDB(int max_stones, bool is_avalanche);
 extern void getEGDBStats(uint64_t* sizeBytes, uint64_t* hits, int* minStones, int* maxStones);
 extern void configureStoneCountEGDB(int totalStones);
 extern void freeEGDB(void);
@@ -119,7 +121,7 @@ EMSCRIPTEN_KEEPALIVE void* web_malloc(size_t size) { return malloc(size); }
 EMSCRIPTEN_KEEPALIVE void web_free(void* ptr) { free(ptr); }
 
 EMSCRIPTEN_KEEPALIVE 
-int load_egdb_to_vfs(uint8_t* comp_data, size_t comp_size, int min_stones, int max_stones) {
+int load_egdb_to_vfs(uint8_t* comp_data, size_t comp_size, int min_stones, int max_stones, int is_avalanche, int wipe_vfs) {
     uint64_t ways[21][13] = {0};
     for (int p = 1; p <= 12; p++) ways[0][p] = 1;
     for (int s = 0; s <= 20; s++) ways[s][1] = 1;
@@ -143,13 +145,27 @@ int load_egdb_to_vfs(uint8_t* comp_data, size_t comp_size, int min_stones, int m
 
     mkdir("EGDB", 0777); 
 
+    if (wipe_vfs) {
+        freeEGDB();
+        // Clear all combinations of active RAM caches from the VFS Memory mapped disk
+        for (int s = 1; s <= 20; s++) {
+            char path[256];
+            snprintf(path, sizeof(path), "EGDB/egdb_%d.bin", s);
+            unlink(path);
+            snprintf(path, sizeof(path), "EGDB/egdb_av_%d.bin", s);
+            unlink(path);
+        }
+    } else {
+        freeEGDB(); // Relieve RAM allocations regardless before building up again
+    }
+
     size_t offset = 0;
     for (int s = min_stones; s <= max_stones; s++) {
         size_t layer_size = ways[s][12];
         if (offset + layer_size > dec_size) break;
 
         char path[256];
-        snprintf(path, sizeof(path), "EGDB/egdb_%d.bin", s);
+        snprintf(path, sizeof(path), "EGDB/egdb_%s%d.bin", is_avalanche ? "av_" : "", s);
         FILE* f = fopen(path, "wb");
         if (f) {
             fwrite(d_data + offset, 1, layer_size, f);
@@ -159,9 +175,16 @@ int load_egdb_to_vfs(uint8_t* comp_data, size_t comp_size, int min_stones, int m
     }
     free(d_data);
 
-    freeEGDB();
-    generateEGDB(max_stones);
+    generateEGDB(max_stones, is_avalanche != 0);
     return 1;
+}
+
+EMSCRIPTEN_KEEPALIVE int get_active_mode() {
+    return (getMoveFunction() == AVALANCHE_MOVE) ? 1 : 0;
+}
+
+EMSCRIPTEN_KEEPALIVE void cancel_ai_thinking() {
+    aiThinking = false;
 }
 #endif
 
@@ -452,10 +475,20 @@ static void ai_think_callback(void *arg) {
     }
 }
 
+EMSCRIPTEN_KEEPALIVE void real_kick_off_ai(void) {
+    emscripten_async_call(ai_think_callback, NULL, 500);
+}
+
 static void kick_off_ai(void) {
     aiThinking = true;
+    EM_ASM({ 
+        if (window.triggerAiWithEgdbCheck) {
+            window.triggerAiWithEgdbCheck();
+        } else {
+            Module._real_kick_off_ai();
+        }
+    });
     EM_ASM({ updateView(); });
-    emscripten_async_call(ai_think_callback, NULL, 500);
 }
 #endif
 
@@ -502,12 +535,57 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
         if (!el) { el = document.getElementById(id); window.domCache[id] = el; }
         return el;
     };
+    
     window.lastHistoryCount = -1;
     window.hoverTimeout = null;
     window.customEditMode = false;
     window.inSetup = false;
     window.lastUsedSeed = 0;
-    window.egdbReady = false;
+    
+    window.loadedMode = -1;    // 0 = classic, 1 = avalanche
+    window.loadedStones = 0;   // 0, 10, 18
+    window.egdbReady = true;   // true until a download actually hangs it
+    window.egdbError = false;
+
+    window.ensureDbLoaded = async function(neededMode, neededStones) {
+        if (window.loadedMode === neededMode && window.loadedStones >= neededStones) {
+            return; 
+        }
+        
+        const wipeVfs = (window.loadedMode !== -1 && window.loadedMode !== neededMode);
+        
+        if (wipeVfs || window.loadedMode !== neededMode) {
+            const file10 = neededMode ? 'egdb_av_10.zst' : 'egdb10.zst';
+            await window.downloadEGDB(1, 10, file10, null, neededMode, true);
+            window.loadedMode = neededMode;
+            window.loadedStones = 10;
+        }
+        
+        if (neededStones > window.loadedStones) {
+            const file18 = neededMode ? 'egdb_av_11-18.zst' : 'egdb11-18.zst';
+            await window.downloadEGDB(11, 18, file18, null, neededMode, false);
+            window.loadedStones = neededStones;
+        }
+
+        // Force UI to sync perfectly after internal values update
+        window.updateButtons();
+        window.updateView();
+    };
+
+    window.triggerAiWithEgdbCheck = async function() {
+        const activeMode = Module._get_active_mode();
+        try {
+            await window.ensureDbLoaded(activeMode, 10);
+            Module._real_kick_off_ai();
+            window.updateView(); 
+        } catch (e) {
+            console.error("EGDB Load Failed:", e);
+            Module._cancel_ai_thinking();
+            window.egdbReady = false;
+            window.egdbError = true;
+            window.updateView();
+        }
+    };
 
     window.createBoardDOM = function(container, prefix, isMini) {
         container.innerHTML = "";
@@ -527,6 +605,7 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
                 p.onclick = () => { 
                     if (window.customEditMode || window.inSetup || !window.egdbReady) return;
                     if (Module._get_ai_thinking() || Module._get_current_player() !== 1) return; 
+
                     if (window.hoverTimeout) { clearTimeout(window.hoverTimeout); window.hoverTimeout = null; }
                     window.hoveredPit = -1; 
                     Module._do_web_move(i); 
@@ -604,7 +683,7 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
     };
 
     window.readCustomBoard = function() {
-        const cells = [];
+        const cells =[];
         for (let i = 0; i < 14; i++) {
             const inp = document.getElementById("cst-" + i);
             let v = inp ? parseInt(inp.value) : 0;
@@ -620,8 +699,39 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
         const resetBtn = document.getElementById("cfg-reset");
         const dist = parseInt(document.getElementById("cfg-dist").value);
         const isCustom = (dist === 2);
-        if (goBtn) goBtn.classList.toggle("disabled", isCustom && !window.inSetup);
-        if (resetBtn) resetBtn.classList.toggle("disabled", window.inSetup);
+        
+        const isWorking = !window.egdbReady && !window.egdbError;
+        if (goBtn) goBtn.classList.toggle("disabled", isWorking || (isCustom && !window.inSetup));
+        if (resetBtn) resetBtn.classList.toggle("disabled", isWorking || window.inSetup);
+
+        const cfgMode = document.getElementById("cfg-mode");
+        const isAv = (cfgMode && parseInt(cfgMode.value) === 1);
+        const modeVal = isAv ? 1 : 0;
+
+        const egdbBtn = document.getElementById("cfg-egdb");
+        if (egdbBtn) {
+            if (window.loadedMode === modeVal && window.loadedStones >= 18) {
+                egdbBtn.classList.add("disabled");
+                egdbBtn.innerText = isAv ? "AVALANCHE 18 READY" : "CLASSIC 18 READY";
+                egdbBtn.style.background = "#444";
+                egdbBtn.style.color = "#888";
+            } else if (isWorking) {
+                egdbBtn.classList.add("disabled");
+                egdbBtn.innerText = isAv ? "AVALANCHE 18 READY" : "CLASSIC 18 READY";
+                egdbBtn.style.background = "#444";
+                egdbBtn.style.color = "#888";
+            } else if (window.egdbError) {
+                egdbBtn.classList.remove("disabled");
+                egdbBtn.innerText = "FAILED - RETRY";
+                egdbBtn.style.background = "#900";
+                egdbBtn.style.color = "#fff";
+            } else {
+                egdbBtn.classList.remove("disabled");
+                egdbBtn.innerText = isAv ? "LOAD AVALANCHE 18" : "LOAD CLASSIC 18";
+                egdbBtn.style.background = "#05a";
+                egdbBtn.style.color = "#fff";
+            }
+        }
     };
 
     window.readSettings = function() {
@@ -652,7 +762,7 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
     
     let html = `<h3>GAME SETTINGS</h3><div class='cfg-row'><span class='cfg-label'>STONES (1-18)</span><input id='cfg-stones' type='number' value='4' min='1' max='18'></div><div class='cfg-row'><span class='cfg-label'>DISTRIBUTION</span><select id='cfg-dist'><option value='0'>Uniform</option><option value='1'>Random</option><option value='2'>Custom</option></select></div><div class='cfg-row' id='seed-row' style='display:none'><span class='cfg-label'>SEED (0=rand)</span><input id='cfg-seed' type='number' value='0'></div><div class='cfg-row'><span class='cfg-label'>MODE</span><select id='cfg-mode'><option value='0'>Classic</option><option value='1'>Avalanche</option></select></div><div class='cfg-row'><span class='cfg-label'>AI TIME LIMIT (s, 0=inf)</span><input id='cfg-time' type='number' value='1' min='0'></div><div class='cfg-row'><span class='cfg-label'>STARTING PLAYER</span><select id='cfg-start'><option value='1'>Player</option><option value='-1'>AI</option></select></div>`;
 
-    html += `<div class='expert-only'><div class='cfg-row'><span class='cfg-label'>CACHE SIZE EXP (18-28)</span><input id='cfg-cache' type='number' value='24' min='18' max='28'></div><div class='cfg-row'><button id='cfg-egdb' class='cfg-btn' style='background:#05a; color:#fff;'>LOAD EGDB 18</button></div><div class='chk-row'><span class='cfg-label'>AI AUTOPLAY</span><input id='cfg-autoplay' type='checkbox' checked></div></div>`;
+    html += `<div class='expert-only'><div class='cfg-row'><span class='cfg-label'>CACHE SIZE EXP (18-28)</span><input id='cfg-cache' type='number' value='24' min='18' max='28'></div><div class='cfg-row'><button id='cfg-egdb' class='cfg-btn' style='background:#05a; color:#fff;'>LOAD CLASSIC 18</button></div><div class='chk-row'><span class='cfg-label'>AI AUTOPLAY</span><input id='cfg-autoplay' type='checkbox' checked></div></div>`;
 
     html += `<button id='cfg-go' class='cfg-btn'>START GAME</button>`;
     html += `<button id='cfg-reset' class='cfg-btn-reset disabled'>RESET</button>`;
@@ -668,6 +778,11 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
         }
         window.updateButtons();
     };
+
+    document.getElementById("cfg-mode").onchange = () => {
+        window.updateButtons();
+    };
+
     const togR = document.createElement("button"); togR.className = "side-toggle toggle-right"; togR.innerText = "SETTINGS";
     togR.onclick = () => sideR.classList.toggle("open"); document.body.appendChild(togR);
     
@@ -683,8 +798,9 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
         if (v > max) { el.value = max; }
     };
 
-    document.getElementById("cfg-go").onclick = () => {
-        if (!window.egdbReady || Module._get_ai_thinking()) return;
+    document.getElementById("cfg-go").onclick = async () => {
+        const isWorking = !window.egdbReady && !window.egdbError;
+        if (isWorking || Module._get_ai_thinking()) return;
 
         const cfg = window.readSettings();
         const isCustom = (cfg.dist === 2);
@@ -728,14 +844,15 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
         }
     };
 
-    document.getElementById("cfg-reset").onclick = () => {
-        if (!window.egdbReady || window.inSetup || Module._get_ai_thinking()) return;
+    document.getElementById("cfg-reset").onclick = async () => {
+        const isWorking = !window.egdbReady && !window.egdbError;
+        if (isWorking || window.inSetup || Module._get_ai_thinking()) return;
+
+        const cfg = window.readSettings();
 
         Module._clear_highlights();
         window.clearBoardHighlights();
         window.lastHistoryCount = -1;
-
-        const cfg = window.readSettings();
 
         if (cfg.dist === 2) {
             window.inSetup = true;
@@ -751,18 +868,17 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
         window.updateView();
     };
     
-    window.downloadEGDB = async function(minStones, maxStones, filename, btnEl) {
-        if (btnEl) window.egdbReady = false;
-        if (btnEl) btnEl.classList.add("disabled");
+    window.downloadEGDB = async function(minStones, maxStones, filename, btnEl, isAvalanche, wipeVfs) {
+        window.egdbReady = false;
+        window.egdbError = false;
         window.updateView();
 
         try {
             let stEl = window.getEl("status-text");
             if (stEl) stEl.textContent = ">> LOADING...";
-            if (btnEl) btnEl.innerText = "LOADING...";
             
             const res = await fetch(filename);
-            if (!res.ok) throw new Error("Fetch failed");
+            if (!res.ok) throw new Error("Fetch failed for " + filename);
             const buf = await res.arrayBuffer();
             
             await new Promise(r => setTimeout(r, 10)); 
@@ -771,44 +887,58 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
             const ptr = Module._web_malloc(u8.length);
             HEAPU8.set(u8, ptr);
             
-            const success = Module._load_egdb_to_vfs(ptr, u8.length, minStones, maxStones);
+            const success = Module._load_egdb_to_vfs(ptr, u8.length, minStones, maxStones, isAvalanche ? 1 : 0, wipeVfs ? 1 : 0);
             Module._web_free(ptr);
             
             if (success) {
                 window.egdbReady = true;
-                if (btnEl) {
-                    btnEl.innerText = "EGDB " + maxStones + " READY";
-                    btnEl.style.background = "#444";
-                    btnEl.style.color = "#888";
-                }
+                window.updateButtons();
+                window.updateView();
+                return true;
             } else {
-                if (stEl) stEl.textContent = ">> ERROR";
-                if (btnEl) btnEl.innerText = "ERROR";
+                throw new Error("VFS extraction failed");
             }
         } catch(e) {
-            console.error(e);
-            let stEl = window.getEl("status-text");
-            if (stEl) stEl.textContent = ">> ERROR";
-            if (btnEl) {
-                btnEl.innerText = "FAILED";
-                btnEl.classList.remove("disabled");
-            }
+            window.egdbReady = false;
+            window.egdbError = true;
+            window.updateView();
+            throw e; 
         }
-        window.updateView();
     };
 
-    document.getElementById("cfg-egdb").onclick = function() {
-        if (this.classList.contains("disabled")) return;
-        window.downloadEGDB(11, 18, 'egdb11-18.zst', this);
+    document.getElementById("cfg-egdb").onclick = async function() {
+        const isWorking = !window.egdbReady && !window.egdbError;
+        if (this.classList.contains("disabled") || isWorking) return;
+        
+        const cfgMode = parseInt(document.getElementById("cfg-mode").value);
+        
+        // Lock button instantly to desired state before the async delay
+        window.egdbReady = false;
+        window.egdbError = false;
+        window.updateButtons();
+
+        try {
+            await window.ensureDbLoaded(cfgMode, 18);
+        } catch(e) {
+            console.error("Manual EGDB load failed:", e);
+        }
     };
     
     const main = document.createElement("div"); main.className = "main-content"; document.body.appendChild(main);
     const bRel = document.createElement("div"); bRel.className = "board-container-relative"; main.appendChild(bRel);
     const bCont = document.createElement("div"); bRel.appendChild(bCont); window.createBoardDOM(bCont, "main-", false);
     
-    const uBtn = document.createElement("button"); uBtn.id = "undo-btn"; uBtn.className = "bottom-btn undo-pos"; uBtn.innerText = "undo move"; uBtn.onclick = () => Module._undo_move(); bRel.appendChild(uBtn);
+    const uBtn = document.createElement("button"); 
+    uBtn.id = "undo-btn"; 
+    uBtn.className = "bottom-btn undo-pos"; 
+    uBtn.innerText = "undo move"; 
+    uBtn.onclick = () => Module._undo_move(); 
+    bRel.appendChild(uBtn);
 
-    const stepBtn = document.createElement("button"); stepBtn.id = "step-btn"; stepBtn.className = "bottom-btn step-pos expert-only"; stepBtn.innerText = "step AI >"; 
+    const stepBtn = document.createElement("button"); 
+    stepBtn.id = "step-btn"; 
+    stepBtn.className = "bottom-btn step-pos expert-only"; 
+    stepBtn.innerText = "step AI >"; 
     stepBtn.style.display = "none";
     stepBtn.onclick = () => Module._do_ai_step();
     bRel.appendChild(stepBtn);
@@ -827,7 +957,7 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
     main.appendChild(hBtn);
 
     const hCont = document.createElement("div"); hCont.id = "history-container"; hCont.className = "history-container"; main.appendChild(hCont);
-window.toggleExpert = function() {
+    window.toggleExpert = function() {
         const isExpert = document.body.classList.toggle("expert-mode");
         if (!isExpert) {
             const cInput = document.getElementById("cfg-cache");
@@ -935,7 +1065,7 @@ window.toggleExpert = function() {
         const fmt = (n) => n >= 1e6 ? (n/1e6).toFixed(2)+"M" : (n >= 1e3 ? (n/1e3).toFixed(1)+"k" : String(n));
 
         const mBoard = window.getEl("main-board");
-        const isDis = !!(thinking || gameOver || window.inSetup || !window.egdbReady);
+        const isDis = !!(thinking || gameOver || window.inSetup || !window.egdbReady || window.egdbError);
         if (mBoard.classList.contains("disabled") !== isDis) mBoard.classList.toggle("disabled", isDis);
         const isCheat = !!Module._get_is_cheated();
         if (mBoard.classList.contains("cheated") !== isCheat) mBoard.classList.toggle("cheated", isCheat);
@@ -1027,27 +1157,46 @@ window.toggleExpert = function() {
             setTxt("c-up", Module._get_c_upper().toFixed(1));
 
             const eMax = Module._get_egdb_max_stones();
-            setTxt("e-loaded", eMax > 0 ? (eMax + " Stones (" + Module._get_egdb_size_mb().toFixed(1) + "MB)") : "None");
+            let loadedStr = eMax > 0 ? (eMax + " (" + Module._get_egdb_size_mb().toFixed(1) + "MB)") : "None";
+            if (eMax > 0 && window.loadedMode !== -1) {
+                loadedStr = (window.loadedMode === 1 ? "Avalanche " : "Classic ") + loadedStr;
+            }
+            setTxt("e-loaded", loadedStr);
             setTxt("e-hits", fmt(Module._get_egdb_hits()));
         }
 
         const stEl = window.getEl("status-text");
-        if (window.egdbReady) {
-            let stStr = "";
-            if (window.inSetup) stStr = ">> PRESS START";
-            else if (gameOver) stStr = ">> GAME OVER"; 
-            else if (thinking) stStr = ">> AI THINKING..."; 
-            else if (currentPlayer === -1 && !autoplay) stStr = ">> WAITING FOR STEP";
-            else stStr = (currentPlayer === 1) ? ">> YOUR TURN" : ">> AI TURN";
-            if (stEl && stEl.textContent !== stStr) stEl.textContent = stStr;
+        let stStr = "";
+        
+        if (window.egdbError) {
+            stStr = ">> ERROR";
+        } else if (!window.egdbReady) {
+            stStr = ">> LOADING...";
+        } else if (window.inSetup) {
+            stStr = ">> PRESS START";
+        } else if (gameOver) {
+            stStr = ">> GAME OVER"; 
+        } else if (thinking) {
+            stStr = ">> AI THINKING..."; 
+        } else if (currentPlayer === -1 && !autoplay) {
+            stStr = ">> WAITING FOR STEP";
+        } else {
+            stStr = (currentPlayer === 1) ? ">> YOUR TURN" : ">> AI TURN";
         }
+        
+        if (stEl && stEl.textContent !== stStr) stEl.textContent = stStr;
         
         window.updateButtons();
         window.syncHistory();
     };
-    
+
+    // Clean initialization state without triggering fetch yet
+    window.loadedMode = -1;
+    window.loadedStones = 0;
+    window.egdbReady = true;
+    window.egdbError = false;
     window.lastUsedSeed = Module._get_last_seed();
-    window.downloadEGDB(1, 10, 'egdb10.zst', null);
+    window.updateView();
 });
 #endif
 

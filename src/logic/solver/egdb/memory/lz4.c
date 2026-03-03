@@ -86,9 +86,9 @@ static bool compressBufferToRuntime(int s, int8_t* raw_data, uint64_t size) {
     return egdb_is_compressed[s];
 }
 
-static void saveCompressedRuntimeToDisk(int s, uint64_t uncomp_size) {
+static void saveCompressedRuntimeToDisk(int s, uint64_t uncomp_size, bool is_avalanche) {
     char lz4_filename[256];
-    snprintf(lz4_filename, sizeof(lz4_filename), "EGDB/egdb_%d.lz4db", s);
+    snprintf(lz4_filename, sizeof(lz4_filename), "EGDB/egdb_%s%d.lz4db", is_avalanche ? "av_" : "", s);
 
     FILE* f_out = fopen(lz4_filename, "wb");
     if (!f_out) return;
@@ -111,9 +111,9 @@ static void saveCompressedRuntimeToDisk(int s, uint64_t uncomp_size) {
     fclose(f_out);
 }
 
-bool egdb_mem_load(int s, uint64_t size) {
+bool egdb_mem_load(int s, uint64_t size, bool is_avalanche) {
     char lz4_filename[256];
-    snprintf(lz4_filename, sizeof(lz4_filename), "EGDB/egdb_%d.lz4db", s);
+    snprintf(lz4_filename, sizeof(lz4_filename), "EGDB/egdb_%s%d.lz4db", is_avalanche ? "av_" : "", s);
 
     // Try loading native compressed format first
     if (access(lz4_filename, F_OK) == 0) {
@@ -161,7 +161,7 @@ bool egdb_mem_load(int s, uint64_t size) {
 
     // Fallback: If only raw .bin exists, load, compress, save to lz4db
     char bin_filename[256];
-    snprintf(bin_filename, sizeof(bin_filename), "EGDB/egdb_%d.bin", s);
+    snprintf(bin_filename, sizeof(bin_filename), "EGDB/egdb_%s%d.bin", is_avalanche ? "av_" : "", s);
 
     if (access(bin_filename, F_OK) == 0) {
         int fd = open(bin_filename, O_RDONLY);
@@ -172,7 +172,7 @@ bool egdb_mem_load(int s, uint64_t size) {
             if (mapped != MAP_FAILED) {
                 compressBufferToRuntime(s, (int8_t*)mapped, size);
                 munmap(mapped, size);
-                saveCompressedRuntimeToDisk(s, size);
+                saveCompressedRuntimeToDisk(s, size, is_avalanche);
                 return true;
             }
         }
@@ -186,9 +186,9 @@ void egdb_mem_alloc(int s, uint64_t size) {
     egdb_is_compressed[s] = false;
 }
 
-void egdb_mem_save(int s, uint64_t size) {
+void egdb_mem_save(int s, uint64_t size, bool is_avalanche) {
     char bin_filename[256];
-    snprintf(bin_filename, sizeof(bin_filename), "EGDB/egdb_%d.bin", s);
+    snprintf(bin_filename, sizeof(bin_filename), "EGDB/egdb_%s%d.bin", is_avalanche ? "av_" : "", s);
 
     // Write out raw binary first
     FILE* f_out = fopen(bin_filename, "wb");
@@ -199,7 +199,7 @@ void egdb_mem_save(int s, uint64_t size) {
 
     // Convert internal state to compressed for remaining runtime
     if (compressBufferToRuntime(s, egdb_tables[s], size)) {
-        saveCompressedRuntimeToDisk(s, size);
+        saveCompressedRuntimeToDisk(s, size, is_avalanche);
     }
 
     free(egdb_tables[s]);

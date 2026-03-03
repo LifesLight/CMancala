@@ -104,14 +104,14 @@ void runBenchmark() {
         remove(filename); 
     }
 
-    generateEGDB(egdb_size);
-    configureStoneCountEGDB(2);
+    generateEGDB(egdb_size, false);
+    configureStoneCountEGDB(2 * 12);
 
     // 5. GLOBAL + EGDB
     runTest(&context, 2, 0, ALWAYS_COMPRESS, 0, GLOBAL_SOLVER, "EGDB_CLASSIC (Global 2 Stones)", CLASSIC_MOVE);
 
-    generateEGDB(egdb_size);
-    configureStoneCountEGDB(4);
+    generateEGDB(egdb_size, false);
+    configureStoneCountEGDB(4 * 12);
 
     // 6. LOCAL + EGDB
     runTest(&context, 4, T32_B48, ALWAYS_COMPRESS, 0, LOCAL_SOLVER, "TT_EGDB_CLASSIC (Local 4 Stones)", CLASSIC_MOVE);
