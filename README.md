@@ -3,7 +3,7 @@
 ### Overview
 
 CMancala is a powerful Mancala solver and analyzer.
-You can play against (effectively unbeatable) AI agents.
+You can play against (effectively unbeatable) AI's.
 
 ### Rules
 
@@ -13,7 +13,7 @@ An **Avalanche** mode is available.
 ### Interface (config/menu/playing)
 
 CMancala starts in **config** mode to set game hyperparameters.
-Three modes — switchable anytime:
+The application has three modes:
 
 * **Config:** Adjust application and game hyperparameters.
 * **Menu:** Perform analytical operations on the current game.
@@ -39,7 +39,7 @@ Cache size notes (**LOCAL**):
 * Cache size is an exponent: size = `2^N`.
 * Memory usage: `2^N * ~4–8 bytes per entry` (depends on tag size and depth mode).
 * Default: **24** → ~100 MiB RAM.
-* Use **29–32** for long solves (e.g., uniform 4-stone).
+* Use **29–32** for long solves (e.g., uniform 5-stone).
 * Cache size requirements have steadily decreased since v3.0. Run your own tests if concerned.
 
 * **Compressed mode:**
@@ -64,7 +64,7 @@ Cache size notes (**LOCAL**):
 All solvers use Negamax + Alpha-Beta. They handle double moves.
 
 * **Double move handling:** Search adjusts when the same player continues or turn switches.
-* **Aspiration windows + iterative deepening:** Enables time-limited searches and better performance. (Skipped for LOCAL with infinite depth and time)
+* **Aspiration windows + iterative deepening:** Enables time-limited searches and better performance. When configured for infinite depth and time, the LOCAL solver switches to a **Binary Search Aspiration Window** algorithm. It completely skips iterative deepening and instead performs a binary search over the bounds of the total stone count. It uses null-window searches.
 * **Move ordering:** Prioritizes promising moves early. Improves pruning.
 * **Clip:** Changes solver behavior to only search for wins/losses. Useful if you only want to see if a move is winning or losing, not "how winning" or "how losing". In losing positions it will always pick the first IDX move if no win is found so it most likely won't return to a winning position.
 
@@ -72,7 +72,7 @@ All solvers use Negamax + Alpha-Beta. They handle double moves.
 
 * **GLOBAL:** Reference solver.
 * **LOCAL (default):** Way Faster in most cases. Uses a transposition table. At equal search depth it should be as strong or stronger than GLOBAL.
-* **EGDB:** Endgame Database. Faster than LOCAL, but needs to calculate a database once beforehand. Use `egdb [N]` in config to enable. Supports loading the EGDB via MMAP and in memory compressed via LZ4. No Avalanche support.
+* **EGDB:** Endgame Database. Faster than LOCAL, but needs to calculate a database once beforehand. Use `egdb [N]` in config to enable. Supports loading the EGDB via MMAP and in memory compressed via LZ4.
 
 ### Limitations
 
@@ -93,7 +93,7 @@ All solvers use Negamax + Alpha-Beta. They handle double moves.
 cd build
 cmake ..
 make
-````
+```
 
 4. Run:
 

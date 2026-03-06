@@ -63,6 +63,7 @@ void renderEGDBOverview();
 void startProgress(const SolverConfig* config, const char* prefix);
 void updateProgress(int currentDepth, int bestMove, int score, uint64_t nodeCount);
 void finishProgress();
+void setBinaryProgress(int step, int total);
 
 void startEGDBProgress();
 void updateEGDBProgress(int stones, uint64_t current, uint64_t total);

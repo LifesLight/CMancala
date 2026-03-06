@@ -10,6 +10,15 @@ static const char* progressPrefix = NULL;
 static const int BAR_WIDTH = 40;
 static bool progressFirstUpdate;
 
+// --- Binary Search Progress Tracking ---
+static int binaryCurrentStep = 0;
+static int binaryTotalSteps = 0;
+
+void setBinaryProgress(int step, int total) {
+    binaryCurrentStep = step;
+    binaryTotalSteps = total;
+}
+
 static void formatNodeCount(uint64_t nodes, char* buffer, size_t size) {
     if (nodes < 1000) {
         snprintf(buffer, size, "%" PRIu64, nodes);
@@ -46,6 +55,8 @@ void startProgress(const SolverConfig* config, const char* prefix) {
     progressPrefix = prefix ? prefix : "";
     progressStartTime = clock();
     progressFirstUpdate = true;
+    binaryTotalSteps = 0;
+    binaryCurrentStep = 0;
 }
 
 void updateProgress(int currentDepth, int bestMove, int score, uint64_t nodeCount) {
@@ -56,6 +67,12 @@ void updateProgress(int currentDepth, int bestMove, int score, uint64_t nodeCoun
     // Bar tracks whichever active limit is closest to terminating the search
     double percentage = 0.0;
     bool hasLimit = false;
+
+    if (binaryTotalSteps > 0) {
+        double bp = (double)binaryCurrentStep / (double)binaryTotalSteps;
+        if (bp > percentage) percentage = bp;
+        hasLimit = true;
+    }
 
     if (progressConfig->depth > 0) {
         double dp = (double)currentDepth / (double)progressConfig->depth;
@@ -94,6 +111,8 @@ void updateProgress(int currentDepth, int bestMove, int score, uint64_t nodeCoun
     // D: depth
     if (progressConfig->depth > 0)
         printf("D:%d/%d", currentDepth, progressConfig->depth);
+    else if (binaryTotalSteps > 0)
+        printf("D:INF");
     else
         printf("D:%d", currentDepth);
 
@@ -144,6 +163,8 @@ void updateProgress(int currentDepth, int bestMove, int score, uint64_t nodeCoun
 void finishProgress() {
     if (!progressConfig) return;
     progressConfig = NULL;
+    binaryTotalSteps = 0;
+    binaryCurrentStep = 0;
     printf("\n");
 }
 

@@ -323,45 +323,119 @@ void FN(distributionRoot)(Board *board, int *distribution, bool *solvedOutput, S
 
 // --- Public: Aspiration Root ---
 
-void FN(aspirationRoot)(Context* context, SolverConfig *config) {
-    const int depthStep = 1;
-    int currentDepth = 1;
-
+void FN(binarySearchRoot)(Context* context, SolverConfig *config) {
     int bestMove = -1;
     int score = 0;
+    int currentDepth = MAX_DEPTH;
+
 #if SOLVER_USE_CACHE
-    bool oneShot = false;
-
-    // Check for No Iterative Deepening
-    if (config->timeLimit == 0 && config->depth == 0) {
-        currentDepth = MAX_DEPTH;
-        oneShot = true;
-        setCacheMode(false, config->compressCache);
-    } else {
-        setCacheMode(true, config->compressCache);
-    }
-
+    setCacheMode(false, config->compressCache);
     bool solved = false;
 #endif
 
+    clock_t start = clock();
+    nodeCount = 0;
+    double* depthTimes = context->metadata.lastDepthTimes;
+    if (depthTimes != NULL) {
+        for (int i = 0; i < MAX_DEPTH; i++) depthTimes[i] = -1.0;
+    }
+
+    int maxStones = getStoneCount();
+
+    int totalSteps = 1;
+    if (!config->clip) {
+        int range = maxStones;
+        while (range > 0) {
+            totalSteps++;
+            range /= 2;
+        }
+    }
+
+    startProgress(config, PLAY_PREFIX);
+    setBinaryProgress(1, totalSteps);
+
+    int previousBest = bestMove;
+
+#if SOLVER_USE_CACHE
+    solved = true;
+    score = FN(negamaxWithMove)(context->board, &bestMove, 0, 1, currentDepth, &solved, previousBest);
+    stepCache();
+#else
+    solved = true;
+    score = FN(negamaxWithMove)(context->board, &bestMove, 0, 1, currentDepth, previousBest);
+#endif
+
+    updateProgress(currentDepth, bestMove, score, nodeCount);
+
+    if (!config->clip) {
+        int L = (score > 0) ? 1 : -maxStones;
+        int R = (score > 0) ? maxStones : 0;
+        int currentStep = 1;
+
+        while (L < R) {
+            int mid = L + (R - L) / 2;
+            previousBest = bestMove;
+            currentStep++;
+            setBinaryProgress(currentStep, totalSteps);
+
+#if SOLVER_USE_CACHE
+            solved = true;
+            score = FN(negamaxWithMove)(context->board, &bestMove, mid, mid + 1, currentDepth, &solved, previousBest);
+            stepCache();
+#else
+            solved = true;
+            score = FN(negamaxWithMove)(context->board, &bestMove, mid, mid + 1, currentDepth, previousBest);
+#endif
+            if (score > mid) L = score;
+            else R = score;
+
+            updateProgress(currentDepth, bestMove, score, nodeCount);
+        }
+        score = L;
+    }
+
+    finishProgress();
+
+    if (depthTimes != NULL) {
+        double t = (double)(clock() - start) / CLOCKS_PER_SEC;
+        depthTimes[1] = t;
+    }
+
+    if (config->clip && score > 1) score = 1;
+    context->metadata.lastTime = (double)(clock() - start) / CLOCKS_PER_SEC;
+    context->metadata.lastNodes = nodeCount;
+    context->metadata.lastMove = bestMove;
+    context->metadata.lastEvaluation = score;
+    context->metadata.lastDepth = currentDepth;
+    context->metadata.lastSolved = true;
+
+    if (config->clip && score < 0) {
+        renderOutput("[WARNING]: Clipped solver used in losing position!", CHEAT_PREFIX);
+    }
+}
+
+void FN(aspirationRoot)(Context* context, SolverConfig *config) {
+    const int depthStep = 1;
+    int currentDepth = 1;
+    int bestMove = -1;
+    int score = 0;
+#if SOLVER_USE_CACHE
+    setCacheMode(true, config->compressCache);
+    bool solved = false;
+#endif
     const int windowSize = 1;
     int window = windowSize;
-
     int alpha = INT32_MIN + 1;
     int beta  = INT32_MAX;
     int windowMisses = 0;
-
     clock_t start = clock();
     nodeCount = 0;
-
     double* depthTimes = context->metadata.lastDepthTimes;
     if (depthTimes != NULL) {
         for (int i = 0; i < MAX_DEPTH; i++) depthTimes[i] = -1.0;
     }
     double lastTimeCaptured = 0.0;
-
     startProgress(config, PLAY_PREFIX);
-
     while (true) {
 #if SOLVER_USE_CACHE
         solved = true;
@@ -369,9 +443,7 @@ void FN(aspirationRoot)(Context* context, SolverConfig *config) {
         solved = true;
 #endif
         bool searchValid = false;
-
         int previousBest = bestMove;
-
         if (config->clip) {
 #if SOLVER_USE_CACHE
             score = FN(negamaxWithMove)(context->board, &bestMove, 0, 1, currentDepth, &solved, previousBest);
@@ -380,74 +452,50 @@ void FN(aspirationRoot)(Context* context, SolverConfig *config) {
 #endif
             searchValid = true;
         }
-#if SOLVER_USE_CACHE
-        else if (oneShot) {
-            score = FN(negamaxWithMove)(context->board, &bestMove, INT32_MIN + 1, INT32_MAX, currentDepth, &solved, previousBest);
-            searchValid = true;
-        }
-#endif
         else {
 #if SOLVER_USE_CACHE
             score = FN(negamaxWithMove)(context->board, &bestMove, alpha, beta, currentDepth, &solved, previousBest);
 #else
             score = FN(negamaxWithMove)(context->board, &bestMove, alpha, beta, currentDepth, previousBest);
 #endif
-
             if (score > alpha && score < beta) {
                 searchValid = true;
                 window = windowSize;
-
                 alpha = score - window;
                 beta  = score + window;
             } else {
                 // Window Miss
                 windowMisses++;
                 window *= 2;
-
                 alpha = score - window;
                 beta  = score + window;
             }
         }
-
 #if SOLVER_USE_CACHE
         stepCache();
 #endif
-
         if (searchValid) {
             int timeIndex = currentDepth;
-#if SOLVER_USE_CACHE
-            timeIndex = oneShot ? 1 : currentDepth;
-#endif
             if (depthTimes != NULL) {
                 double t = (double)(clock() - start) / CLOCKS_PER_SEC;
                 depthTimes[timeIndex] = t - lastTimeCaptured;
                 lastTimeCaptured = t;
             }
-
             updateProgress(currentDepth, bestMove, score, nodeCount);
-
             if (solved) break;
-#if SOLVER_USE_CACHE
-            if (oneShot) break;
-#endif
             if (config->depth > 0 && currentDepth >= config->depth) break;
             if (config->timeLimit > 0 && ((double)(clock() - start) / CLOCKS_PER_SEC) >= config->timeLimit) break;
-
             currentDepth += depthStep;
         }
     }
-
     finishProgress();
-
     if (config->clip && score > 1) score = 1;
-
     context->metadata.lastTime = (double)(clock() - start) / CLOCKS_PER_SEC;
     context->metadata.lastNodes = nodeCount;
     context->metadata.lastMove = bestMove;
     context->metadata.lastEvaluation = score;
     context->metadata.lastDepth = currentDepth;
     context->metadata.lastSolved = solved;
-
     if (!config->clip && windowMisses > currentDepth) {
         renderOutput("[WARNING]: High window misses!", PLAY_PREFIX);
     }

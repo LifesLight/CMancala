@@ -1,15 +1,12 @@
 /**
  * Copyright (c) Alexander Kurtz 2026
  */
-
 #include "logic/solver/algo.h"
 
 int64_t nodeCount;
 
 // --- Instantiations ---
-
 #ifdef WEB_BUILD
-
 // 1. TT ON | EGDB ON | CLASSIC 
 #define PREFIX TT_EGDB_CLASSIC
 #define SOLVER_USE_CACHE 1
@@ -33,7 +30,6 @@ int64_t nodeCount;
 #undef MAKE_MOVE
 
 #else
-
 // 1. TT ON | EGDB ON | CLASSIC 
 #define PREFIX TT_EGDB_CLASSIC
 #define SOLVER_USE_CACHE 1
@@ -121,12 +117,41 @@ int64_t nodeCount;
 #undef SOLVER_USE_CACHE
 #undef USE_EGDB
 #undef MAKE_MOVE
-
 #endif
 
-void aspirationRoot(Context* context, SolverConfig *config) {
+// New Dispatcher for unlimited depth binary searches
+void binarySearchRoot(Context* context, SolverConfig *config) {
     bool is_classic = (getMoveFunction() == CLASSIC_MOVE);
+    resetEGDBStats();
 
+#ifdef WEB_BUILD
+    if (is_classic) binarySearchRoot_TT_EGDB_CLASSIC(context, config);
+    else            binarySearchRoot_TT_EGDB_AVALANCHE(context, config);
+#else
+    bool use_tt = (config->solver == LOCAL_SOLVER);
+    bool use_egdb = (loaded_egdb_max_stones > 0);
+
+    if (use_tt && use_egdb && is_classic)         binarySearchRoot_TT_EGDB_CLASSIC(context, config);
+    else if (use_tt && !use_egdb && is_classic)   binarySearchRoot_TT_CLASSIC(context, config);
+    else if (use_tt && use_egdb && !is_classic)   binarySearchRoot_TT_EGDB_AVALANCHE(context, config);
+    else if (use_tt && !use_egdb && !is_classic)  binarySearchRoot_TT_AVALANCHE(context, config);
+    else if (!use_tt && use_egdb && is_classic)   binarySearchRoot_EGDB_CLASSIC(context, config);
+    else if (!use_tt && !use_egdb && is_classic)  binarySearchRoot_CLASSIC(context, config);
+    else if (!use_tt && use_egdb && !is_classic)  binarySearchRoot_EGDB_AVALANCHE(context, config);
+    else if (!use_tt && !use_egdb && !is_classic) binarySearchRoot_AVALANCHE(context, config);
+#endif
+
+    resetCacheStats();
+}
+
+void aspirationRoot(Context* context, SolverConfig *config) {
+    // Intercept to factor out "One Shot" to the new binary search root!
+    if (config->timeLimit == 0 && config->depth == 0) {
+        binarySearchRoot(context, config);
+        return;
+    }
+
+    bool is_classic = (getMoveFunction() == CLASSIC_MOVE);
     resetEGDBStats();
 
 #ifdef WEB_BUILD
@@ -151,7 +176,6 @@ void aspirationRoot(Context* context, SolverConfig *config) {
 
 void distributionRoot(Board *board, int32_t* distribution, bool *solved, SolverConfig *config) {
     bool is_classic = (getMoveFunction() == CLASSIC_MOVE);
-
     resetEGDBStats();
 
 #ifdef WEB_BUILD
