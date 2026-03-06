@@ -97,3 +97,7 @@ char* encodeBoard(const Board *board);
  * Returns success
 */
 bool decodeBoard(Board *board, const char* code);
+
+void setStoneCount(int stones);
+
+int getStoneCount();

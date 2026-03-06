@@ -26,7 +26,7 @@ extern void setCacheSize(int size);
 extern void fillCacheStats(CacheStats* stats, bool calcFrag, bool calcStoneDist, bool calcDepthDist);
 extern void generateEGDB(int max_stones, bool is_avalanche);
 extern void getEGDBStats(uint64_t* sizeBytes, uint64_t* hits, int* minStones, int* maxStones);
-extern void configureStoneCountEGDB(int totalStones);
+extern void setStoneCount(int totalStones);
 extern void freeEGDB(void);
 
 #define MAX_HISTORY 512
@@ -367,7 +367,7 @@ static void init_game_with_config(int stones, int distribution, int moveFunc, do
     if (stones < 1) stones = 1;
     if (stones > 18) stones = 18;
 
-    configureStoneCountEGDB(stones * 12);
+    setStoneCount(stones * 12);
 
     SolverConfig solverConfig = {
         .solver = LOCAL_SOLVER, 
@@ -422,7 +422,7 @@ void set_custom_board(int c0, int c1, int c2, int c3, int c4, int c5, int c6,
     globalBoard.cells[12] = c12; globalBoard.cells[13] = c13;
     globalBoard.color = startColor;
 
-    configureStoneCountEGDB(c0 + c1 + c2 + c3 + c4 + c5 + c6 + 
+    setStoneCount(c0 + c1 + c2 + c3 + c4 + c5 + c6 + 
                             c7 + c8 + c9 + c10 + c11 + c12 + c13);
 
     isCheated = true;

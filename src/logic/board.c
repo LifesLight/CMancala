@@ -5,6 +5,17 @@
 
 #include "logic/board.h"
 
+int stoneCount = 0;
+
+void setStoneCount(int stones) {
+    configureStoneCountEGDB(stones);
+    stoneCount = stones;
+}
+
+int getStoneCount() {
+    return stoneCount;
+}
+
 // State variable to track current mode
 static MoveFunction activeMoveMode = CLASSIC_MOVE;
 

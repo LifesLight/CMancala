@@ -6,4 +6,4 @@ mkdir -p ~/coding/CMancala/build_web
 cd ~/coding/CMancala/build_web
 
 emcmake cmake .. -DCMAKE_BUILD_TYPE=Release
-make
+make -j$(nproc)

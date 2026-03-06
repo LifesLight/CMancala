@@ -338,7 +338,7 @@ void handleConfigInput(bool* requestedStart, Config* config) {
         }
 
         config->gameSettings.stones = stones;
-        configureStoneCountEGDB(stones * 12);
+        setStoneCount(stones * 12);
 
         char message[256];
         snprintf(message, sizeof(message), "Updated stones to %d", stones);
