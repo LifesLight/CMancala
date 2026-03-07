@@ -6,12 +6,10 @@
 #include <stdbool.h>
 #include "logic/solver/cache.h"
 
-#ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #include <zstd.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#endif
 
 /**
  * Requires Prebuild EGDB's
@@ -116,7 +114,6 @@ static int calc_modified_mask(const Board* prev, const Board* curr, int capMask)
 
 /* ================== EMSCRIPTEN EXPORTS ================== */
 
-#ifdef __EMSCRIPTEN__
 EMSCRIPTEN_KEEPALIVE void* web_malloc(size_t size) { return malloc(size); }
 EMSCRIPTEN_KEEPALIVE void web_free(void* ptr) { free(ptr); }
 
@@ -156,7 +153,7 @@ int load_egdb_to_vfs(uint8_t* comp_data, size_t comp_size, int min_stones, int m
             unlink(path);
         }
     } else {
-        freeEGDB(); // Relieve RAM allocations regardless before building up again
+        freeEGDB();
     }
 
     size_t offset = 0;
@@ -186,7 +183,6 @@ EMSCRIPTEN_KEEPALIVE int get_active_mode() {
 EMSCRIPTEN_KEEPALIVE void cancel_ai_thinking() {
     aiThinking = false;
 }
-#endif
 
 EMSCRIPTEN_KEEPALIVE int  get_stone_count(int i) { return isGameInitialized ? globalContext.board->cells[i] : 0; }
 EMSCRIPTEN_KEEPALIVE int  get_current_player()   { return isGameInitialized ? globalContext.board->color : 0; }
@@ -237,9 +233,7 @@ EMSCRIPTEN_KEEPALIVE int    get_stat_eval() {
     return globalContext.metadata.lastEvaluation;
 }
 
-#ifdef __EMSCRIPTEN__
 static void kick_off_ai(void);
-#endif
 
 EMSCRIPTEN_KEEPALIVE void set_web_cache_size(int size) {
     if (aiThinking) return;
@@ -452,7 +446,6 @@ void clear_highlights() {
     globalContext.metadata.lastMove = -1;
 }
 
-#ifdef __EMSCRIPTEN__
 static void ai_think_callback(void *arg) {
     (void)arg;
     aspirationRoot(&globalContext, &globalContext.config.solverConfig);
@@ -490,7 +483,6 @@ static void kick_off_ai(void) {
     });
     EM_ASM({ updateView(); });
 }
-#endif
 
 EMSCRIPTEN_KEEPALIVE
 void do_web_move(int index) {
@@ -512,14 +504,11 @@ void do_web_move(int index) {
 EMSCRIPTEN_KEEPALIVE
 void restart_game(int stones, int distribution, int moveFunc, double timeLimit, int startColor, int seed) {
     init_game_with_config(stones, distribution, moveFunc, timeLimit, startColor, seed);
-#ifdef __EMSCRIPTEN__
     EM_ASM({ updateView(); });
-#endif
 }
 
 /* ================== FRONTEND GUI ================== */
 
-#ifdef __EMSCRIPTEN__
 EM_JS(void, launch_gui, (const char* v_ptr), {
     document.body.innerHTML = "";
     document.body.classList.remove("loading");
@@ -543,8 +532,8 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
     window.lastUsedSeed = 0;
     
     window.loadedMode = -1;    // 0 = classic, 1 = avalanche
-    window.loadedStones = 0;   // 0, 10, 18
-    window.egdbReady = true;   // true until a download actually hangs it
+    window.loadedStones = 0;
+    window.egdbReady = true;
     window.egdbError = false;
 
     window.ensureDbLoaded = async function(neededMode, neededStones) {
@@ -567,7 +556,7 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
             window.loadedStones = neededStones;
         }
 
-        // Force UI to sync perfectly after internal values update
+        // Force UI to sync after internal values update
         window.updateButtons();
         window.updateView();
     };
@@ -1209,11 +1198,8 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
     window.lastUsedSeed = Module._get_last_seed();
     window.updateView();
 });
-#endif
 
 void startInterface() {
     init_game_with_config(4, 0, 0, 1.0, 1, 0);
-#ifdef __EMSCRIPTEN__
     launch_gui(MANCALA_VERSION);
-#endif
 }
