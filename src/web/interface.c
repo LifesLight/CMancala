@@ -932,8 +932,8 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
     stepBtn.onclick = () => Module._do_ai_step();
     bRel.appendChild(stepBtn);
 
-    const sTxt = document.createElement("div"); sTxt.id = "status-text"; sTxt.style.marginTop = "25px"; sTxt.style.marginBottom = "15px"; sTxt.style.fontSize = "18px"; main.appendChild(sTxt);
-    const hBtn = document.createElement("button"); hBtn.id = "hist-btn"; hBtn.className = "bottom-btn"; hBtn.style.marginTop = "0px"; hBtn.innerText = "▼ history ▼";
+    const sTxt = document.createElement("div"); sTxt.id = "status-text"; main.appendChild(sTxt);
+    const hBtn = document.createElement("button"); hBtn.id = "hist-btn"; hBtn.className = "bottom-btn"; hBtn.innerText = "▼ history ▼";
     
     hBtn.onclick = () => { 
         const hc = window.getEl("history-container"); 

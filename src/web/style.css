@@ -7,12 +7,8 @@
 @media (max-width: 700px) {
     :root {
         --bs: calc((100vw - 40px) / 650);
-    }
-}
-
-@media (max-width: 440px) {
-    :root {
-        --ms: calc((100vw - 40px) / 393);
+        /* Scale history boards to fit comfortably inside the container */
+        --ms: calc((100vw - 50px) / 393); 
     }
 }
 
@@ -90,7 +86,7 @@ body.loading {
 /* Interactive Elements */
 .player-pit { cursor: pointer; border-color: #0f0 !important; }
 .ai-pit { border-color: #f00 !important; }
-.bottom-btn { background: transparent; border: none; color: #888; font-size: 14px; cursor: pointer; font-family: monospace; }
+.bottom-btn { background: transparent; border: none; color: #888; font-size: calc(14 * var(--bs)); cursor: pointer; font-family: monospace; }
 .bottom-btn:hover { color: #fff; text-decoration: underline; }
 
 /* Highlights */
@@ -101,13 +97,17 @@ body.loading {
 .disabled { opacity: .5; pointer-events: none; }
 
 /* Positioning */
-.undo-pos { position: absolute; bottom: -35px; left: calc(30 * var(--bs)); }
-.step-pos { position: absolute; bottom: -35px; right: calc(30 * var(--bs)); }
+.undo-pos { position: absolute; bottom: calc(-35 * var(--bs)); left: calc(30 * var(--bs)); }
+.step-pos { position: absolute; bottom: calc(-35 * var(--bs)); right: calc(30 * var(--bs)); }
+
+/* Status Text */
+#status-text { margin-top: calc(25 * var(--bs)); margin-bottom: calc(15 * var(--bs)); font-size: calc(18 * var(--bs)); }
 
 /* History */
-.history-container { display: none; flex-direction: column; gap: 20px; padding: 15px; background: #1a1a1a; border-radius: 10px; max-height: 35vh; overflow-y: auto; margin-top: 10px; border: 1px solid #444; }
-.hist-item { display: flex; justify-content: center; border-bottom: 1px solid #333; padding-bottom: 15px; }
+.history-container { display: none; flex-direction: column; gap: calc(20 * var(--bs)); padding: 15px; background: #1a1a1a; border-radius: 10px; max-height: 35vh; overflow-y: auto; margin-top: calc(10 * var(--bs)); border: 1px solid #444; }
+.hist-item { display: flex; justify-content: center; border-bottom: 1px solid #333; padding-bottom: calc(15 * var(--bs)); }
 .hist-item:last-child { border-bottom: none; padding-bottom: 0; }
+#hist-btn { margin-top: 0; }
 
 /* Footer & About Modal */
 .footer { position: fixed; bottom: 10px; width: 100%; text-align: center; pointer-events: none; }
