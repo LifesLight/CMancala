@@ -54,11 +54,6 @@ int compareChunksStart(const void *a, const void *b) {
     return 0;
 }
 
-// --- Common Logic Macros ---
-#define PACK_VALUE(eval, bt) ((int16_t)(((eval) << 2) | ((bt) & 0x3)))
-#define UNPACK_VALUE(val) ((int16_t)((val) >> 2))
-#define UNPACK_BOUND(val) ((val) & 0x3)
-
 // --- Template Instantiations ---
 
 // 1. NO DEPTH | 48 BIT KEY | 16 BIT TAG
