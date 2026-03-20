@@ -368,30 +368,68 @@ void FN(binarySearchRoot)(Context* context, SolverConfig *config) {
     updateProgress(currentDepth, bestMove, score, nodeCount);
 
     if (!config->clip) {
-        int L = (score > 0) ? 1 : -maxStones;
-        int R = (score > 0) ? maxStones : 0;
-        int currentStep = 1;
+        bool is_classic = (getMoveFunction() == CLASSIC_MOVE);
 
-        while (L < R) {
-            int mid = L + (R - L) / 2;
-            previousBest = bestMove;
-            currentStep++;
-            setBinaryProgress(currentStep, totalSteps);
+        if (is_classic) {
+            // --- MTD(f) Core for Classic Mode ---
+            int guess = score;
+            int L = -maxStones;
+            int R = maxStones;
+            int currentStep = 1;
+
+            while (L < R) {
+                currentStep++;
+                setBinaryProgress(currentStep, totalSteps);
+
+                int beta = (guess == L) ? guess + 1 : guess;
 
 #if SOLVER_USE_CACHE
-            solved = true;
-            score = FN(negamaxWithMove)(context->board, &bestMove, mid, mid + 1, currentDepth, &solved, previousBest);
-            stepCache();
+                solved = true;
+                score = FN(negamaxWithMove)(context->board, &bestMove, beta - 1, beta, currentDepth, &solved, previousBest);
+                stepCache();
 #else
-            solved = true;
-            score = FN(negamaxWithMove)(context->board, &bestMove, mid, mid + 1, currentDepth, previousBest);
+                solved = true;
+                score = FN(negamaxWithMove)(context->board, &bestMove, beta - 1, beta, currentDepth, previousBest);
 #endif
-            if (score > mid) L = score;
-            else R = score;
+                if (score < beta) {
+                    R = score;
+                    guess = score; 
+                } else {
+                    L = score;
+                    guess = score + 1;
+                }
+                previousBest = bestMove;
+                updateProgress(currentDepth, bestMove, score, nodeCount);
+            }
+            score = L;
 
-            updateProgress(currentDepth, bestMove, score, nodeCount);
+        } else {
+            // --- Standard Binary Search for Avalanche Mode ---
+            int L = (score > 0) ? 1 : -maxStones;
+            int R = (score > 0) ? maxStones : 0;
+            int currentStep = 1;
+
+            while (L < R) {
+                int mid = L + (R - L) / 2;
+                previousBest = bestMove;
+                currentStep++;
+                setBinaryProgress(currentStep, totalSteps);
+
+#if SOLVER_USE_CACHE
+                solved = true;
+                score = FN(negamaxWithMove)(context->board, &bestMove, mid, mid + 1, currentDepth, &solved, previousBest);
+                stepCache();
+#else
+                solved = true;
+                score = FN(negamaxWithMove)(context->board, &bestMove, mid, mid + 1, currentDepth, previousBest);
+#endif
+                if (score > mid) L = score;
+                else R = score;
+
+                updateProgress(currentDepth, bestMove, score, nodeCount);
+            }
+            score = L;
         }
-        score = L;
     }
 
     finishProgress();
