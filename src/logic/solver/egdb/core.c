@@ -38,24 +38,25 @@ static void initWaysTable() {
     egdb_mem_init();
 }
 
-static inline uint64_t getEGDBIndex(const Board* board) {
+static inline uint64_t getEGDBIndex(const Board* board, int stones) {
     uint8_t rel[12];
 
+    // 2. Fully unrolled Board Normalization (No loops here)
     if (board->color == 1) {
-        for (int i = LBOUND_P1; i <= HBOUND_P1; i++) rel[i] = board->cells[i];
-        for (int i = LBOUND_P2; i <= HBOUND_P2; i++) rel[i - 1] = board->cells[i];
+        rel[0] = board->cells[0];  rel[1] = board->cells[1];  rel[2] = board->cells[2];
+        rel[3] = board->cells[3];  rel[4] = board->cells[4];  rel[5] = board->cells[5];
+        rel[6] = board->cells[7];  rel[7] = board->cells[8];  rel[8] = board->cells[9];
+        rel[9] = board->cells[10]; rel[10] = board->cells[11]; rel[11] = board->cells[12];
     } else {
-        for (int i = LBOUND_P2; i <= HBOUND_P2; i++) rel[i - LBOUND_P2] = board->cells[i];
-        for (int i = LBOUND_P1; i <= HBOUND_P1; i++) rel[i + 6] = board->cells[i];
+        rel[0] = board->cells[7];  rel[1] = board->cells[8];  rel[2] = board->cells[9];
+        rel[3] = board->cells[10]; rel[4] = board->cells[11]; rel[5] = board->cells[12];
+        rel[6] = board->cells[0];  rel[7] = board->cells[1];  rel[8] = board->cells[2];
+        rel[9] = board->cells[3];  rel[10] = board->cells[4]; rel[11] = board->cells[5];
     }
-
-    int stones = 0;
-    for (int i = 0; i < 12; i++) stones += rel[i];
 
     uint64_t index = 0;
     int pitsLeft = 12;
 
-    // --- NEW O(1) TELESCOPING INDEX MATH ---
     for (int i = 0; i < 11; i++) {
         int s = rel[i];
         if (s > 0) {
@@ -70,7 +71,6 @@ static inline uint64_t getEGDBIndex(const Board* board) {
 }
 
 bool EGDB_probe(Board* board, int* score) {
-    // Prevent probing mismatched DBs (e.g. asking for Classic moves when Avalanche DB is loaded)
     bool current_is_avalanche = (getMoveFunction() != CLASSIC_MOVE);
     if (current_is_avalanche != loaded_egdb_is_avalanche) {
         return false;
@@ -78,28 +78,25 @@ bool EGDB_probe(Board* board, int* score) {
 
     int stonesLeft = egdb_total_stones_configured - board->cells[SCORE_P1] - board->cells[SCORE_P2];
 
-    // Check if the board is within currently loaded bounds
     if (stonesLeft <= 0 || stonesLeft > loaded_egdb_max_stones) {
         return false;
     }
 
-    uint64_t idx = getEGDBIndex(board);
+    // 3. Pass stonesLeft down here
+    uint64_t idx = getEGDBIndex(board, stonesLeft);
     int8_t futureVal;
 
-    // Retrieve value from the memory backend
     if (!egdb_mem_probe(stonesLeft, idx, &futureVal)) {
         return false;
     }
 
-    // Uncomputed or intermediate states shouldn't be matched
     if (futureVal == EGDB_UNCOMPUTED || futureVal == EGDB_VISITING) {
         return false;
     }
 
-    // Calculate absolute score relative to current board diff
-    int currentDiff = (board->color == 1)
-        ? (board->cells[SCORE_P1] - board->cells[SCORE_P2])
-        : (board->cells[SCORE_P2] - board->cells[SCORE_P1]);
+    // 4. Branchless Math: board->color is 1 or -1. 
+    // This perfectly toggles the subtraction direction without an if/else ternary!
+    int currentDiff = board->color * (board->cells[SCORE_P1] - board->cells[SCORE_P2]);
 
     *score = currentDiff + futureVal;
     egdb_hits++;
@@ -178,22 +175,22 @@ static int8_t crunch(int stones, uint64_t index, Board* board) {
             // Probe smaller layer if stones were captured
             if (next_stones < stones) {
                 // Layer next_stones is guaranteed to be fully computed already
-                lookup = egdb_tables[next_stones][getEGDBIndex(&next)];
+                lookup = egdb_tables[next_stones][getEGDBIndex(&next, next_stones)];
             } else if (next.color == board->color) {
                 // Next turn is same player
-                lookup = crunch(next_stones, getEGDBIndex(&next), &next);
+                lookup = crunch(next_stones, getEGDBIndex(&next, next_stones), &next);
             } else {
                 // Next turn is opponent, reorient board
                 Board normalized;
-                unhashToBoard(getEGDBIndex(&next), next_stones, &normalized);
-                lookup = crunch(next_stones, getEGDBIndex(&next), &normalized);
+                unhashToBoard(getEGDBIndex(&next, next_stones), next_stones, &normalized);
+                lookup = crunch(next_stones, getEGDBIndex(&next, next_stones), &normalized);
             }
 
             // Adjust score based on who is playing next
             score = (next.color == board->color)
                 ? (diff_gained + lookup)
                 : (diff_gained - lookup);
-        }
+            }
 
         if (score > best_score) best_score = score;
     }
