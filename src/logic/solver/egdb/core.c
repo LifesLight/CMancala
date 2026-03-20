@@ -41,7 +41,6 @@ static void initWaysTable() {
 static inline uint64_t getEGDBIndex(const Board* board) {
     uint8_t rel[12];
 
-    // Normalize board orientation based on color
     if (board->color == 1) {
         for (int i = LBOUND_P1; i <= HBOUND_P1; i++) rel[i] = board->cells[i];
         for (int i = LBOUND_P2; i <= HBOUND_P2; i++) rel[i - 1] = board->cells[i];
@@ -50,22 +49,21 @@ static inline uint64_t getEGDBIndex(const Board* board) {
         for (int i = LBOUND_P1; i <= HBOUND_P1; i++) rel[i + 6] = board->cells[i];
     }
 
-    // Count total stones currently in play
     int stones = 0;
     for (int i = 0; i < 12; i++) stones += rel[i];
 
     uint64_t index = 0;
     int pitsLeft = 12;
 
-    // Calculate combinatorial index
+    // --- NEW O(1) TELESCOPING INDEX MATH ---
     for (int i = 0; i < 11; i++) {
         int s = rel[i];
-        for (int k = 0; k < s; k++) {
-            index += ways[stones - k][pitsLeft - 1];
+        if (s > 0) {
+            index += ways[stones][pitsLeft] - ways[stones - s][pitsLeft];
+            stones -= s;
+            if (stones == 0) break;
         }
-        stones -= s;
         pitsLeft--;
-        if (stones == 0) break;
     }
 
     return index;

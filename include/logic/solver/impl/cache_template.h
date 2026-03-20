@@ -72,56 +72,58 @@ static void FN(initCacheInternal)(uint64_t size) {
 // --- Logic ---
 
 static inline bool FN(translateBoard)(Board* board, uint64_t *code) {
-    uint64_t h = 0;
-    int offset = 0;
-
-    const int a0 = (board->color == 1) ? 0 : 7;
-    const int b0 = (board->color == 1) ? 7 : 0;
+    int a0 = (board->color == 1) ? 0 : 7;
+    int b0 = (board->color == 1) ? 7 : 0;
 
 #if CACHE_B60
-    for (int i = 0; i < 6; i++) {
-        uint8_t v = board->cells[a0 + i];
-        if (v > 31) return false;
-        h |= (uint64_t)(v & 0x1F) << offset;
-        offset += 5;
-    }
-    for (int i = 0; i < 6; i++) {
-        uint8_t v = board->cells[b0 + i];
-        if (v > 31) return false;
-        h |= (uint64_t)(v & 0x1F) << offset;
-        offset += 5;
-    }
+    uint8_t m = board->cells[a0] | board->cells[a0+1] | board->cells[a0+2] | board->cells[a0+3] | board->cells[a0+4] | board->cells[a0+5] |
+                board->cells[b0] | board->cells[b0+1] | board->cells[b0+2] | board->cells[b0+3] | board->cells[b0+4] | board->cells[b0+5];
+    if (m > 31) return false;
+
+    uint64_t h = ((uint64_t)board->cells[a0]) |
+                 ((uint64_t)board->cells[a0+1] << 5) |
+                 ((uint64_t)board->cells[a0+2] << 10) |
+                 ((uint64_t)board->cells[a0+3] << 15) |
+                 ((uint64_t)board->cells[a0+4] << 20) |
+                 ((uint64_t)board->cells[a0+5] << 25) |
+                 ((uint64_t)board->cells[b0] << 30) |
+                 ((uint64_t)board->cells[b0+1] << 35) |
+                 ((uint64_t)board->cells[b0+2] << 40) |
+                 ((uint64_t)board->cells[b0+3] << 45) |
+                 ((uint64_t)board->cells[b0+4] << 50) |
+                 ((uint64_t)board->cells[b0+5] << 55);
 
     // 60-bit mixer (Bijective on 60 bits)
-    const uint64_t m = 0x0FFFFFFFFFFFFFFFULL;
-
+    const uint64_t m_mix = 0x0FFFFFFFFFFFFFFFULL;
     h ^= h >> 30;
-    h = (h * 0xff51afd7ed558ccdULL) & m;
+    h = (h * 0xff51afd7ed558ccdULL) & m_mix;
     h ^= h >> 30;
-    h = (h * 0xc4ceb9fe1a85ec53ULL) & m;
+    h = (h * 0xc4ceb9fe1a85ec53ULL) & m_mix;
     h ^= h >> 30;
-
 #else
-    for (int i = 0; i < 6; i++) {
-        uint8_t v = board->cells[a0 + i];
-        if (v > 15) return false;
-        h |= (uint64_t)(v & 0x0F) << offset;
-        offset += 4;
-    }
-    for (int i = 0; i < 6; i++) {
-        uint8_t v = board->cells[b0 + i];
-        if (v > 15) return false;
-        h |= (uint64_t)(v & 0x0F) << offset;
-        offset += 4;
-    }
+    uint8_t m = board->cells[a0] | board->cells[a0+1] | board->cells[a0+2] | board->cells[a0+3] | board->cells[a0+4] | board->cells[a0+5] |
+                board->cells[b0] | board->cells[b0+1] | board->cells[b0+2] | board->cells[b0+3] | board->cells[b0+4] | board->cells[b0+5];
+    if (m > 15) return false;
+
+    uint64_t h = ((uint64_t)board->cells[a0]) |
+                 ((uint64_t)board->cells[a0+1] << 4) |
+                 ((uint64_t)board->cells[a0+2] << 8) |
+                 ((uint64_t)board->cells[a0+3] << 12) |
+                 ((uint64_t)board->cells[a0+4] << 16) |
+                 ((uint64_t)board->cells[a0+5] << 20) |
+                 ((uint64_t)board->cells[b0] << 24) |
+                 ((uint64_t)board->cells[b0+1] << 28) |
+                 ((uint64_t)board->cells[b0+2] << 32) |
+                 ((uint64_t)board->cells[b0+3] << 36) |
+                 ((uint64_t)board->cells[b0+4] << 40) |
+                 ((uint64_t)board->cells[b0+5] << 44);
 
     // 48-bit mixer (Bijective on 48 bits)
-    const uint64_t m = 0xFFFFFFFFFFFFULL;
-
+    const uint64_t m_mix = 0xFFFFFFFFFFFFULL;
     h ^= h >> 24;
-    h = (h * 0xfd7ed558ccdULL) & m;
+    h = (h * 0xfd7ed558ccdULL) & m_mix;
     h ^= h >> 24;
-    h = (h * 0xfe1a85ec53ULL) & m;
+    h = (h * 0xfe1a85ec53ULL) & m_mix;
     h ^= h >> 24;
 #endif
 
