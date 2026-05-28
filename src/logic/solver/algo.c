@@ -146,7 +146,7 @@ void binarySearchRoot(Context* context, SolverConfig *config) {
 
 void aspirationRoot(Context* context, SolverConfig *config) {
     // Probe opening book
-    if (config->useOpeningBook) {
+    if (config->useOpeningBook && getMoveFunction() == CLASSIC_MOVE) {
         int bestMove = -1;
         int score = 0;
         if (probeOpeningBook(context->board, &bestMove, &score)) {
@@ -167,7 +167,7 @@ void aspirationRoot(Context* context, SolverConfig *config) {
         }
     }
 
-    // Intercept to factor out "One Shot" to the new binary search root!
+    // Intercept to factor out "One Shot" to the binary search root!
     if (config->timeLimit == 0 && config->depth == 0) {
         binarySearchRoot(context, config);
         return;
