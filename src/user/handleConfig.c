@@ -19,6 +19,7 @@ void renderConfigHelp() {
     renderOutput("  cache[number >= 17]              : Set cache size as power of two. If compression is off number needs to be >= 29", CONFIG_PREFIX);
     renderOutput("  compress [always|never|auto]     : Configure cache compression. Auto selects best mode for cache size.", CONFIG_PREFIX);
     renderOutput("  egdb [N]                         : Load/Gen EGDB (Backend chosen at compile-time).", CONFIG_PREFIX);
+    renderOutput("  book [true|false]                : Enable opening book", CONFIG_PREFIX);
     renderOutput("  starting [1|2]                   : Configure starting player", CONFIG_PREFIX);
     renderOutput("  player [1|2] [human|random|ai]   : Configure player", CONFIG_PREFIX);
     renderOutput("  display                          : Display current configuration", CONFIG_PREFIX);
@@ -95,6 +96,9 @@ void printConfig(Config* config) {
     snprintf(message, sizeof(message), "  Compress: %s", compressStr);
     renderOutput(message, CONFIG_PREFIX);
 
+    snprintf(message, sizeof(message), "  Opening book: %s", config->solverConfig.useOpeningBook ? "true" : "false");
+    renderOutput(message, CONFIG_PREFIX);
+
     if (loaded_egdb_max_stones > 0) {
         snprintf(message, sizeof(message), "  EGDB Loaded: %d stones", loaded_egdb_max_stones);
         renderOutput(message, CONFIG_PREFIX);
@@ -127,6 +131,9 @@ void printConfig(Config* config) {
             snprintf(message, sizeof(message), "  Player 2: ai");
             break;
     }
+    renderOutput(message, CONFIG_PREFIX);
+
+    snprintf(message, sizeof(message), "  Progress bar: %s", config->solverConfig.progressBar ? "true" : "false");
     renderOutput(message, CONFIG_PREFIX);
 
     snprintf(message, sizeof(message), "  Autoplay: %s", config->autoplay ? "true" : "false");
@@ -177,6 +184,32 @@ void handleConfigInput(bool* requestedStart, Config* config) {
 
         generateEGDB(stones, is_avalanche);
         return;
+    }
+
+    if (strncmp(input, "book ", 5) == 0) {
+        bool originalBook = config->solverConfig.useOpeningBook;
+        if (strcmp(input + 5, "true") == 0 || strcmp(input + 5, "1") == 0) {
+            config->solverConfig.useOpeningBook = true;
+            if (originalBook) {
+                renderOutput("Opening book already enabled", CONFIG_PREFIX);
+                return;
+            }
+            renderOutput("Enabled opening book", CONFIG_PREFIX);
+            return;
+        } else if (strcmp(input + 5, "false") == 0 || strcmp(input + 5, "0") == 0) {
+            config->solverConfig.useOpeningBook = false;
+            if (!originalBook) {
+                renderOutput("Opening book already disabled", CONFIG_PREFIX);
+                return;
+            }
+            renderOutput("Disabled opening book", CONFIG_PREFIX);
+            return;
+        } else {
+            char message[256];
+            snprintf(message, sizeof(message), "Invalid book option \"%.200s\"", input + 5);
+            renderOutput(message, CONFIG_PREFIX);
+            return;
+        }
     }
 
     if (strncmp(input, "cache ", 6) == 0) {

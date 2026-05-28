@@ -145,6 +145,28 @@ void binarySearchRoot(Context* context, SolverConfig *config) {
 }
 
 void aspirationRoot(Context* context, SolverConfig *config) {
+    // Probe opening book
+    if (config->useOpeningBook) {
+        int bestMove = -1;
+        int score = 0;
+        if (probeOpeningBook(context->board, &bestMove, &score)) {
+            context->metadata.lastTime = 0.0;
+            context->metadata.lastNodes = 0;
+            context->metadata.lastMove = bestMove;
+            context->metadata.lastEvaluation = score;
+            context->metadata.lastDepth = 65534;
+            context->metadata.lastSolved = true;
+            
+            for (int i = 0; i < MAX_DEPTH; i++) context->metadata.lastDepthTimes[i] = -1.0;
+            context->metadata.lastDepthTimes[1] = 0.0;
+
+            startProgress(config, PLAY_PREFIX);
+            updateProgress(65534, bestMove, score, 0);
+            finishProgress();
+            return;
+        }
+    }
+
     // Intercept to factor out "One Shot" to the new binary search root!
     if (config->timeLimit == 0 && config->depth == 0) {
         binarySearchRoot(context, config);

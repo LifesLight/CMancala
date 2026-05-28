@@ -11,7 +11,8 @@ void startInterface() {
         .timeLimit = 5.0,
         .clip = false,
         .compressCache = AUTO,
-        .progressBar = true
+        .progressBar = true,
+        .useOpeningBook = false
     };
 
     GameSettings gameSettings = {

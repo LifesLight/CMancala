@@ -369,7 +369,8 @@ static void init_game_with_config(int stones, int distribution, int moveFunc, do
         .timeLimit = timeLimit, 
         .clip = false, 
         .compressCache = AUTO, 
-        .progressBar = false
+        .progressBar = false,
+        .useOpeningBook = true
     };
     int actualSeed = seedInput;
     if (actualSeed == 0) actualSeed = (int)time(NULL);

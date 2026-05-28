@@ -30,6 +30,7 @@ Performance varies with game state and number of stones.
 * 4 stones/pit → very high level in ~5s.
 * Fewer stones → faster searches.
 * Predictions improve as the game progresses.
+* Standard opening moves (3, 4, and 5 stones) can be resolved via opening book.
 
 If the AI starts, it is usually almost unbeatable.
 (In 4-stone classic, starter has an evaluation advantage of 8.)
