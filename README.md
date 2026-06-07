@@ -82,7 +82,8 @@ All solvers use Negamax + Alpha-Beta. They handle double moves.
 ### User interface
 
 * Terminal UI.
-* Experimental WebUI.
+* WebUI.
+* Headless API mode (`--api`) for scripts like book generator.
 
 ### Building and Running
 

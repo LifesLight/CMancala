@@ -1,210 +1,165 @@
 import subprocess
-import re
-import sys
 import os
+import sys
 
 # --- CONFIGURATION ---
 MANCALA_EXEC = "./build/Mancala"
 OUTPUT_FILE = "opening_book.txt"
 STONES_LIST = [3, 4, 5]
-EGDB = 32
-CACHE = 30
-MAX_AI_DEPTH = 3
+EGDB = 36
+CACHE = 32
+MAX_AI_DEPTH = 4
+
+STORE_OPTIMAL_LINE = True
 # ---------------------
 
-class MancalaEngine:
-    def __init__(self, executable_path):
+class MancalaAPI:
+    def __init__(self, executable_path, egdb, cache):
+        cmd = [
+            executable_path, "--api", 
+            "--egdb", str(egdb), 
+            "--cache", str(cache)
+        ]
         self.proc = subprocess.Popen(
-            [executable_path],
+            cmd,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
             bufsize=1
         )
-        self.buf = ""
-
-    def read_until_prompt(self):
-        """Reads character by character until it hits one of the engine prompts."""
-        while True:
-            char = self.proc.stdout.read(1)
-            if not char:
-                print("\n[!] Engine crashed or closed unexpectedly.")
-                sys.exit(1)
-            
-            self.buf += char
-            
-            if self.buf.endswith("(C) << "):
-                res = self.buf
-                self.buf = ""
-                return "(C)", res
-            elif self.buf.endswith("(G) << "):
-                res = self.buf
-                self.buf = ""
-                return "(G)", res
-            elif self.buf.endswith("(P) << "):
-                res = self.buf
-                self.buf = ""
-                return "(P)", res
 
     def send(self, cmd):
-        """Sends a command to the engine."""
         self.proc.stdin.write(cmd + "\n")
         self.proc.stdin.flush()
 
+    def receive(self):
+        while True:
+            line = self.proc.stdout.readline()
+            if not line:
+                print("\n[!] API crashed or closed unexpectedly.")
+                sys.exit(1)
+            line = line.strip()
+
+            if line.startswith("OK") or line.startswith("ERROR"):
+                return line
+
+    def get_root(self, stones):
+        self.send(f"ROOT {stones}")
+        res = self.receive()
+        if res.startswith("OK CODE"):
+            return res.split()[2]
+        return None
+
+    def solve(self, code):
+        self.send(f"SOLVE {code}")
+        res = self.receive()
+        if res.startswith("OK EVAL"):
+            parts = res.split()
+            eval_score = int(parts[2])
+            move = int(parts[4])
+            next_code = parts[6]
+            return eval_score, move, next_code
+        return None, None, None
+
+    def get_moves(self, code):
+        self.send(f"MOVES {code}")
+        res = self.receive()
+        if res.startswith("OK"):
+            parts = res.split()[1:]
+            moves = []
+            for i in range(0, len(parts), 4):
+                if parts[i] == "MOVE" and parts[i+2] == "NEXT_CODE":
+                    moves.append((int(parts[i+1]), parts[i+3]))
+            return moves
+        return []
+
+    def close(self):
+        self.send("QUIT")
+        self.proc.wait()
+
 def load_existing_book(filename):
-    """Loads existing codes so we don't duplicate lines in the output file."""
-    book = {}
+    book = set()
     if os.path.exists(filename):
         with open(filename, 'r') as f:
             for line in f:
                 parts = line.strip().split()
                 if len(parts) >= 3:
-                    book[parts[0]] = (parts[1], parts[2])
+                    book.add(parts[0])
     return book
 
-def extract_code(text):
-    m = re.search(r'Code\s+"([^"]+)"', text)
-    return m.group(1) if m else None
-
-def extract_metadata(text):
-    move, eval_score = None, None
-    m_move = re.search(r'Move:\s+(\d+)', text)
-    m_eval = re.search(r'Evaluation:\s+(-?\d+)', text)
-    if m_move: move = m_move.group(1)
-    if m_eval: eval_score = m_eval.group(1)
-    return move, eval_score
-
-def explore(code, ai_depth, engine, book, file_handle, explored_depths):
-    """Recursively explores the game tree up to a certain AI move depth."""
-    if ai_depth >= MAX_AI_DEPTH:
-        return
-        
-    if code in explored_depths and explored_depths[code] <= ai_depth:
-        return
-    explored_depths[code] = ai_depth
-    
-    # 1. Load the state
-    engine.send(f"load {code}")
-    engine.read_until_prompt()
-    
-    # 2. Step the engine to see what happens
-    engine.send("step")
-    prompt, out = engine.read_until_prompt()
-    
-    if prompt == "(P)":
-        # HUMAN's
-        engine.send("menu")
-        engine.read_until_prompt()
-        
-        for move_idx in range(1, 7):
-            engine.send(f"load {code}")
-            engine.read_until_prompt()
-            
-            engine.send("step")
-            p, out = engine.read_until_prompt()
-            
-            if p != "(P)":
-                continue
-                
-            engine.send(str(move_idx))
-            p, out = engine.read_until_prompt()
-            
-            # Verify if the move was actually valid
-            if "Move:" not in out:
-                if p == "(P)":
-                    engine.send("menu")
-                    engine.read_until_prompt()
-                continue # Skip invalid human moves
-                
-            if p == "(P)":
-                engine.send("menu")
-                engine.read_until_prompt()
-                engine.send("encode")
-                p_enc, out_enc = engine.read_until_prompt()
-                child_code = extract_code(out_enc)
-                if child_code and child_code != code:
-                    explore(child_code, ai_depth, engine, book, file_handle, explored_depths)
-                    
-            elif p == "(G)":
-                engine.send("encode")
-                p_enc, out_enc = engine.read_until_prompt()
-                child_code = extract_code(out_enc)
-                if child_code and child_code != code:
-                    explore(child_code, ai_depth, engine, book, file_handle, explored_depths)
-                    
-    elif prompt == "(G)":
-        # AI's turn
-        engine.send("last")
-        p, out = engine.read_until_prompt()
-        move, eval_score = extract_metadata(out)
-        
-        if move is not None and eval_score is not None:
-            # Save if not in book yet
-            if code not in book:
-                entry = f"{code} {move} {eval_score}"
-                print(f" [Depth {ai_depth}] Evaluated & Saved: {entry}")
-                file_handle.write(entry + "\n")
-                file_handle.flush()
-                book[code] = (move, eval_score)
-            else:
-                print(f" [Depth {ai_depth}] Skipped DB Write (Already tracked): {code}")
-                
-            engine.send("encode")
-            p_enc, out_enc = engine.read_until_prompt()
-            child_code = extract_code(out_enc)
-            
-            if child_code:
-                explore(child_code, ai_depth + 1, engine, book, file_handle, explored_depths)
-
+def get_ui_move(internal_move):
+    if internal_move < 6:
+        return internal_move + 1
+    else:
+        return internal_move - 6
 
 def generate_book():
-    print(">> Initializing Engine & Book...")
-    book = load_existing_book(OUTPUT_FILE)
+    book_codes = load_existing_book(OUTPUT_FILE)
     explored_depths = {}
-    
-    engine = MancalaEngine(MANCALA_EXEC)
-    engine.read_until_prompt()
-    
+
+    print(">> Initializing Engine (EGDB and Cache)...")
+    api = MancalaAPI(MANCALA_EXEC, EGDB, CACHE)
+
     with open(OUTPUT_FILE, "a") as file_handle:
         for stones in STONES_LIST:
             print(f"\n=========================================")
-            print(f">> Generating Tree for {stones} Stones (Max Depth: {MAX_AI_DEPTH})")
-            print(f"=========================================")
-            
-            # --- Scenario 1: AI Starts (Player 1) ---
-            print(f"\n>> Configuring: AI starts (P1)")
-            config_scen_1 = [
-                "config", "autoplay false", "time 0", 
-                "player 1 ai", "player 2 human", "starting 1",
-                f"egdb {EGDB}", f"cache {CACHE}", f"stones {stones}", "start"
-            ]
-            for cmd in config_scen_1:
-                engine.send(cmd)
-                engine.read_until_prompt()
-                
-            engine.send("encode")
-            p, out = engine.read_until_prompt()
-            code1 = extract_code(out)
-            explore(code1, 0, engine, book, file_handle, explored_depths)
-            
-            # --- Scenario 2: Human Starts (Player 2) ---
-            print(f"\n>> Configuring: Human starts (P2)")
-            config_scen_2 = [
-                "config", "autoplay false", "time 0", 
-                "player 1 ai", "player 2 human", "starting 2",
-                f"egdb {EGDB}", f"cache {CACHE}", f"stones {stones}", "start"
-            ]
-            for cmd in config_scen_2:
-                engine.send(cmd)
-                engine.read_until_prompt()
-                
-            engine.send("encode")
-            p, out = engine.read_until_prompt()
-            code2 = extract_code(out)
-            explore(code2, 0, engine, book, file_handle, explored_depths)
-        
-    engine.send("quit")
+            print(f">> Processing {stones} Stones")
+
+            root_code = api.get_root(stones)
+            if not root_code:
+                print("Failed to get root code")
+                continue
+
+            if STORE_OPTIMAL_LINE:
+                print(f"\n>> Generating Optimal PV Line for {stones} Stones")
+                code = root_code
+                depth = 0
+                while True:
+                    eval_score, move, next_code = api.solve(code)
+                    if move is None or move == -1:
+                        break
+
+                    if code not in book_codes:
+                        ui_move = get_ui_move(move)
+                        entry = f"{code} {ui_move} {eval_score}"
+                        print(f" [Opt-Line {depth}] Saved: {entry}")
+                        file_handle.write(entry + "\n")
+                        file_handle.flush()
+                        book_codes.add(code)
+
+                    code = next_code
+                    depth += 1
+
+            print(f"\n>> Generating Tree for {stones} Stones (Max Depth: {MAX_AI_DEPTH})")
+
+            def explore(code, current_depth):
+                if current_depth >= MAX_AI_DEPTH:
+                    return
+
+                if code in explored_depths and explored_depths[code] <= current_depth:
+                    return
+                explored_depths[code] = current_depth
+
+                eval_score, best_move, _ = api.solve(code)
+                if best_move is None or best_move == -1:
+                    return
+
+                if code not in book_codes:
+                    ui_move = get_ui_move(best_move)
+                    entry = f"{code} {ui_move} {eval_score}"
+                    print(f" [Depth {current_depth}] Saved: {entry}")
+                    file_handle.write(entry + "\n")
+                    file_handle.flush()
+                    book_codes.add(code)
+
+                moves = api.get_moves(code)
+                for move, next_code in moves:
+                    explore(next_code, current_depth + 1)
+
+            explore(root_code, 0)
+
+    api.close()
     print("\n>> Generation finished!")
 
 if __name__ == "__main__":

@@ -41,6 +41,7 @@ int max(const int a, const int b);
 #define MKDIR(path) mkdir(path, 0777)
 #endif
 
+void trimSpaces(char *str);
 void getInput(char* input, const char* prefix);
 void initializeBoardFromConfig(Board* board, Config* config);
 void quitGame();

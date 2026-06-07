@@ -20,7 +20,14 @@ int main(int argc, char const* argv[]) {
             return 0;
         }
 
-        printf("CMancala does not support command line arguments (except --benchmark). Ignoring:\n[");
+        if (strcmp(argv[1], "--api") == 0) {
+#ifndef WEB_BUILD
+            runApiMode(argc, argv);
+#endif
+            return 0;
+        }
+
+        printf("CMancala CLI does not support command line arguments (except --benchmark and --api). Ignoring:\n[");
         for (int i = 1; i < argc; i++) {
             printf("%s", argv[i]);
             if (i < argc - 1) {

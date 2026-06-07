@@ -18,3 +18,4 @@
 #include "user/handleGame.h"
 
 void startInterface();
+void runApiMode(int argc, char const* argv[]);

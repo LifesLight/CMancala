@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 project(Mancala)
 
-set(MANCALA_VERSION "12.0" CACHE STRING "Current Version")
+set(MANCALA_VERSION "12.1" CACHE STRING "Current Version")
 
 # --- Core Shared Files ---
 set(CORE_SOURCES
@@ -10,6 +10,7 @@ set(CORE_SOURCES
     src/logic/board.c
     src/logic/solver/algo.c
     src/logic/solver/cache.c
+    src/logic/solver/opening_book.c
     src/user/render.c
     src/user/handleConfig.c
     src/user/handleGame.c
