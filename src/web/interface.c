@@ -357,7 +357,7 @@ void undo_move() {
     }
 }
 
-static void init_game_with_config(int stones, int distribution, int moveFunc, double timeLimit, int startColor, int seedInput) {
+static void init_game_with_config(int stones, int distribution, int moveFunc, double timeLimit, int startColor, int seedInput, int useBook) {
     if (stones < 1) stones = 1;
     if (stones > 18) stones = 18;
 
@@ -370,7 +370,7 @@ static void init_game_with_config(int stones, int distribution, int moveFunc, do
         .clip = false, 
         .compressCache = AUTO, 
         .progressBar = false,
-        .useOpeningBook = true
+        .useOpeningBook = (useBook != 0)
     };
     int actualSeed = seedInput;
     if (actualSeed == 0) actualSeed = (int)time(NULL);
@@ -503,8 +503,8 @@ void do_web_move(int index) {
 }
 
 EMSCRIPTEN_KEEPALIVE
-void restart_game(int stones, int distribution, int moveFunc, double timeLimit, int startColor, int seed) {
-    init_game_with_config(stones, distribution, moveFunc, timeLimit, startColor, seed);
+void restart_game(int stones, int distribution, int moveFunc, double timeLimit, int startColor, int seed, int useBook) {
+    init_game_with_config(stones, distribution, moveFunc, timeLimit, startColor, seed, useBook);
     EM_ASM({ updateView(); });
 }
 
@@ -732,7 +732,8 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
             moveFunc: parseInt(document.getElementById("cfg-mode").value),
             timeVal: (function() { let t = parseFloat(document.getElementById("cfg-time").value); if (isNaN(t) || t < 0) { t = 0; document.getElementById("cfg-time").value = "0"; } return t; })(),
             startColor: parseInt(document.getElementById("cfg-start").value),
-            seed: parseInt(document.getElementById("cfg-seed").value) || 0
+            seed: parseInt(document.getElementById("cfg-seed").value) || 0,
+            useBook: document.getElementById("cfg-book") ? (document.getElementById("cfg-book").checked ? 1 : 0) : 1
         };
     };
 
@@ -752,7 +753,7 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
     
     let html = `<h3>GAME SETTINGS</h3><div class='cfg-row'><span class='cfg-label'>STONES (1-18)</span><input id='cfg-stones' type='number' value='4' min='1' max='18'></div><div class='cfg-row'><span class='cfg-label'>DISTRIBUTION</span><select id='cfg-dist'><option value='0'>Uniform</option><option value='1'>Random</option><option value='2'>Custom</option></select></div><div class='cfg-row' id='seed-row' style='display:none'><span class='cfg-label'>SEED (0=rand)</span><input id='cfg-seed' type='number' value='0'></div><div class='cfg-row'><span class='cfg-label'>MODE</span><select id='cfg-mode'><option value='0'>Classic</option><option value='1'>Avalanche</option></select></div><div class='cfg-row'><span class='cfg-label'>AI TIME LIMIT (s, 0=inf)</span><input id='cfg-time' type='number' value='1' min='0'></div><div class='cfg-row'><span class='cfg-label'>STARTING PLAYER</span><select id='cfg-start'><option value='1'>Player</option><option value='-1'>AI</option></select></div>`;
 
-    html += `<div class='expert-only'><div class='cfg-row'><span class='cfg-label'>CACHE SIZE EXP (18-28)</span><input id='cfg-cache' type='number' value='24' min='18' max='28'></div><div class='cfg-row'><button id='cfg-egdb' class='cfg-btn' style='background:#05a; color:#fff;'>LOAD CLASSIC 18</button></div><div class='chk-row'><span class='cfg-label'>AI AUTOPLAY</span><input id='cfg-autoplay' type='checkbox' checked></div></div>`;
+    html += `<div class='expert-only'><div class='cfg-row'><span class='cfg-label'>CACHE SIZE EXP (18-28)</span><input id='cfg-cache' type='number' value='24' min='18' max='28'></div><div class='chk-row'><span class='cfg-label'>OPENING BOOK</span><input id='cfg-book' type='checkbox' checked></div><div class='cfg-row'><button id='cfg-egdb' class='cfg-btn' style='background:#05a; color:#fff;'>LOAD CLASSIC 18</button></div><div class='chk-row'><span class='cfg-label'>AI AUTOPLAY</span><input id='cfg-autoplay' type='checkbox' checked></div></div>`;
 
     html += `<button id='cfg-go' class='cfg-btn'>START GAME</button>`;
     html += `<button id='cfg-reset' class='cfg-btn-reset disabled'>RESET</button>`;
@@ -808,7 +809,7 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
             const cells = window.readCustomBoard();
             window.customEditMode = false;
             window.domCache = {};
-            Module._restart_game(cfg.stones, 0, cfg.moveFunc, cfg.timeVal, cfg.startColor, 0);
+            Module._restart_game(cfg.stones, 0, cfg.moveFunc, cfg.timeVal, cfg.startColor, 0, cfg.useBook);
             Module._set_custom_board(cells[0], cells[1], cells[2], cells[3], cells[4], cells[5], cells[6],
                                      cells[7], cells[8], cells[9], cells[10], cells[11], cells[12], cells[13],
                                      cfg.startColor);
@@ -816,10 +817,10 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
         } else if (cfg.dist === 1) {
             if (window.customEditMode) { window.customEditMode = false; window.domCache = {}; }
             const useSeed = window.inSetup ? window.lastUsedSeed : cfg.seed;
-            Module._restart_game(cfg.stones, 1, cfg.moveFunc, cfg.timeVal, cfg.startColor, useSeed);
+            Module._restart_game(cfg.stones, 1, cfg.moveFunc, cfg.timeVal, cfg.startColor, useSeed, cfg.useBook);
         } else {
             if (window.customEditMode) { window.customEditMode = false; window.domCache = {}; }
-            Module._restart_game(cfg.stones, 0, cfg.moveFunc, cfg.timeVal, cfg.startColor, 0);
+            Module._restart_game(cfg.stones, 0, cfg.moveFunc, cfg.timeVal, cfg.startColor, 0, cfg.useBook);
         }
 
         window.lastUsedSeed = Module._get_last_seed();
@@ -849,9 +850,9 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
             window.enterCustomEdit(null);
         } else if (cfg.dist === 1) {
             window.inSetup = true;
-            Module._restart_game(cfg.stones, 1, cfg.moveFunc, cfg.timeVal, cfg.startColor, window.lastUsedSeed);
+            Module._restart_game(cfg.stones, 1, cfg.moveFunc, cfg.timeVal, cfg.startColor, window.lastUsedSeed, cfg.useBook);
         } else {
-            Module._restart_game(cfg.stones, 0, cfg.moveFunc, cfg.timeVal, cfg.startColor, 0);
+            Module._restart_game(cfg.stones, 0, cfg.moveFunc, cfg.timeVal, cfg.startColor, 0, cfg.useBook);
         }
 
         window.updateButtons();
@@ -954,6 +955,8 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
             if (cInput) { cInput.value = "24"; Module._set_web_cache_size(24); }
             const aInput = document.getElementById("cfg-autoplay");
             if (aInput) { aInput.checked = true; Module._set_autoplay(1); }
+            const bInput = document.getElementById("cfg-book");
+            if (bInput) { bInput.checked = true; }
         } else {
             window.updateView();
         }
@@ -1201,6 +1204,6 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
 });
 
 void startInterface() {
-    init_game_with_config(4, 0, 0, 1.0, 1, 0);
+    init_game_with_config(4, 0, 0, 1.0, 1, 0, 1);
     launch_gui(MANCALA_VERSION);
 }
