@@ -31,7 +31,7 @@ void renderCheatHelp() {
     renderOutput("  quit                             : Quit the application", CHEAT_PREFIX);
 }
 
-void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* context) {
+void handleGameInput(bool *requestedConfig, bool *requestContinue, Context *context) {
     char input[256];
     getInput(input, CHEAT_PREFIX);
 
@@ -99,7 +99,7 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
                 return;
             }
 
-            if (parsedDepth >= 0 && parsedDepth < MAX_DEPTH) { 
+            if (parsedDepth >= 0 && parsedDepth < MAX_DEPTH) {
                 solveConfig.depth = parsedDepth;
             } else {
                 renderOutput("Invalid depth value", CHEAT_PREFIX);
@@ -175,7 +175,7 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
 
     // Check for request to hash
     if (strcmp(input, "encode") == 0) {
-        char* code = encodeBoard(context->board);
+        char *code = encodeBoard(context->board);
 
         char message[256];
 
@@ -196,7 +196,8 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
         }
 
         char *payload = input + 5;
-        while (*payload == ' ') payload++;
+        while (*payload == ' ')
+            payload++;
         memmove(input + 5, payload, strlen(payload) + 1);
 
         char temp[256];
@@ -402,7 +403,8 @@ void handleGameInput(bool* requestedConfig, bool* requestContinue, Context* cont
     if (strncmp(input, "store ", 6) == 0) {
         // Extract filename
         char *raw = input + 6;
-        while (*raw == ' ') raw++;
+        while (*raw == ' ')
+            raw++;
 
         if (*raw == '\0') {
             renderOutput("No file name specified", CHEAT_PREFIX);
@@ -517,12 +519,12 @@ void startGameHandling(Config config) {
     bool requestedConfig = false;
     bool requestedContinue = context.config.autoplay ? true : false;
 
-    while(!requestedConfig) {
+    while (!requestedConfig) {
         if (isBoardTerminal(context.board)) {
             requestedContinue = false;
         }
 
-        while(requestedContinue) {
+        while (requestedContinue) {
             bool requestedMenu = false;
 
             stepGame(&requestedMenu, &context);

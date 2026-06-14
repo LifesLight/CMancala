@@ -1,6 +1,6 @@
 /**
  * Copyright (c) Alexander Kurtz 2026
-*/
+ */
 
 #include "user/interface.h"
 
@@ -10,8 +10,8 @@
 
 /**
  * Program entry point
-*/
-int main(int argc, char const* argv[]) {
+ */
+int main(int argc, char const *argv[]) {
     if (argc > 1) {
         if (strcmp(argv[1], "--benchmark") == 0) {
 #ifndef WEB_BUILD

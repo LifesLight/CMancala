@@ -96,6 +96,8 @@ def build_lut(txt_filename, out_h):
 
         f.write(" */\n\n")
 
+        f.write("// clang-format off\n\n")
+
         def chunk_list(lst, n):
             for i in range(0, len(lst), n):
                 yield lst[i:i + n]

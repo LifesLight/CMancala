@@ -4,7 +4,6 @@
  * Copyright (c) Alexander Kurtz 2026
  */
 
-
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>

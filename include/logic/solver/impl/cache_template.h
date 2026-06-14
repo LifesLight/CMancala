@@ -33,7 +33,7 @@ typedef struct {
 // --- Unique Global Array ---
 
 // Physical size = logical_size / 2.
-static FN(Bucket)* FN(cache) = NULL;
+static FN(Bucket) * FN(cache) = NULL;
 
 // --- Memory Management Helpers ---
 
@@ -45,7 +45,8 @@ static void FN(freeCacheInternal)() {
 }
 
 static void FN(initCacheInternal)(uint64_t size) {
-    FN(freeCacheInternal)();
+    FN(freeCacheInternal)
+    ();
     if (size == 0) return;
 
     // Allocate half the number of structs, as each Bucket holds 2 entries
@@ -57,41 +58,47 @@ static void FN(initCacheInternal)(uint64_t size) {
     if (FN(cache) == NULL) return;
 
     for (uint64_t i = 0; i < bucketCount; i++) {
-        FN(cache)[i].value_0 = CACHE_VAL_UNSET;
-        FN(cache)[i].tag_0   = 0;
-        FN(cache)[i].value_1 = CACHE_VAL_UNSET;
-        FN(cache)[i].tag_1   = 0;
+        FN(cache)
+        [i].value_0 = CACHE_VAL_UNSET;
+        FN(cache)
+        [i].tag_0 = 0;
+        FN(cache)
+        [i].value_1 = CACHE_VAL_UNSET;
+        FN(cache)
+        [i].tag_1 = 0;
 
 #if CACHE_DEPTH
-        FN(cache)[i].depth_0 = 0;
-        FN(cache)[i].depth_1 = 0;
+        FN(cache)
+        [i].depth_0 = 0;
+        FN(cache)
+        [i].depth_1 = 0;
 #endif
     }
 }
 
 // --- Logic ---
 
-static inline bool FN(translateBoard)(Board* board, uint64_t *code) {
+static inline bool FN(translateBoard)(Board *board, uint64_t *code) {
     int a0 = (board->color == 1) ? 0 : 7;
     int b0 = (board->color == 1) ? 7 : 0;
 
 #if CACHE_B60
-    uint8_t m = board->cells[a0] | board->cells[a0+1] | board->cells[a0+2] | board->cells[a0+3] | board->cells[a0+4] | board->cells[a0+5] |
-                board->cells[b0] | board->cells[b0+1] | board->cells[b0+2] | board->cells[b0+3] | board->cells[b0+4] | board->cells[b0+5];
+    uint8_t m = board->cells[a0] | board->cells[a0 + 1] | board->cells[a0 + 2] | board->cells[a0 + 3] | board->cells[a0 + 4] | board->cells[a0 + 5] |
+                board->cells[b0] | board->cells[b0 + 1] | board->cells[b0 + 2] | board->cells[b0 + 3] | board->cells[b0 + 4] | board->cells[b0 + 5];
     if (m > 31) return false;
 
     uint64_t h = ((uint64_t)board->cells[a0]) |
-                 ((uint64_t)board->cells[a0+1] << 5) |
-                 ((uint64_t)board->cells[a0+2] << 10) |
-                 ((uint64_t)board->cells[a0+3] << 15) |
-                 ((uint64_t)board->cells[a0+4] << 20) |
-                 ((uint64_t)board->cells[a0+5] << 25) |
+                 ((uint64_t)board->cells[a0 + 1] << 5) |
+                 ((uint64_t)board->cells[a0 + 2] << 10) |
+                 ((uint64_t)board->cells[a0 + 3] << 15) |
+                 ((uint64_t)board->cells[a0 + 4] << 20) |
+                 ((uint64_t)board->cells[a0 + 5] << 25) |
                  ((uint64_t)board->cells[b0] << 30) |
-                 ((uint64_t)board->cells[b0+1] << 35) |
-                 ((uint64_t)board->cells[b0+2] << 40) |
-                 ((uint64_t)board->cells[b0+3] << 45) |
-                 ((uint64_t)board->cells[b0+4] << 50) |
-                 ((uint64_t)board->cells[b0+5] << 55);
+                 ((uint64_t)board->cells[b0 + 1] << 35) |
+                 ((uint64_t)board->cells[b0 + 2] << 40) |
+                 ((uint64_t)board->cells[b0 + 3] << 45) |
+                 ((uint64_t)board->cells[b0 + 4] << 50) |
+                 ((uint64_t)board->cells[b0 + 5] << 55);
 
     // 60-bit mixer (Bijective on 60 bits)
     const uint64_t m_mix = 0x0FFFFFFFFFFFFFFFULL;
@@ -101,22 +108,22 @@ static inline bool FN(translateBoard)(Board* board, uint64_t *code) {
     h = (h * 0xc4ceb9fe1a85ec53ULL) & m_mix;
     h ^= h >> 30;
 #else
-    uint8_t m = board->cells[a0] | board->cells[a0+1] | board->cells[a0+2] | board->cells[a0+3] | board->cells[a0+4] | board->cells[a0+5] |
-                board->cells[b0] | board->cells[b0+1] | board->cells[b0+2] | board->cells[b0+3] | board->cells[b0+4] | board->cells[b0+5];
+    uint8_t m = board->cells[a0] | board->cells[a0 + 1] | board->cells[a0 + 2] | board->cells[a0 + 3] | board->cells[a0 + 4] | board->cells[a0 + 5] |
+                board->cells[b0] | board->cells[b0 + 1] | board->cells[b0 + 2] | board->cells[b0 + 3] | board->cells[b0 + 4] | board->cells[b0 + 5];
     if (m > 15) return false;
 
     uint64_t h = ((uint64_t)board->cells[a0]) |
-                 ((uint64_t)board->cells[a0+1] << 4) |
-                 ((uint64_t)board->cells[a0+2] << 8) |
-                 ((uint64_t)board->cells[a0+3] << 12) |
-                 ((uint64_t)board->cells[a0+4] << 16) |
-                 ((uint64_t)board->cells[a0+5] << 20) |
+                 ((uint64_t)board->cells[a0 + 1] << 4) |
+                 ((uint64_t)board->cells[a0 + 2] << 8) |
+                 ((uint64_t)board->cells[a0 + 3] << 12) |
+                 ((uint64_t)board->cells[a0 + 4] << 16) |
+                 ((uint64_t)board->cells[a0 + 5] << 20) |
                  ((uint64_t)board->cells[b0] << 24) |
-                 ((uint64_t)board->cells[b0+1] << 28) |
-                 ((uint64_t)board->cells[b0+2] << 32) |
-                 ((uint64_t)board->cells[b0+3] << 36) |
-                 ((uint64_t)board->cells[b0+4] << 40) |
-                 ((uint64_t)board->cells[b0+5] << 44);
+                 ((uint64_t)board->cells[b0 + 1] << 28) |
+                 ((uint64_t)board->cells[b0 + 2] << 32) |
+                 ((uint64_t)board->cells[b0 + 3] << 36) |
+                 ((uint64_t)board->cells[b0 + 4] << 40) |
+                 ((uint64_t)board->cells[b0 + 5] << 44);
 
     // 48-bit mixer (Bijective on 48 bits)
     const uint64_t m_mix = 0xFFFFFFFFFFFFULL;
@@ -189,7 +196,7 @@ static inline uint64_t FN(mergeBoard)(uint64_t bucketIndex, TAG_TYPE tag) {
     return ((uint64_t)tag << (cacheSizePow - 1)) | bucketIndex;
 }
 
-static inline void FN(cacheNodeHash)(Board* board, uint64_t boardRep, int evaluation, int boundType, int depth, bool solved) {
+static inline void FN(cacheNodeHash)(Board *board, uint64_t boardRep, int evaluation, int boundType, int depth, bool solved) {
     int scoreDelta = board->cells[SCORE_P1] - board->cells[SCORE_P2];
     scoreDelta *= board->color;
     evaluation -= scoreDelta;
@@ -201,7 +208,8 @@ static inline void FN(cacheNodeHash)(Board* board, uint64_t boardRep, int evalua
 
     uint64_t index;
     TAG_TYPE tag;
-    FN(splitBoard)(boardRep, &index, &tag);
+    FN(splitBoard)
+    (boardRep, &index, &tag);
 
     FN(Bucket) *b = &FN(cache)[index];
 
@@ -261,15 +269,14 @@ static inline void FN(cacheNodeHash)(Board* board, uint64_t boardRep, int evalua
         victim = (b->depth_1 < b->depth_0) ? 1 : 0;
     } else {
         const int zeroExact = (UNPACK_BOUND(b->value_0) == EXACT_BOUND);
-        const int oneExact  = (UNPACK_BOUND(b->value_1) == EXACT_BOUND);
+        const int oneExact = (UNPACK_BOUND(b->value_1) == EXACT_BOUND);
         victim = (zeroExact != oneExact) ? (zeroExact ? 1 : 0) : 1;
     }
 #else
     const int zeroExact = (UNPACK_BOUND(b->value_0) == EXACT_BOUND);
-    const int oneExact  = (UNPACK_BOUND(b->value_1) == EXACT_BOUND);
+    const int oneExact = (UNPACK_BOUND(b->value_1) == EXACT_BOUND);
     victim = (zeroExact != oneExact) ? (zeroExact ? 1 : 0) : 1;
 #endif
-
 
     if (victim == 0) {
         b->tag_0 = tag;
@@ -286,10 +293,11 @@ static inline void FN(cacheNodeHash)(Board* board, uint64_t boardRep, int evalua
     }
 }
 
-static inline bool FN(getCachedValueHash)(Board* board, uint64_t hashValue, int currentDepth, int *eval, int *boundType, bool *solved) {
+static inline bool FN(getCachedValueHash)(Board *board, uint64_t hashValue, int currentDepth, int *eval, int *boundType, bool *solved) {
     uint64_t index;
     TAG_TYPE tag;
-    FN(splitBoard)(hashValue, &index, &tag);
+    FN(splitBoard)
+    (hashValue, &index, &tag);
 
     FN(Bucket) *b = &FN(cache)[index];
 
@@ -304,10 +312,16 @@ static inline bool FN(getCachedValueHash)(Board* board, uint64_t hashValue, int 
 
     // LRU Swap
     if (matchSlot == 1) {
-        TAG_TYPE t = b->tag_0; b->tag_0 = b->tag_1; b->tag_1 = t;
-        int16_t v = b->value_0; b->value_0 = b->value_1; b->value_1 = v;
+        TAG_TYPE t = b->tag_0;
+        b->tag_0 = b->tag_1;
+        b->tag_1 = t;
+        int16_t v = b->value_0;
+        b->value_0 = b->value_1;
+        b->value_1 = v;
 #if CACHE_DEPTH
-        uint16_t d = b->depth_0; b->depth_0 = b->depth_1; b->depth_1 = d;
+        uint16_t d = b->depth_0;
+        b->depth_0 = b->depth_1;
+        b->depth_1 = d;
 #endif
         swapLRUCount++;
     }
@@ -319,7 +333,7 @@ static inline bool FN(getCachedValueHash)(Board* board, uint64_t hashValue, int 
     *solved = (b->depth_0 == DEPTH_SOLVED);
 #else
     (void)currentDepth;
-    *solved = true; 
+    *solved = true;
 #endif
 
     hitsLegalDepth++;
@@ -335,7 +349,7 @@ static inline bool FN(getCachedValueHash)(Board* board, uint64_t hashValue, int 
 
 // --- Stats Collector ---
 
-static void FN(collectCacheStats)(CacheStats* stats, bool calcFrag, bool calcStoneDist, bool calcDepthDist) {
+static void FN(collectCacheStats)(CacheStats *stats, bool calcFrag, bool calcStoneDist, bool calcDepthDist) {
     stats->cacheSize = cacheSize;
     stats->entrySize = sizeof(FN(Bucket)) / 2;
 
@@ -364,9 +378,9 @@ static void FN(collectCacheStats)(CacheStats* stats, bool calcFrag, bool calcSto
     stats->failStones = lastFailedEncodeStoneCount;
     stats->failRange = lastFailedEncodeValueRange;
 
-    const char* depthStr = CACHE_DEPTH ? "Depth" : "No Depth";
-    const char* keyStr = CACHE_B60 ? "60-bit Key" : "48-bit Key";
-    const char* tagStr = CACHE_T32 ? "32-bit Tag" : "16-bit Tag";
+    const char *depthStr = CACHE_DEPTH ? "Depth" : "No Depth";
+    const char *keyStr = CACHE_B60 ? "60-bit Key" : "48-bit Key";
+    const char *tagStr = CACHE_T32 ? "32-bit Tag" : "16-bit Tag";
     snprintf(stats->modeStr, sizeof(stats->modeStr), "  Mode:       %s / %s / %s (%zu Bytes)", depthStr, keyStr, tagStr, stats->entrySize);
 
     uint64_t sumStones[14] = {0};
@@ -377,17 +391,16 @@ static void FN(collectCacheStats)(CacheStats* stats, bool calcFrag, bool calcSto
 
     int topCount = 0;
     uint64_t chunkStart = 0;
-    uint64_t chunkSize = 0; 
+    uint64_t chunkSize = 0;
 
     int currentType = (FN(cache)[0].value_0 != CACHE_VAL_UNSET);
 
     uint64_t bucketCount = cacheSize >> 1;
 
     for (uint64_t i = 0; i < bucketCount; i++) {
-        FN(Bucket)* b = &FN(cache)[i];
+        FN(Bucket) *b = &FN(cache)[i];
 
         for (int slot = 0; slot < 2; slot++) {
-
             int16_t val = (slot == 0) ? b->value_0 : b->value_1;
             int type = (val != CACHE_VAL_UNSET);
 
@@ -398,12 +411,13 @@ static void FN(collectCacheStats)(CacheStats* stats, bool calcFrag, bool calcSto
                     if (type == currentType) {
                         chunkSize++;
                     } else {
-                        CacheChunk c = { chunkStart, chunkSize, currentType };
+                        CacheChunk c = {chunkStart, chunkSize, currentType};
                         if (topCount < OUTPUT_CHUNK_COUNT) {
                             stats->topChunks[topCount++] = c;
                         } else {
                             int minIdx = 0;
-                            for (int k = 1; k < topCount; k++) if (stats->topChunks[k].size < stats->topChunks[minIdx].size) minIdx = k;
+                            for (int k = 1; k < topCount; k++)
+                                if (stats->topChunks[k].size < stats->topChunks[minIdx].size) minIdx = k;
                             if (c.size > stats->topChunks[minIdx].size) stats->topChunks[minIdx] = c;
                         }
                         currentType = type;
@@ -463,12 +477,13 @@ static void FN(collectCacheStats)(CacheStats* stats, bool calcFrag, bool calcSto
 #endif
 
     if (calcFrag) {
-        CacheChunk c = { chunkStart, chunkSize, currentType };
+        CacheChunk c = {chunkStart, chunkSize, currentType};
         if (topCount < OUTPUT_CHUNK_COUNT) {
             stats->topChunks[topCount++] = c;
         } else {
             int minIdx = 0;
-            for (int k = 1; k < topCount; k++) if (stats->topChunks[k].size < stats->topChunks[minIdx].size) minIdx = k;
+            for (int k = 1; k < topCount; k++)
+                if (stats->topChunks[k].size < stats->topChunks[minIdx].size) minIdx = k;
             if (c.size > stats->topChunks[minIdx].size) stats->topChunks[minIdx] = c;
         }
 
@@ -485,7 +500,7 @@ static void FN(collectCacheStats)(CacheStats* stats, bool calcFrag, bool calcSto
         const uint32_t binW = (span + DEPTH_BINS - 1) / DEPTH_BINS;
 
         for (uint64_t i = 0; i < bucketCount; i++) {
-            FN(Bucket)* b = &FN(cache)[i];
+            FN(Bucket) *b = &FN(cache)[i];
 
             for (int slot = 0; slot < 2; slot++) {
                 int16_t val = (slot == 0) ? b->value_0 : b->value_1;
@@ -514,7 +529,7 @@ static void FN(collectCacheStats)(CacheStats* stats, bool calcFrag, bool calcSto
         if (countStones[k] > 0) {
             stats->avgStones[k] = (double)sumStones[k] / (double)countStones[k];
             stats->maxStones[k] = (double)maxStones[k];
-            stats->over7[k]  = (countOver7[k] > 0)  ? log10((double)countOver7[k])  : 0.0;
+            stats->over7[k] = (countOver7[k] > 0) ? log10((double)countOver7[k]) : 0.0;
             stats->over15[k] = (countOver15[k] > 0) ? log10((double)countOver15[k]) : 0.0;
         } else {
             stats->avgStones[k] = 0;

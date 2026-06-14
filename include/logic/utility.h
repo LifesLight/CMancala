@@ -4,7 +4,6 @@
  * Copyright (c) Alexander Kurtz 2026
  */
 
-
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
@@ -27,11 +26,11 @@ int max(const int a, const int b);
 #endif
 
 #ifndef max
-#define max(a,b) ((a) > (b) ? (a) : (b))
+#define max(a, b) ((a) > (b) ? (a) : (b))
 #endif
 
 #ifndef min
-#define min(a,b) ((a) < (b) ? (a) : (b))
+#define min(a, b) ((a) < (b) ? (a) : (b))
 #endif
 
 #ifdef _WIN32
@@ -42,9 +41,9 @@ int max(const int a, const int b);
 #endif
 
 void trimSpaces(char *str);
-void getInput(char* input, const char* prefix);
-void initializeBoardFromConfig(Board* board, Config* config);
+void getInput(char *input, const char *prefix);
+void initializeBoardFromConfig(Board *board, Config *config);
 void quitGame();
-void updateCell(Board* board, int player, int idx, int value);
-void getLogNotation(char* buffer, uint64_t value);
-void storeBenchmarkData(const char* fileName, double* data);
+void updateCell(Board *board, int player, int idx, int value);
+void getLogNotation(char *buffer, uint64_t value);
+void storeBenchmarkData(const char *fileName, double *data);

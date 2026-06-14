@@ -4,7 +4,6 @@
  * Copyright (c) Alexander Kurtz 2026
  */
 
-
 #include <stdint.h>
 #include <stdio.h>
 #include <stdbool.h>
@@ -18,4 +17,4 @@
 #include "logic/utility.h"
 #include "logic/solver/cache.h"
 
-void handleConfigInput(bool* requestedStart, Config* config);
+void handleConfigInput(bool *requestedStart, Config *config);

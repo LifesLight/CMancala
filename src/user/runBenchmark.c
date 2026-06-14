@@ -9,15 +9,14 @@ static double currentTimeMs() {
 }
 
 static void runTest(
-    Context* context,
+    Context *context,
     int stones,
     int sizePow,
     CacheMode compress,
     int depth,
     Solver type,
-    const char* label,
-    MoveFunction moveFunction
-) {
+    const char *label,
+    MoveFunction moveFunction) {
     printf("----------------------------------------------------------------\n");
     printf("Benchmarking: %s\n", label);
 
@@ -35,20 +34,19 @@ static void runTest(
     context->board->color = 1;
 
     SolverConfig config = {
-        .solver = type, 
-        .depth = depth, 
-        .timeLimit = 0, 
-        .progressBar = false, 
-        .compressCache = compress, 
-        .clip = false
-    };
+        .solver = type,
+        .depth = depth,
+        .timeLimit = 0,
+        .progressBar = false,
+        .compressCache = compress,
+        .clip = false};
 
     // Print Config Details
     if (type == GLOBAL_SOLVER) {
         printf("Config: Stones=%d, Solver=GLOBAL\n", stones);
     } else {
-        printf("Config: Stones=%d, Cache=2^%d, Compress=%s, Mode=%s\n", 
-               stones, sizePow, compress == ALWAYS_COMPRESS ? "True (B48)" : "False (B60)", 
+        printf("Config: Stones=%d, Cache=2^%d, Compress=%s, Mode=%s\n",
+               stones, sizePow, compress == ALWAYS_COMPRESS ? "True (B48)" : "False (B60)",
                depth == 0 ? "NODEPTH" : "DEPTH");
     }
 
@@ -57,7 +55,7 @@ static void runTest(
     aspirationRoot(context, &config);
     double elapsed = currentTimeMs() - start;
 
-    printf("Result: %.2f ms | Eval: %d | Nodes: %" PRIu64 "\n", 
+    printf("Result: %.2f ms | Eval: %d | Nodes: %" PRIu64 "\n",
            elapsed, context->metadata.lastEvaluation, context->metadata.lastNodes);
 
     // Only render stats for local solver
@@ -75,21 +73,21 @@ void runBenchmark() {
     context.board = &board;
     context.lastBoard = &lastBoard;
 
-    const int T32_B48 = 24; 
-    const int T32_B60 = 29; 
-    const int T16_B48 = 33; 
+    const int T32_B48 = 24;
+    const int T32_B60 = 29;
+    const int T16_B48 = 33;
 
     // 1. T32 MODES (Standard RAM)
-    runTest(&context, 2, T32_B48, ALWAYS_COMPRESS, 0,   LOCAL_SOLVER, "MODE_ND_B48_T32", CLASSIC_MOVE);
+    runTest(&context, 2, T32_B48, ALWAYS_COMPRESS, 0, LOCAL_SOLVER, "MODE_ND_B48_T32", CLASSIC_MOVE);
     runTest(&context, 2, T32_B48, ALWAYS_COMPRESS, 999, LOCAL_SOLVER, "MODE_D_B48_T32", CLASSIC_MOVE);
-    runTest(&context, 2, T32_B60, NEVER_COMPRESS, 0,   LOCAL_SOLVER, "MODE_ND_B60_T32", CLASSIC_MOVE);
+    runTest(&context, 2, T32_B60, NEVER_COMPRESS, 0, LOCAL_SOLVER, "MODE_ND_B60_T32", CLASSIC_MOVE);
 
     // 2. T16 MODES (High RAM)
-    runTest(&context, 2, T16_B48, ALWAYS_COMPRESS, 0,   LOCAL_SOLVER, "MODE_ND_B48_T16", CLASSIC_MOVE);
+    runTest(&context, 2, T16_B48, ALWAYS_COMPRESS, 0, LOCAL_SOLVER, "MODE_ND_B48_T16", CLASSIC_MOVE);
 
     // 3. AVALANCHE (Cannot use EGDB, tested here)
     runTest(&context, 2, T32_B48, ALWAYS_COMPRESS, 999, LOCAL_SOLVER, "Avalanche Local", AVALANCHE_MOVE);
-    runTest(&context, 1, 0,       ALWAYS_COMPRESS, 0,   GLOBAL_SOLVER, "Avalanche Global", AVALANCHE_MOVE);
+    runTest(&context, 1, 0, ALWAYS_COMPRESS, 0, GLOBAL_SOLVER, "Avalanche Global", AVALANCHE_MOVE);
 
     // 4. GLOBAL CLASSIC
     runTest(&context, 2, 0, ALWAYS_COMPRESS, 0, GLOBAL_SOLVER, "Global Classic", CLASSIC_MOVE);
@@ -101,7 +99,7 @@ void runBenchmark() {
     for (int s = 1; s <= egdb_size; s++) {
         char filename[256];
         snprintf(filename, sizeof(filename), "EGDB/egdb_%d.bin", s);
-        remove(filename); 
+        remove(filename);
     }
 
     generateEGDB(egdb_size, false);

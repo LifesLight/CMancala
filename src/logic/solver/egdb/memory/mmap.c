@@ -24,11 +24,11 @@ bool egdb_mem_load(int s, uint64_t size, bool is_avalanche) {
     // Open file descriptors and attempt to map it
     int fd = open(bin_filename, O_RDONLY);
     if (fd != -1) {
-        void* mapped = mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
+        void *mapped = mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
         close(fd);
 
         if (mapped != MAP_FAILED) {
-            egdb_tables[s] = (int8_t*)mapped;
+            egdb_tables[s] = (int8_t *)mapped;
             egdb_is_mmapped[s] = true;
             return true;
         }
@@ -48,7 +48,7 @@ void egdb_mem_save(int s, uint64_t size, bool is_avalanche) {
     snprintf(bin_filename, sizeof(bin_filename), "EGDB/egdb_%s%d.bin", is_avalanche ? "av_" : "", s);
 
     // Save out fully generated block to file
-    FILE* f_out = fopen(bin_filename, "wb");
+    FILE *f_out = fopen(bin_filename, "wb");
     if (f_out) {
         fwrite(egdb_tables[s], 1, size, f_out);
         fclose(f_out);
@@ -81,7 +81,7 @@ void egdb_mem_free_layer(int s, uint64_t size) {
     }
 }
 
-bool egdb_mem_probe(int s, uint64_t idx, int8_t* val) {
+bool egdb_mem_probe(int s, uint64_t idx, int8_t *val) {
     if (egdb_tables[s]) {
         *val = egdb_tables[s][idx];
         return true;

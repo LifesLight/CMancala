@@ -25,8 +25,8 @@
 
 #define MAX_DEPTH (UINT16_MAX - 1)
 
-#define OUTPUT_PREFIX    ">> "
-#define INPUT_PREFIX     "<< "
-#define CONFIG_PREFIX    "(C) "
-#define CHEAT_PREFIX     "(G) "
-#define PLAY_PREFIX      "(P) "
+#define OUTPUT_PREFIX ">> "
+#define INPUT_PREFIX "<< "
+#define CONFIG_PREFIX "(C) "
+#define CHEAT_PREFIX "(G) "
+#define PLAY_PREFIX "(P) "

@@ -4,7 +4,7 @@
 
 #pragma once
 
-#define TOKEN_PASTE(x, y) x ## _ ## y
+#define TOKEN_PASTE(x, y) x##_##y
 #define CAT(x, y) TOKEN_PASTE(x, y)
 
 #define FN(name) CAT(name, PREFIX)

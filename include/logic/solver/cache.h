@@ -9,13 +9,13 @@
  * We ignore score cells, this will allow for a more efficient caching since
  * they don't matter for the "goodness" of the playing board which is what we are caching.
  * This also allows for more reuse of the cache, since we can analyze the same board from different scores.
- * 
+ *
  * We do need to store the highest eval, it is NOT always the same with same input parameters since we are
  * ignoring score cells which can effect the alpha beta pruning.
- * 
+ *
  * Transposition table logic is from the following source:
  * https://en.wikipedia.org/wiki/Negamax
-*/
+ */
 
 #include <stdint.h>
 #include <inttypes.h>
@@ -44,20 +44,18 @@
 // Does not allocate yet
 void setCacheSize(int sizePow);
 
-
 // Enable / Disable depth storing (needed for non solving) and can enable 48 bit board representations
 void setCacheMode(bool depth, CacheMode compressMode);
 
-
 void invalidateCache();
 
-bool translateBoard(Board* board, uint64_t *code);
+bool translateBoard(Board *board, uint64_t *code);
 
-void cacheNodeHash(Board* board, uint64_t boardRep, int evaluation, int boundType, int depth, bool solved);
+void cacheNodeHash(Board *board, uint64_t boardRep, int evaluation, int boundType, int depth, bool solved);
 
-bool getCachedValueHash(Board* board, uint64_t hashValue, int currentDepth, int *eval, int *boundType, bool *solved);
+bool getCachedValueHash(Board *board, uint64_t hashValue, int currentDepth, int *eval, int *boundType, bool *solved);
 
-void fillCacheStats(CacheStats* stats, bool calcFrag, bool calcStoneDist, bool calcDepthDist);
+void fillCacheStats(CacheStats *stats, bool calcFrag, bool calcStoneDist, bool calcDepthDist);
 void renderCacheStats(bool calcFrag, bool calcStoneDist, bool calcDepthDist);
 
 void resetCacheStats();

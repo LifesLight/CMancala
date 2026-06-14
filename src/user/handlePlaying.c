@@ -4,7 +4,6 @@
 
 #include "user/handlePlaying.h"
 
-
 void renderPlayHelp() {
     renderOutput("Commands:", PLAY_PREFIX);
     renderOutput("  move [idx]                       : Move the cell at index", PLAY_PREFIX);
@@ -13,15 +12,15 @@ void renderPlayHelp() {
     renderOutput("  quit                             : Quit the application", PLAY_PREFIX);
 }
 
-void getMoveAi(Context* context) {
+void getMoveAi(Context *context) {
     aspirationRoot(context, &context->config.solverConfig);
 }
 
-void getMoveRandom(Context* context) {
-    Board* board = context->board;
+void getMoveRandom(Context *context) {
+    Board *board = context->board;
 
-    const int8_t start = (board->color == 1)  ? HBOUND_P1 : HBOUND_P2;
-    const int8_t end = (board->color == 1)    ? LBOUND_P1 : LBOUND_P2;
+    const int8_t start = (board->color == 1) ? HBOUND_P1 : HBOUND_P2;
+    const int8_t end = (board->color == 1) ? LBOUND_P1 : LBOUND_P2;
 
     // First, count the non-empty cells and store their indices
     int nonEmptyCells[6];
@@ -44,14 +43,14 @@ void getMoveRandom(Context* context) {
     return;
 }
 
-void tellContextNoComputation(Context* context) {
+void tellContextNoComputation(Context *context) {
     context->metadata.lastEvaluation = INT32_MAX;
     context->metadata.lastSolved = false;
 }
 
-void getMoveHuman(bool* requestMenu, Context* context) {
+void getMoveHuman(bool *requestMenu, Context *context) {
     while (true) {
-        char* input = malloc(256);
+        char *input = malloc(256);
         getInput(input, PLAY_PREFIX);
 
         // Check for request for menu
@@ -86,10 +85,11 @@ void getMoveHuman(bool* requestMenu, Context* context) {
                 idx = 5 - idx + 7;
             }
 
-            Board* board = context->board;
+            Board *board = context->board;
             if (board->cells[idx] == 0) {
                 renderOutput("Cell is empty", CHEAT_PREFIX);
-                continue;;
+                continue;
+                ;
             }
 
             context->metadata.lastMove = idx;
@@ -107,7 +107,7 @@ void getMoveHuman(bool* requestMenu, Context* context) {
 
             idx = idx - 1;
 
-            Board* board = context->board;
+            Board *board = context->board;
             if (board->cells[idx] == 0) {
                 renderOutput("Cell is empty", CHEAT_PREFIX);
                 continue;
@@ -125,7 +125,7 @@ void getMoveHuman(bool* requestMenu, Context* context) {
     return;
 }
 
-void stepGame(bool* requestedMenu, Context* context) {
+void stepGame(bool *requestedMenu, Context *context) {
     renderBoard(context->board, PLAY_PREFIX, &context->config.gameSettings);
 
     // Check turn

@@ -7,7 +7,7 @@
 #include "logic/solver/cache.h"
 #include "logic/utility.h"
 
-void runApiMode(int argc, char const* argv[]) {
+void runApiMode(int argc, char const *argv[]) {
     SolverConfig config = {
         .solver = LOCAL_SOLVER,
         .depth = 0,
@@ -15,8 +15,7 @@ void runApiMode(int argc, char const* argv[]) {
         .clip = false,
         .compressCache = AUTO,
         .progressBar = false,
-        .useOpeningBook = false
-    };
+        .useOpeningBook = false};
 
     int egdb_stones = 0;
     bool avalanche = false;
@@ -48,9 +47,9 @@ void runApiMode(int argc, char const* argv[]) {
         }
 
         if (strncmp(line, "SOLVE ", 6) == 0) {
-            char* rawCode = line + 6;
+            char *rawCode = line + 6;
             char code[256];
-            // Encode stripped 5 zeros dynamically 
+            // Encode stripped 5 zeros dynamically
             snprintf(code, sizeof(code), "00000%.*s", (int)(sizeof(code) - 6), rawCode);
 
             Board board;
@@ -62,7 +61,8 @@ void runApiMode(int argc, char const* argv[]) {
 
             // Set correct stone count for EGDB
             int totalStones = 0;
-            for (int i = 0; i < 14; i++) totalStones += board.cells[i];
+            for (int i = 0; i < 14; i++)
+                totalStones += board.cells[i];
             setStoneCount(totalStones);
 
             Context ctx;
@@ -82,13 +82,13 @@ void runApiMode(int argc, char const* argv[]) {
             if (bestMove != -1) {
                 makeMoveManual(&board, bestMove);
             }
-            char* nextCode = encodeBoard(&board);
+            char *nextCode = encodeBoard(&board);
             printf("OK EVAL %d MOVE %d NEXT_CODE %s TURN %d\n", eval, bestMove, nextCode, board.color);
             free(nextCode);
             fflush(stdout);
 
         } else if (strncmp(line, "MOVES ", 6) == 0) {
-            char* rawCode = line + 6;
+            char *rawCode = line + 6;
             char code[256];
             snprintf(code, sizeof(code), "00000%.*s", (int)(sizeof(code) - 6), rawCode);
 
@@ -106,7 +106,7 @@ void runApiMode(int argc, char const* argv[]) {
                 if (board.cells[i] > 0) {
                     Board copy = board;
                     makeMoveManual(&copy, i);
-                    char* nextCode = encodeBoard(&copy);
+                    char *nextCode = encodeBoard(&copy);
                     printf(" MOVE %d NEXT_CODE %s", i, nextCode);
                     free(nextCode);
                 }
@@ -119,7 +119,7 @@ void runApiMode(int argc, char const* argv[]) {
             setStoneCount(stones * 12);
             Board board;
             configBoard(&board, stones);
-            char* code = encodeBoard(&board);
+            char *code = encodeBoard(&board);
             printf("OK CODE %s\n", code);
             free(code);
             fflush(stdout);
@@ -142,8 +142,7 @@ void startInterface() {
         .clip = false,
         .compressCache = AUTO,
         .progressBar = true,
-        .useOpeningBook = false
-    };
+        .useOpeningBook = false};
 
     GameSettings gameSettings = {
         .stones = 4,
@@ -151,14 +150,12 @@ void startInterface() {
         .seed = time(NULL),
         .startColor = 1,
         .player1 = HUMAN_AGENT,
-        .player2 = AI_AGENT
-    };
+        .player2 = AI_AGENT};
 
     Config config = {
         .autoplay = true,
         .gameSettings = gameSettings,
-        .solverConfig = solverConfig
-    };
+        .solverConfig = solverConfig};
 
     while (true) {
         bool requestedStart = false;

@@ -39,16 +39,16 @@ typedef struct {
 } Chunk;
 
 int compareChunksSize(const void *a, const void *b) {
-    Chunk* cA = (Chunk*)a;
-    Chunk* cB = (Chunk*)b;
+    Chunk *cA = (Chunk *)a;
+    Chunk *cB = (Chunk *)b;
     if (cA->size < cB->size) return 1;
     if (cA->size > cB->size) return -1;
     return 0;
 }
 
 int compareChunksStart(const void *a, const void *b) {
-    Chunk* cA = (Chunk*)a;
-    Chunk* cB = (Chunk*)b;
+    Chunk *cA = (Chunk *)a;
+    Chunk *cB = (Chunk *)b;
     if (cA->start > cB->start) return 1;
     if (cA->start < cB->start) return -1;
     return 0;
@@ -163,13 +163,26 @@ void resetCacheStats() {
 
 static void freeCurrentCache() {
     switch (currentMode) {
-        case MODE_ND_B48_T16: freeCacheInternal_NODEPTH_B48_T16(); break;
-        case MODE_ND_B48_T32: freeCacheInternal_NODEPTH_B48_T32(); break;
-        case MODE_ND_B60_T32: freeCacheInternal_NODEPTH_B60_T32(); break;
-        case MODE_D_B48_T16:  freeCacheInternal_DEPTH_B48_T16(); break;
-        case MODE_D_B48_T32:  freeCacheInternal_DEPTH_B48_T32(); break;
-        case MODE_D_B60_T32:  freeCacheInternal_DEPTH_B60_T32(); break;
-        default: break;
+        case MODE_ND_B48_T16:
+            freeCacheInternal_NODEPTH_B48_T16();
+            break;
+        case MODE_ND_B48_T32:
+            freeCacheInternal_NODEPTH_B48_T32();
+            break;
+        case MODE_ND_B60_T32:
+            freeCacheInternal_NODEPTH_B60_T32();
+            break;
+        case MODE_D_B48_T16:
+            freeCacheInternal_DEPTH_B48_T16();
+            break;
+        case MODE_D_B48_T32:
+            freeCacheInternal_DEPTH_B48_T32();
+            break;
+        case MODE_D_B60_T32:
+            freeCacheInternal_DEPTH_B60_T32();
+            break;
+        default:
+            break;
     }
     currentMode = MODE_DISABLED;
 }
@@ -223,16 +236,14 @@ static void reconfigureCache() {
 
     if (tagBitsNeeded > 32) {
         char err[128];
-        snprintf(err, sizeof(err), "Fatal: Cache size 2^%d too small for %d-bit keys. Tag would require %d bits (32 max, need 2^%d min cache).", 
+        snprintf(err, sizeof(err), "Fatal: Cache size 2^%d too small for %d-bit keys. Tag would require %d bits (32 max, need 2^%d min cache).",
                  configSizePow, keyBits, tagBitsNeeded, keyBits - 32 + 1);
         renderOutput(err, CONFIG_PREFIX);
         quitGame();
         return;
-    }
-    else if (tagBitsNeeded > 16) {
+    } else if (tagBitsNeeded > 16) {
         useT32 = true;
-    }
-    else {
+    } else {
         if (useCompress) {
             useT32 = false;
         } else {
@@ -242,15 +253,15 @@ static void reconfigureCache() {
 
     if (configDepth) {
         if (!useCompress) {
-             currentMode = MODE_D_B60_T32;
+            currentMode = MODE_D_B60_T32;
         } else {
-             currentMode = useT32 ? MODE_D_B48_T32 : MODE_D_B48_T16;
+            currentMode = useT32 ? MODE_D_B48_T32 : MODE_D_B48_T16;
         }
     } else {
         if (!useCompress) {
-             currentMode = MODE_ND_B60_T32;
+            currentMode = MODE_ND_B60_T32;
         } else {
-             currentMode = useT32 ? MODE_ND_B48_T32 : MODE_ND_B48_T16;
+            currentMode = useT32 ? MODE_ND_B48_T32 : MODE_ND_B48_T16;
         }
     }
 
@@ -259,13 +270,26 @@ static void reconfigureCache() {
 
     // Initialize selected mode
     switch (currentMode) {
-        case MODE_ND_B48_T16: initCacheInternal_NODEPTH_B48_T16(cacheSize); break;
-        case MODE_ND_B48_T32: initCacheInternal_NODEPTH_B48_T32(cacheSize); break;
-        case MODE_ND_B60_T32: initCacheInternal_NODEPTH_B60_T32(cacheSize); break;
-        case MODE_D_B48_T16:  initCacheInternal_DEPTH_B48_T16(cacheSize); break;
-        case MODE_D_B48_T32:  initCacheInternal_DEPTH_B48_T32(cacheSize); break;
-        case MODE_D_B60_T32:  initCacheInternal_DEPTH_B60_T32(cacheSize); break;
-        default: break;
+        case MODE_ND_B48_T16:
+            initCacheInternal_NODEPTH_B48_T16(cacheSize);
+            break;
+        case MODE_ND_B48_T32:
+            initCacheInternal_NODEPTH_B48_T32(cacheSize);
+            break;
+        case MODE_ND_B60_T32:
+            initCacheInternal_NODEPTH_B60_T32(cacheSize);
+            break;
+        case MODE_D_B48_T16:
+            initCacheInternal_DEPTH_B48_T16(cacheSize);
+            break;
+        case MODE_D_B48_T32:
+            initCacheInternal_DEPTH_B48_T32(cacheSize);
+            break;
+        case MODE_D_B60_T32:
+            initCacheInternal_DEPTH_B60_T32(cacheSize);
+            break;
+        default:
+            break;
     }
 
     resetCacheStats();
@@ -295,27 +319,47 @@ void setCacheSize(int sizePow) {
     configSizePow = sizePow;
 }
 
-void cacheNodeHash(Board* board, uint64_t boardRep, int evaluation, int boundType, int depth, bool solved) {
+void cacheNodeHash(Board *board, uint64_t boardRep, int evaluation, int boundType, int depth, bool solved) {
     switch (currentMode) {
-        case MODE_ND_B48_T16: cacheNodeHash_NODEPTH_B48_T16(board, boardRep, evaluation, boundType, depth, solved); break;
-        case MODE_ND_B48_T32: cacheNodeHash_NODEPTH_B48_T32(board, boardRep, evaluation, boundType, depth, solved); break;
-        case MODE_ND_B60_T32: cacheNodeHash_NODEPTH_B60_T32(board, boardRep, evaluation, boundType, depth, solved); break;
-        case MODE_D_B48_T16:  cacheNodeHash_DEPTH_B48_T16(board, boardRep, evaluation, boundType, depth, solved); break;
-        case MODE_D_B48_T32:  cacheNodeHash_DEPTH_B48_T32(board, boardRep, evaluation, boundType, depth, solved); break;
-        case MODE_D_B60_T32:  cacheNodeHash_DEPTH_B60_T32(board, boardRep, evaluation, boundType, depth, solved); break;
-        default: break;
+        case MODE_ND_B48_T16:
+            cacheNodeHash_NODEPTH_B48_T16(board, boardRep, evaluation, boundType, depth, solved);
+            break;
+        case MODE_ND_B48_T32:
+            cacheNodeHash_NODEPTH_B48_T32(board, boardRep, evaluation, boundType, depth, solved);
+            break;
+        case MODE_ND_B60_T32:
+            cacheNodeHash_NODEPTH_B60_T32(board, boardRep, evaluation, boundType, depth, solved);
+            break;
+        case MODE_D_B48_T16:
+            cacheNodeHash_DEPTH_B48_T16(board, boardRep, evaluation, boundType, depth, solved);
+            break;
+        case MODE_D_B48_T32:
+            cacheNodeHash_DEPTH_B48_T32(board, boardRep, evaluation, boundType, depth, solved);
+            break;
+        case MODE_D_B60_T32:
+            cacheNodeHash_DEPTH_B60_T32(board, boardRep, evaluation, boundType, depth, solved);
+            break;
+        default:
+            break;
     }
 }
 
-bool getCachedValueHash(Board* board, uint64_t hashValue, int currentDepth, int *evaluation, int *boundType, bool *solved) {
+bool getCachedValueHash(Board *board, uint64_t hashValue, int currentDepth, int *evaluation, int *boundType, bool *solved) {
     switch (currentMode) {
-        case MODE_ND_B48_T16: return getCachedValueHash_NODEPTH_B48_T16(board, hashValue, currentDepth, evaluation, boundType, solved);
-        case MODE_ND_B48_T32: return getCachedValueHash_NODEPTH_B48_T32(board, hashValue, currentDepth, evaluation, boundType, solved);
-        case MODE_ND_B60_T32: return getCachedValueHash_NODEPTH_B60_T32(board, hashValue, currentDepth, evaluation, boundType, solved);
-        case MODE_D_B48_T16:  return getCachedValueHash_DEPTH_B48_T16(board, hashValue, currentDepth, evaluation, boundType, solved);
-        case MODE_D_B48_T32:  return getCachedValueHash_DEPTH_B48_T32(board, hashValue, currentDepth, evaluation, boundType, solved);
-        case MODE_D_B60_T32:  return getCachedValueHash_DEPTH_B60_T32(board, hashValue, currentDepth, evaluation, boundType, solved);
-        default: return false;
+        case MODE_ND_B48_T16:
+            return getCachedValueHash_NODEPTH_B48_T16(board, hashValue, currentDepth, evaluation, boundType, solved);
+        case MODE_ND_B48_T32:
+            return getCachedValueHash_NODEPTH_B48_T32(board, hashValue, currentDepth, evaluation, boundType, solved);
+        case MODE_ND_B60_T32:
+            return getCachedValueHash_NODEPTH_B60_T32(board, hashValue, currentDepth, evaluation, boundType, solved);
+        case MODE_D_B48_T16:
+            return getCachedValueHash_DEPTH_B48_T16(board, hashValue, currentDepth, evaluation, boundType, solved);
+        case MODE_D_B48_T32:
+            return getCachedValueHash_DEPTH_B48_T32(board, hashValue, currentDepth, evaluation, boundType, solved);
+        case MODE_D_B60_T32:
+            return getCachedValueHash_DEPTH_B60_T32(board, hashValue, currentDepth, evaluation, boundType, solved);
+        default:
+            return false;
     }
 }
 
@@ -331,32 +375,58 @@ void stepCache() {
 void invalidateCache() {
     if (currentMode != MODE_DISABLED && cacheSize > 0) {
         switch (currentMode) {
-            case MODE_ND_B48_T16: initCacheInternal_NODEPTH_B48_T16(cacheSize); break;
-            case MODE_ND_B48_T32: initCacheInternal_NODEPTH_B48_T32(cacheSize); break;
-            case MODE_ND_B60_T32: initCacheInternal_NODEPTH_B60_T32(cacheSize); break;
-            case MODE_D_B48_T16:  initCacheInternal_DEPTH_B48_T16(cacheSize); break;
-            case MODE_D_B48_T32:  initCacheInternal_DEPTH_B48_T32(cacheSize); break;
-            case MODE_D_B60_T32:  initCacheInternal_DEPTH_B60_T32(cacheSize); break;
-            default: break;
+            case MODE_ND_B48_T16:
+                initCacheInternal_NODEPTH_B48_T16(cacheSize);
+                break;
+            case MODE_ND_B48_T32:
+                initCacheInternal_NODEPTH_B48_T32(cacheSize);
+                break;
+            case MODE_ND_B60_T32:
+                initCacheInternal_NODEPTH_B60_T32(cacheSize);
+                break;
+            case MODE_D_B48_T16:
+                initCacheInternal_DEPTH_B48_T16(cacheSize);
+                break;
+            case MODE_D_B48_T32:
+                initCacheInternal_DEPTH_B48_T32(cacheSize);
+                break;
+            case MODE_D_B60_T32:
+                initCacheInternal_DEPTH_B60_T32(cacheSize);
+                break;
+            default:
+                break;
         }
         resetCacheStats();
     }
 }
 
-void fillCacheStats(CacheStats* stats, bool calcFrag, bool calcStoneDist, bool calcDepthDist) {
+void fillCacheStats(CacheStats *stats, bool calcFrag, bool calcStoneDist, bool calcDepthDist) {
     memset(stats, 0, sizeof(CacheStats));
     if (currentMode == MODE_DISABLED || cacheSize == 0) {
         return;
     }
 
     switch (currentMode) {
-        case MODE_ND_B48_T16: collectCacheStats_NODEPTH_B48_T16(stats, calcFrag, calcStoneDist, calcDepthDist); break;
-        case MODE_ND_B48_T32: collectCacheStats_NODEPTH_B48_T32(stats, calcFrag, calcStoneDist, calcDepthDist); break;
-        case MODE_ND_B60_T32: collectCacheStats_NODEPTH_B60_T32(stats, calcFrag, calcStoneDist, calcDepthDist); break;
-        case MODE_D_B48_T16:  collectCacheStats_DEPTH_B48_T16(stats, calcFrag, calcStoneDist, calcDepthDist); break;
-        case MODE_D_B48_T32:  collectCacheStats_DEPTH_B48_T32(stats, calcFrag, calcStoneDist, calcDepthDist); break;
-        case MODE_D_B60_T32:  collectCacheStats_DEPTH_B60_T32(stats, calcFrag, calcStoneDist, calcDepthDist); break;
-        default: break;
+        case MODE_ND_B48_T16:
+            collectCacheStats_NODEPTH_B48_T16(stats, calcFrag, calcStoneDist, calcDepthDist);
+            break;
+        case MODE_ND_B48_T32:
+            collectCacheStats_NODEPTH_B48_T32(stats, calcFrag, calcStoneDist, calcDepthDist);
+            break;
+        case MODE_ND_B60_T32:
+            collectCacheStats_NODEPTH_B60_T32(stats, calcFrag, calcStoneDist, calcDepthDist);
+            break;
+        case MODE_D_B48_T16:
+            collectCacheStats_DEPTH_B48_T16(stats, calcFrag, calcStoneDist, calcDepthDist);
+            break;
+        case MODE_D_B48_T32:
+            collectCacheStats_DEPTH_B48_T32(stats, calcFrag, calcStoneDist, calcDepthDist);
+            break;
+        case MODE_D_B60_T32:
+            collectCacheStats_DEPTH_B60_T32(stats, calcFrag, calcStoneDist, calcDepthDist);
+            break;
+        default:
+            break;
     }
 }
 
@@ -372,14 +442,26 @@ void renderCacheStats(bool calcFrag, bool calcStoneDist, bool calcDepthDist) {
     renderCacheOverview(&stats, calcFrag, calcStoneDist, calcDepthDist);
 }
 
-bool translateBoard(Board* board, uint64_t *code) {
+bool translateBoard(Board *board, uint64_t *code) {
     switch (currentMode) {
-        case MODE_ND_B48_T16: return translateBoard_NODEPTH_B48_T16(board, code);
-        case MODE_ND_B48_T32: return translateBoard_NODEPTH_B48_T32(board, code); break;
-        case MODE_ND_B60_T32: return translateBoard_NODEPTH_B60_T32(board, code); break;
-        case MODE_D_B48_T16:  return translateBoard_DEPTH_B48_T16(  board, code); break;
-        case MODE_D_B48_T32:  return translateBoard_DEPTH_B48_T32(  board, code); break;
-        case MODE_D_B60_T32:  return translateBoard_DEPTH_B60_T32(  board, code); break;
-        default: return false;
+        case MODE_ND_B48_T16:
+            return translateBoard_NODEPTH_B48_T16(board, code);
+        case MODE_ND_B48_T32:
+            return translateBoard_NODEPTH_B48_T32(board, code);
+            break;
+        case MODE_ND_B60_T32:
+            return translateBoard_NODEPTH_B60_T32(board, code);
+            break;
+        case MODE_D_B48_T16:
+            return translateBoard_DEPTH_B48_T16(board, code);
+            break;
+        case MODE_D_B48_T32:
+            return translateBoard_DEPTH_B48_T32(board, code);
+            break;
+        case MODE_D_B60_T32:
+            return translateBoard_DEPTH_B60_T32(board, code);
+            break;
+        default:
+            return false;
     }
 }

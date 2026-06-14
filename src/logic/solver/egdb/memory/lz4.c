@@ -18,12 +18,12 @@
 #define EGDB_LZ4_BLOCK_SIZE 1024
 
 static bool egdb_is_compressed[EGDB_MAX_STONES + 1] = {false};
-static uint8_t* egdb_comp_data[EGDB_MAX_STONES + 1] = {NULL};
-static uint64_t* egdb_comp_offsets[EGDB_MAX_STONES + 1] = {NULL};
+static uint8_t *egdb_comp_data[EGDB_MAX_STONES + 1] = {NULL};
+static uint64_t *egdb_comp_offsets[EGDB_MAX_STONES + 1] = {NULL};
 
 void egdb_mem_init(void) {}
 
-static bool compressBufferToRuntime(int s, int8_t* raw_data, uint64_t size) {
+static bool compressBufferToRuntime(int s, int8_t *raw_data, uint64_t size) {
     uint32_t block_size = EGDB_LZ4_BLOCK_SIZE;
     uint64_t num_chunks = (size + block_size - 1) / block_size;
 
@@ -34,14 +34,14 @@ static bool compressBufferToRuntime(int s, int8_t* raw_data, uint64_t size) {
 
     // Estimate worst-case size for target buffer
     uint64_t max_dest_size = num_chunks * (uint64_t)LZ4_compressBound(block_size);
-    uint8_t* temp_comp_buffer = malloc(max_dest_size);
+    uint8_t *temp_comp_buffer = malloc(max_dest_size);
     if (!temp_comp_buffer) {
         free(egdb_comp_offsets[s]);
         egdb_comp_offsets[s] = NULL;
         return false;
     }
 
-    void* lz4State = malloc(LZ4_sizeofStateHC());
+    void *lz4State = malloc(LZ4_sizeofStateHC());
     uint64_t current_offset = 0;
 
     // Compress chunk by chunk
@@ -58,12 +58,11 @@ static bool compressBufferToRuntime(int s, int8_t* raw_data, uint64_t size) {
 
         int comp_bytes = LZ4_compress_HC_extStateHC(
             lz4State,
-            (const char*)&raw_data[start_idx],
-            (char*)&temp_comp_buffer[current_offset],
+            (const char *)&raw_data[start_idx],
+            (char *)&temp_comp_buffer[current_offset],
             chunk_bytes,
             LZ4_compressBound(chunk_bytes),
-            LZ4HC_CLEVEL_MAX
-        );
+            LZ4HC_CLEVEL_MAX);
 
         current_offset += comp_bytes;
     }
@@ -90,7 +89,7 @@ static void saveCompressedRuntimeToDisk(int s, uint64_t uncomp_size, bool is_ava
     char lz4_filename[256];
     snprintf(lz4_filename, sizeof(lz4_filename), "EGDB/egdb_%s%d.lz4db", is_avalanche ? "av_" : "", s);
 
-    FILE* f_out = fopen(lz4_filename, "wb");
+    FILE *f_out = fopen(lz4_filename, "wb");
     if (!f_out) return;
 
     uint32_t magic = EGDB_LZ4_MAGIC;
@@ -117,7 +116,7 @@ bool egdb_mem_load(int s, uint64_t size, bool is_avalanche) {
 
     // Try loading native compressed format first
     if (access(lz4_filename, F_OK) == 0) {
-        FILE* f_lz4 = fopen(lz4_filename, "rb");
+        FILE *f_lz4 = fopen(lz4_filename, "rb");
         if (f_lz4) {
             uint32_t magic;
 
@@ -151,8 +150,14 @@ bool egdb_mem_load(int s, uint64_t size, bool is_avalanche) {
                     fclose(f_lz4);
                     return true;
                 } else {
-                    if (egdb_comp_offsets[s]) { free(egdb_comp_offsets[s]); egdb_comp_offsets[s] = NULL; }
-                    if (egdb_comp_data[s]) { free(egdb_comp_data[s]); egdb_comp_data[s] = NULL; }
+                    if (egdb_comp_offsets[s]) {
+                        free(egdb_comp_offsets[s]);
+                        egdb_comp_offsets[s] = NULL;
+                    }
+                    if (egdb_comp_data[s]) {
+                        free(egdb_comp_data[s]);
+                        egdb_comp_data[s] = NULL;
+                    }
                 }
             }
             fclose(f_lz4);
@@ -166,11 +171,11 @@ bool egdb_mem_load(int s, uint64_t size, bool is_avalanche) {
     if (access(bin_filename, F_OK) == 0) {
         int fd = open(bin_filename, O_RDONLY);
         if (fd != -1) {
-            void* mapped = mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
+            void *mapped = mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
             close(fd);
 
             if (mapped != MAP_FAILED) {
-                compressBufferToRuntime(s, (int8_t*)mapped, size);
+                compressBufferToRuntime(s, (int8_t *)mapped, size);
                 munmap(mapped, size);
                 saveCompressedRuntimeToDisk(s, size, is_avalanche);
                 return true;
@@ -191,7 +196,7 @@ void egdb_mem_save(int s, uint64_t size, bool is_avalanche) {
     snprintf(bin_filename, sizeof(bin_filename), "EGDB/egdb_%s%d.bin", is_avalanche ? "av_" : "", s);
 
     // Write out raw binary first
-    FILE* f_out = fopen(bin_filename, "wb");
+    FILE *f_out = fopen(bin_filename, "wb");
     if (f_out) {
         fwrite(egdb_tables[s], 1, size, f_out);
         fclose(f_out);
@@ -219,7 +224,7 @@ void egdb_mem_free_layer(int s, uint64_t size) {
     }
 }
 
-bool egdb_mem_probe(int s, uint64_t idx, int8_t* val) {
+bool egdb_mem_probe(int s, uint64_t idx, int8_t *val) {
     if (egdb_is_compressed[s]) {
         // Calculate bounds in chunk map
         uint64_t chunk_id = idx / EGDB_LZ4_BLOCK_SIZE;
@@ -233,12 +238,11 @@ bool egdb_mem_probe(int s, uint64_t idx, int8_t* val) {
         int8_t temp_buf[EGDB_LZ4_BLOCK_SIZE];
 
         int decompressed = LZ4_decompress_safe_partial(
-            (const char*)&egdb_comp_data[s][comp_offset],
-            (char*)temp_buf,
+            (const char *)&egdb_comp_data[s][comp_offset],
+            (char *)temp_buf,
             comp_size,
             target,
-            EGDB_LZ4_BLOCK_SIZE
-        );
+            EGDB_LZ4_BLOCK_SIZE);
 
         if (decompressed < target) return false;
 

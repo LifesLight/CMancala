@@ -2,7 +2,6 @@
  * Copyright (c) Alexander Kurtz 2026
  */
 
-
 #include "logic/board.h"
 
 int stoneCount = 0;
@@ -66,13 +65,13 @@ int getBoardEvaluation(const Board *board) {
 bool isBoardPlayerOneEmpty(const Board *board) {
     // Casting the array to a single int64_t,
     // mask out the last 2 indices and if that int64_t is 0 the side is empty
-    return !(*(int64_t*)board->cells & 0x0000FFFFFFFFFFFF);
+    return !(*(int64_t *)board->cells & 0x0000FFFFFFFFFFFF);
 }
 
 bool isBoardPlayerTwoEmpty(const Board *board) {
     // Same logic as ^ just offset the pointer to check the other side
     // Also slightly different mask to check from other side (array bounds)
-    return !(*(int64_t*)(board->cells + 5) & 0xFFFFFFFFFFFF0000);
+    return !(*(int64_t *)(board->cells + 5) & 0xFFFFFFFFFFFF0000);
 }
 
 bool processBoardTerminal(Board *board) {
@@ -136,7 +135,7 @@ void makeMoveOnBoardAvalanche(Board *board, const uint8_t actionIndex) {
             return;
         }
 
-    // Check if last stone was placed on empty field
+        // Check if last stone was placed on empty field
     } while (board->cells[index] > 1);
 
     // Return no extra move
@@ -195,7 +194,7 @@ void makeMoveOnBoardClassic(Board *board, const uint8_t actionIndex) {
                 board->cells[SCORE_P2] += targetValue + 1;
                 board->cells[targetIndex] = 0;
                 board->cells[index] = 0;
-            // Player 1 made move
+                // Player 1 made move
             } else if (turn && index < SCORE_P1) {
                 board->cells[SCORE_P1] += targetValue + 1;
                 board->cells[targetIndex] = 0;
@@ -208,7 +207,7 @@ void makeMoveOnBoardClassic(Board *board, const uint8_t actionIndex) {
     board->color = -board->color;
 }
 
-void makeMoveFunction(Board* board, const uint8_t actionIndex) {
+void makeMoveFunction(Board *board, const uint8_t actionIndex) {
     if (activeMoveMode == CLASSIC_MOVE) {
         makeMoveOnBoardClassic(board, actionIndex);
     } else {
@@ -216,7 +215,7 @@ void makeMoveFunction(Board* board, const uint8_t actionIndex) {
     }
 }
 
-void makeMoveManual(Board* board, int index) {
+void makeMoveManual(Board *board, int index) {
     makeMoveFunction(board, (uint8_t)index);
     processBoardTerminal(board);
 }
@@ -225,7 +224,7 @@ bool isBoardTerminal(const Board *board) {
     return isBoardPlayerOneEmpty(board) || isBoardPlayerTwoEmpty(board);
 }
 
-char* encodeBoard(const Board *board) {
+char *encodeBoard(const Board *board) {
     uint64_t low = 0;
     uint64_t high = 0;
 
@@ -255,13 +254,13 @@ char* encodeBoard(const Board *board) {
     strncpy(temp, message + 5, sizeof(temp));
 
     // Convert to heap allocated char
-    char* result = (char*)malloc(strlen(temp) + 1);
+    char *result = (char *)malloc(strlen(temp) + 1);
     strcpy(result, temp);
 
     return result;
 }
 
-bool decodeBoard(Board *board, const char* code) {
+bool decodeBoard(Board *board, const char *code) {
     uint64_t high = 0, low = 0;
     int parsedCount = sscanf(code, "%16" SCNx64 "%16" SCNx64, &high, &low);
 

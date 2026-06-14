@@ -7,7 +7,7 @@ int64_t nodeCount;
 
 // --- Instantiations ---
 #ifdef WEB_BUILD
-// 1. TT ON | EGDB ON | CLASSIC 
+// 1. TT ON | EGDB ON | CLASSIC
 #define PREFIX TT_EGDB_CLASSIC
 #define SOLVER_USE_CACHE 1
 #define USE_EGDB 1
@@ -18,7 +18,7 @@ int64_t nodeCount;
 #undef USE_EGDB
 #undef MAKE_MOVE
 
-// 2. TT ON | EGDB ON | AVALANCHE 
+// 2. TT ON | EGDB ON | AVALANCHE
 #define PREFIX TT_EGDB_AVALANCHE
 #define SOLVER_USE_CACHE 1
 #define USE_EGDB 1
@@ -30,7 +30,7 @@ int64_t nodeCount;
 #undef MAKE_MOVE
 
 #else
-// 1. TT ON | EGDB ON | CLASSIC 
+// 1. TT ON | EGDB ON | CLASSIC
 #define PREFIX TT_EGDB_CLASSIC
 #define SOLVER_USE_CACHE 1
 #define USE_EGDB 1
@@ -41,7 +41,7 @@ int64_t nodeCount;
 #undef USE_EGDB
 #undef MAKE_MOVE
 
-// 2. TT ON | EGDB OFF | CLASSIC 
+// 2. TT ON | EGDB OFF | CLASSIC
 #define PREFIX TT_CLASSIC
 #define SOLVER_USE_CACHE 1
 #define USE_EGDB 0
@@ -52,7 +52,7 @@ int64_t nodeCount;
 #undef USE_EGDB
 #undef MAKE_MOVE
 
-// 3. TT ON | EGDB ON | AVALANCHE 
+// 3. TT ON | EGDB ON | AVALANCHE
 #define PREFIX TT_EGDB_AVALANCHE
 #define SOLVER_USE_CACHE 1
 #define USE_EGDB 1
@@ -63,7 +63,7 @@ int64_t nodeCount;
 #undef USE_EGDB
 #undef MAKE_MOVE
 
-// 4. TT ON | EGDB OFF | AVALANCHE 
+// 4. TT ON | EGDB OFF | AVALANCHE
 #define PREFIX TT_AVALANCHE
 #define SOLVER_USE_CACHE 1
 #define USE_EGDB 0
@@ -74,7 +74,7 @@ int64_t nodeCount;
 #undef USE_EGDB
 #undef MAKE_MOVE
 
-// 5. TT OFF | EGDB ON | CLASSIC 
+// 5. TT OFF | EGDB ON | CLASSIC
 #define PREFIX EGDB_CLASSIC
 #define SOLVER_USE_CACHE 0
 #define USE_EGDB 1
@@ -85,7 +85,7 @@ int64_t nodeCount;
 #undef USE_EGDB
 #undef MAKE_MOVE
 
-// 6. TT OFF | EGDB OFF | CLASSIC 
+// 6. TT OFF | EGDB OFF | CLASSIC
 #define PREFIX CLASSIC
 #define SOLVER_USE_CACHE 0
 #define USE_EGDB 0
@@ -96,7 +96,7 @@ int64_t nodeCount;
 #undef USE_EGDB
 #undef MAKE_MOVE
 
-// 7. TT OFF | EGDB ON | AVALANCHE 
+// 7. TT OFF | EGDB ON | AVALANCHE
 #define PREFIX EGDB_AVALANCHE
 #define SOLVER_USE_CACHE 0
 #define USE_EGDB 1
@@ -107,7 +107,7 @@ int64_t nodeCount;
 #undef USE_EGDB
 #undef MAKE_MOVE
 
-// 8. TT OFF | EGDB OFF | AVALANCHE 
+// 8. TT OFF | EGDB OFF | AVALANCHE
 #define PREFIX AVALANCHE
 #define SOLVER_USE_CACHE 0
 #define USE_EGDB 0
@@ -120,31 +120,31 @@ int64_t nodeCount;
 #endif
 
 // New Dispatcher for unlimited depth binary searches
-void binarySearchRoot(Context* context, SolverConfig *config) {
+void binarySearchRoot(Context *context, SolverConfig *config) {
     bool is_classic = (getMoveFunction() == CLASSIC_MOVE);
     resetEGDBStats();
 
 #ifdef WEB_BUILD
     if (is_classic) binarySearchRoot_TT_EGDB_CLASSIC(context, config);
-    else            binarySearchRoot_TT_EGDB_AVALANCHE(context, config);
+    else binarySearchRoot_TT_EGDB_AVALANCHE(context, config);
 #else
     bool use_tt = (config->solver == LOCAL_SOLVER);
     bool use_egdb = (loaded_egdb_max_stones > 0);
 
-    if (use_tt && use_egdb && is_classic)         binarySearchRoot_TT_EGDB_CLASSIC(context, config);
-    else if (use_tt && !use_egdb && is_classic)   binarySearchRoot_TT_CLASSIC(context, config);
-    else if (use_tt && use_egdb && !is_classic)   binarySearchRoot_TT_EGDB_AVALANCHE(context, config);
-    else if (use_tt && !use_egdb && !is_classic)  binarySearchRoot_TT_AVALANCHE(context, config);
-    else if (!use_tt && use_egdb && is_classic)   binarySearchRoot_EGDB_CLASSIC(context, config);
-    else if (!use_tt && !use_egdb && is_classic)  binarySearchRoot_CLASSIC(context, config);
-    else if (!use_tt && use_egdb && !is_classic)  binarySearchRoot_EGDB_AVALANCHE(context, config);
+    if (use_tt && use_egdb && is_classic) binarySearchRoot_TT_EGDB_CLASSIC(context, config);
+    else if (use_tt && !use_egdb && is_classic) binarySearchRoot_TT_CLASSIC(context, config);
+    else if (use_tt && use_egdb && !is_classic) binarySearchRoot_TT_EGDB_AVALANCHE(context, config);
+    else if (use_tt && !use_egdb && !is_classic) binarySearchRoot_TT_AVALANCHE(context, config);
+    else if (!use_tt && use_egdb && is_classic) binarySearchRoot_EGDB_CLASSIC(context, config);
+    else if (!use_tt && !use_egdb && is_classic) binarySearchRoot_CLASSIC(context, config);
+    else if (!use_tt && use_egdb && !is_classic) binarySearchRoot_EGDB_AVALANCHE(context, config);
     else if (!use_tt && !use_egdb && !is_classic) binarySearchRoot_AVALANCHE(context, config);
 #endif
 
     resetCacheStats();
 }
 
-void aspirationRoot(Context* context, SolverConfig *config) {
+void aspirationRoot(Context *context, SolverConfig *config) {
     // Probe opening book
     if (config->useOpeningBook && getMoveFunction() == CLASSIC_MOVE) {
         int bestMove = -1;
@@ -156,8 +156,9 @@ void aspirationRoot(Context* context, SolverConfig *config) {
             context->metadata.lastEvaluation = score;
             context->metadata.lastDepth = 65534;
             context->metadata.lastSolved = true;
-            
-            for (int i = 0; i < MAX_DEPTH; i++) context->metadata.lastDepthTimes[i] = -1.0;
+
+            for (int i = 0; i < MAX_DEPTH; i++)
+                context->metadata.lastDepthTimes[i] = -1.0;
             context->metadata.lastDepthTimes[1] = 0.0;
 
             startProgress(config, PLAY_PREFIX);
@@ -178,42 +179,42 @@ void aspirationRoot(Context* context, SolverConfig *config) {
 
 #ifdef WEB_BUILD
     if (is_classic) aspirationRoot_TT_EGDB_CLASSIC(context, config);
-    else            aspirationRoot_TT_EGDB_AVALANCHE(context, config);
+    else aspirationRoot_TT_EGDB_AVALANCHE(context, config);
 #else
     bool use_tt = (config->solver == LOCAL_SOLVER);
     bool use_egdb = (loaded_egdb_max_stones > 0);
 
-    if (use_tt && use_egdb && is_classic)         aspirationRoot_TT_EGDB_CLASSIC(context, config);
-    else if (use_tt && !use_egdb && is_classic)   aspirationRoot_TT_CLASSIC(context, config);
-    else if (use_tt && use_egdb && !is_classic)   aspirationRoot_TT_EGDB_AVALANCHE(context, config);
-    else if (use_tt && !use_egdb && !is_classic)  aspirationRoot_TT_AVALANCHE(context, config);
-    else if (!use_tt && use_egdb && is_classic)   aspirationRoot_EGDB_CLASSIC(context, config);
-    else if (!use_tt && !use_egdb && is_classic)  aspirationRoot_CLASSIC(context, config);
-    else if (!use_tt && use_egdb && !is_classic)  aspirationRoot_EGDB_AVALANCHE(context, config);
+    if (use_tt && use_egdb && is_classic) aspirationRoot_TT_EGDB_CLASSIC(context, config);
+    else if (use_tt && !use_egdb && is_classic) aspirationRoot_TT_CLASSIC(context, config);
+    else if (use_tt && use_egdb && !is_classic) aspirationRoot_TT_EGDB_AVALANCHE(context, config);
+    else if (use_tt && !use_egdb && !is_classic) aspirationRoot_TT_AVALANCHE(context, config);
+    else if (!use_tt && use_egdb && is_classic) aspirationRoot_EGDB_CLASSIC(context, config);
+    else if (!use_tt && !use_egdb && is_classic) aspirationRoot_CLASSIC(context, config);
+    else if (!use_tt && use_egdb && !is_classic) aspirationRoot_EGDB_AVALANCHE(context, config);
     else if (!use_tt && !use_egdb && !is_classic) aspirationRoot_AVALANCHE(context, config);
 #endif
 
     resetCacheStats();
 }
 
-void distributionRoot(Board *board, int32_t* distribution, bool *solved, SolverConfig *config) {
+void distributionRoot(Board *board, int32_t *distribution, bool *solved, SolverConfig *config) {
     bool is_classic = (getMoveFunction() == CLASSIC_MOVE);
     resetEGDBStats();
 
 #ifdef WEB_BUILD
     if (is_classic) distributionRoot_TT_EGDB_CLASSIC(board, distribution, solved, config);
-    else            distributionRoot_TT_EGDB_AVALANCHE(board, distribution, solved, config);
+    else distributionRoot_TT_EGDB_AVALANCHE(board, distribution, solved, config);
 #else
     bool use_tt = (config->solver == LOCAL_SOLVER);
     bool use_egdb = (loaded_egdb_max_stones > 0);
 
-    if (use_tt && use_egdb && is_classic)         distributionRoot_TT_EGDB_CLASSIC(board, distribution, solved, config);
-    else if (use_tt && !use_egdb && is_classic)   distributionRoot_TT_CLASSIC(board, distribution, solved, config);
-    else if (use_tt && use_egdb && !is_classic)   distributionRoot_TT_EGDB_AVALANCHE(board, distribution, solved, config);
-    else if (use_tt && !use_egdb && !is_classic)  distributionRoot_TT_AVALANCHE(board, distribution, solved, config);
-    else if (!use_tt && use_egdb && is_classic)   distributionRoot_EGDB_CLASSIC(board, distribution, solved, config);
-    else if (!use_tt && !use_egdb && is_classic)  distributionRoot_CLASSIC(board, distribution, solved, config);
-    else if (!use_tt && use_egdb && !is_classic)  distributionRoot_EGDB_AVALANCHE(board, distribution, solved, config);
+    if (use_tt && use_egdb && is_classic) distributionRoot_TT_EGDB_CLASSIC(board, distribution, solved, config);
+    else if (use_tt && !use_egdb && is_classic) distributionRoot_TT_CLASSIC(board, distribution, solved, config);
+    else if (use_tt && use_egdb && !is_classic) distributionRoot_TT_EGDB_AVALANCHE(board, distribution, solved, config);
+    else if (use_tt && !use_egdb && !is_classic) distributionRoot_TT_AVALANCHE(board, distribution, solved, config);
+    else if (!use_tt && use_egdb && is_classic) distributionRoot_EGDB_CLASSIC(board, distribution, solved, config);
+    else if (!use_tt && !use_egdb && is_classic) distributionRoot_CLASSIC(board, distribution, solved, config);
+    else if (!use_tt && use_egdb && !is_classic) distributionRoot_EGDB_AVALANCHE(board, distribution, solved, config);
     else if (!use_tt && !use_egdb && !is_classic) distributionRoot_AVALANCHE(board, distribution, solved, config);
 #endif
     resetCacheStats();
@@ -241,8 +242,8 @@ NegamaxTrace negamaxWithTrace(Board *board, int alpha, const int beta, const int
     NegamaxTrace tempResult;
 
     // Iterate over all possible moves
-    const int start = (board->color == 1)  ? HBOUND_P1 : HBOUND_P2;
-    const int end = (board->color == 1)    ? LBOUND_P1 : LBOUND_P2;
+    const int start = (board->color == 1) ? HBOUND_P1 : HBOUND_P2;
+    const int end = (board->color == 1) ? LBOUND_P1 : LBOUND_P2;
 
     for (int i = start; i >= end; i--) {
         // Filter invalid moves
@@ -306,8 +307,8 @@ NegamaxTrace traceRoot(Board *board, int alpha, const int beta, const int depth)
     NegamaxTrace tempResult;
 
     // Iterate over all possible moves
-    const int start = (board->color == 1)  ? HBOUND_P1 : HBOUND_P2;
-    const int end = (board->color == 1)    ? LBOUND_P1 : LBOUND_P2;
+    const int start = (board->color == 1) ? HBOUND_P1 : HBOUND_P2;
+    const int end = (board->color == 1) ? LBOUND_P1 : LBOUND_P2;
 
     for (int i = start; i >= end; i--) {
         // Filter invalid moves

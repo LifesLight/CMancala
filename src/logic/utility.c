@@ -10,21 +10,23 @@ void quitGame() {
 
 void trimSpaces(char *str) {
     char *end = str + strlen(str);
-    while (end > str && isspace((unsigned char)*(end - 1))) end--;
+    while (end > str && isspace((unsigned char)*(end - 1)))
+        end--;
     *end = 0;
 
     char *start = str;
-    while (*start && isspace((unsigned char)*start)) start++;
+    while (*start && isspace((unsigned char)*start))
+        start++;
     if (start != str) memmove(str, start, strlen(start) + 1);
 }
 
 void getInput(char *input, const char *prefix) {
     bool isInteractive;
-    #ifdef _WIN32
+#ifdef _WIN32
     isInteractive = true;
-    #else
+#else
     isInteractive = isatty(STDIN_FILENO);
-    #endif
+#endif
 
     while (true) {
         printf("%s%s", prefix, INPUT_PREFIX);
@@ -59,7 +61,7 @@ void getInput(char *input, const char *prefix) {
     }
 }
 
-void initializeBoardFromConfig(Board* board, Config* config) {
+void initializeBoardFromConfig(Board *board, Config *config) {
     // Initialize board
     if (config->gameSettings.distribution == UNIFORM_DIST) {
         configBoard(board, config->gameSettings.stones);
@@ -69,7 +71,7 @@ void initializeBoardFromConfig(Board* board, Config* config) {
     board->color = config->gameSettings.startColor;
 }
 
-void updateCell(Board* board, int player, int idx, int value) {
+void updateCell(Board *board, int player, int idx, int value) {
     int currentSum = 0;
 
     int cellIndex = player == -1 ? 13 - idx : idx - 1;
@@ -95,7 +97,7 @@ void updateCell(Board* board, int player, int idx, int value) {
     return;
 }
 
-void getLogNotation(char* buffer, uint64_t value) {
+void getLogNotation(char *buffer, uint64_t value) {
     if (value == 0) {
         strcpy(buffer, "[0,00]");
         return;
@@ -112,7 +114,7 @@ void getLogNotation(char* buffer, uint64_t value) {
     }
 }
 
-void storeBenchmarkData(const char* fileName, double* data) {
+void storeBenchmarkData(const char *fileName, double *data) {
     FILE *fp = fopen(fileName, "w");
     if (!fp) {
         printf("Error writing to file %s\n", fileName);

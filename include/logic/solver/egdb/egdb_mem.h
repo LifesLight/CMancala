@@ -18,6 +18,6 @@ void egdb_mem_alloc(int s, uint64_t size);
 
 void egdb_mem_free_layer(int s, uint64_t size);
 
-bool egdb_mem_probe(int s, uint64_t idx, int8_t* val);
+bool egdb_mem_probe(int s, uint64_t idx, int8_t *val);
 
 uint64_t egdb_mem_get_size(int s, uint64_t size_uncompressed);

@@ -5,8 +5,8 @@
 #include "user/render.h"
 
 static clock_t progressStartTime;
-static const SolverConfig* progressConfig = NULL;
-static const char* progressPrefix = NULL;
+static const SolverConfig *progressConfig = NULL;
+static const char *progressPrefix = NULL;
 static const int BAR_WIDTH = 40;
 static bool progressFirstUpdate;
 
@@ -19,7 +19,7 @@ void setBinaryProgress(int step, int total) {
     binaryTotalSteps = total;
 }
 
-static void formatNodeCount(uint64_t nodes, char* buffer, size_t size) {
+static void formatNodeCount(uint64_t nodes, char *buffer, size_t size) {
     if (nodes < 1000) {
         snprintf(buffer, size, "%" PRIu64, nodes);
     } else if (nodes < 1000000) {
@@ -31,7 +31,7 @@ static void formatNodeCount(uint64_t nodes, char* buffer, size_t size) {
     }
 }
 
-static void formatTimeDuration(double seconds, char* buffer, size_t size) {
+static void formatTimeDuration(double seconds, char *buffer, size_t size) {
     if (seconds < 60.0) {
         snprintf(buffer, size, "%.2fs", seconds);
     } else if (seconds < 3600.0) {
@@ -49,7 +49,7 @@ static void formatTimeDuration(double seconds, char* buffer, size_t size) {
     }
 }
 
-void startProgress(const SolverConfig* config, const char* prefix) {
+void startProgress(const SolverConfig *config, const char *prefix) {
     if (!config->progressBar) return;
     progressConfig = config;
     progressPrefix = prefix ? prefix : "";
@@ -101,7 +101,7 @@ void updateProgress(int currentDepth, int bestMove, int score, uint64_t nodeCoun
     printf("%s>> " BAR_CAP_L, progressPrefix);
     for (int i = 0; i < BAR_WIDTH; i++) {
         if (i < filledLen) printf(BAR_FILL);
-        else               printf(BAR_EMPTY);
+        else printf(BAR_EMPTY);
     }
     printf(BAR_CAP_R " %3d%%\033[K\n", (int)(percentage * 100));
 
@@ -133,9 +133,9 @@ void updateProgress(int currentDepth, int bestMove, int score, uint64_t nodeCoun
 
     // E: eval
     if (progressConfig->clip) {
-        if (score > 0)       printf("E: WIN");
-        else if (score < 0)  printf("E: LOSS");
-        else                  printf("E: DRAW");
+        if (score > 0) printf("E: WIN");
+        else if (score < 0) printf("E: LOSS");
+        else printf("E: DRAW");
     } else {
         printf("E:%+d", score);
     }
@@ -171,7 +171,7 @@ void finishProgress() {
 void startEGDBProgress() {
     progressStartTime = clock();
     progressFirstUpdate = true;
-    progressPrefix = CONFIG_PREFIX; 
+    progressPrefix = CONFIG_PREFIX;
 }
 
 void updateEGDBProgress(int stones, uint64_t current, uint64_t total) {
@@ -190,7 +190,7 @@ void updateEGDBProgress(int stones, uint64_t current, uint64_t total) {
     printf("%s>> " BAR_CAP_L, progressPrefix);
     for (int i = 0; i < BAR_WIDTH; i++) {
         if (i < filledLen) printf(BAR_FILL);
-        else               printf(BAR_EMPTY);
+        else printf(BAR_EMPTY);
     }
     printf(BAR_CAP_R " %3d%%\033[K\n", (int)(percentage * 100));
 
@@ -211,8 +211,8 @@ void finishEGDBProgress() {
     printf("\n");
 }
 
-void renderCustomBoard(const int32_t *cells, const int8_t color, const char* prefix, const GameSettings* settings) {
-    char* playerDescriptor = "Unknown";
+void renderCustomBoard(const int32_t *cells, const int8_t color, const char *prefix, const GameSettings *settings) {
+    char *playerDescriptor = "Unknown";
     if (color == 1) {
         if (settings == NULL) {
             playerDescriptor = "Player 1";
@@ -312,7 +312,7 @@ void renderCustomBoard(const int32_t *cells, const int8_t color, const char* pre
     printf("%s%s%s\n", HL, HL, BR);
 }
 
-void renderBoard(const Board *board, const char* prefix, const GameSettings* settings) {
+void renderBoard(const Board *board, const char *prefix, const GameSettings *settings) {
     int cells[14];
     for (int i = 0; i < 14; ++i) {
         cells[i] = board->cells[i];
@@ -330,11 +330,11 @@ void renderWelcome() {
     printf("\n");
 }
 
-void renderOutput(const char* message, const char* prefix) {
+void renderOutput(const char *message, const char *prefix) {
     printf("%s%s%s\n", prefix, OUTPUT_PREFIX, message);
 }
 
-static void renderStatBoard(const double* cells, const char* title, const char* format, const char* prefix) {
+static void renderStatBoard(const double *cells, const char *title, const char *format, const char *prefix) {
     printf("%s%s  %s:\n", prefix, OUTPUT_PREFIX, title);
 
     printf("%s%s  %s", prefix, OUTPUT_PREFIX, TL);
@@ -355,7 +355,7 @@ static void renderStatBoard(const double* cells, const char* title, const char* 
     for (int j = 0; j < 6; j++) {
         printf("%s%s%s%s%s%s%s", HL, HL, HL, HL, HL, HL, HL);
         if (j < 5) printf("%s", CR);
-        else       printf("%s", VL);
+        else printf("%s", VL);
     }
     printf("\n");
 
@@ -374,7 +374,7 @@ static void renderStatBoard(const double* cells, const char* title, const char* 
     printf("%s\n", BR);
 }
 
-void renderCacheOverview(const CacheStats* stats, bool showFrag, bool showStoneDist, bool showDepthDist) {
+void renderCacheOverview(const CacheStats *stats, bool showFrag, bool showStoneDist, bool showDepthDist) {
     char message[256];
     char logBuffer[32];
 
@@ -382,7 +382,7 @@ void renderCacheOverview(const CacheStats* stats, bool showFrag, bool showStoneD
 
     const double fillPct = (stats->cacheSize > 0) ? (double)stats->setEntries / (double)stats->cacheSize * 100.0 : 0.0;
     getLogNotation(logBuffer, stats->cacheSize);
-    snprintf(message, sizeof(message), "  Cache size: %-12"PRIu64" %s (%.2f%% Used)", stats->cacheSize, logBuffer, fillPct);
+    snprintf(message, sizeof(message), "  Cache size: %-12" PRIu64 " %s (%.2f%% Used)", stats->cacheSize, logBuffer, fillPct);
     renderOutput(message, CHEAT_PREFIX);
 
     double cacheMB = ((double)stats->cacheSize * stats->entrySize) / 1048576.0;
@@ -392,43 +392,43 @@ void renderCacheOverview(const CacheStats* stats, bool showFrag, bool showStoneD
     if (stats->hasDepth) {
         const double solvedPct = (stats->setEntries > 0) ? (double)stats->solvedEntries / (double)stats->setEntries * 100.0 : 0.0;
         getLogNotation(logBuffer, stats->solvedEntries);
-        snprintf(message, sizeof(message), "  Solved:     %-12"PRIu64" %s (%.2f%% of used)", stats->solvedEntries, logBuffer, solvedPct);
+        snprintf(message, sizeof(message), "  Solved:     %-12" PRIu64 " %s (%.2f%% of used)", stats->solvedEntries, logBuffer, solvedPct);
         renderOutput(message, CHEAT_PREFIX);
     }
 
     getLogNotation(logBuffer, stats->hits);
-    snprintf(message, sizeof(message), "  Hits:       %-12"PRIu64" %s", stats->hits, logBuffer);
+    snprintf(message, sizeof(message), "  Hits:       %-12" PRIu64 " %s", stats->hits, logBuffer);
     renderOutput(message, CHEAT_PREFIX);
 
     if (stats->hasDepth) {
         const uint64_t badHits = stats->hits - stats->hitsLegal;
         const double badHitPercent = (stats->hits > 0) ? (double)badHits / (double)stats->hits * 100.0 : 0.0;
         getLogNotation(logBuffer, badHits);
-        snprintf(message, sizeof(message), "    Shallow:  %-12"PRIu64" %s (%.2f%%)", badHits, logBuffer, badHitPercent);
+        snprintf(message, sizeof(message), "    Shallow:  %-12" PRIu64 " %s (%.2f%%)", badHits, logBuffer, badHitPercent);
         renderOutput(message, CHEAT_PREFIX);
     }
 
     const double swapPct = (stats->hits > 0) ? (double)stats->lruSwaps / (double)stats->hits * 100.0 : 0.0;
     getLogNotation(logBuffer, stats->lruSwaps);
-    snprintf(message, sizeof(message), "    LRU Swap: %-12"PRIu64" %s (%.2f%%)", stats->lruSwaps, logBuffer, swapPct);
+    snprintf(message, sizeof(message), "    LRU Swap: %-12" PRIu64 " %s (%.2f%%)", stats->lruSwaps, logBuffer, swapPct);
     renderOutput(message, CHEAT_PREFIX);
 
     renderOutput("  Cache Overwrites:", CHEAT_PREFIX);
     getLogNotation(logBuffer, stats->overwriteImprove);
-    snprintf(message, sizeof(message), "    Improve:  %-12"PRIu64" %s", stats->overwriteImprove, logBuffer);
+    snprintf(message, sizeof(message), "    Improve:  %-12" PRIu64 " %s", stats->overwriteImprove, logBuffer);
     renderOutput(message, CHEAT_PREFIX);
 
     getLogNotation(logBuffer, stats->overwriteEvict);
-    snprintf(message, sizeof(message), "    Evict:    %-12"PRIu64" %s", stats->overwriteEvict, logBuffer);
+    snprintf(message, sizeof(message), "    Evict:    %-12" PRIu64 " %s", stats->overwriteEvict, logBuffer);
     renderOutput(message, CHEAT_PREFIX);
 
     if (stats->failStones > 0 || stats->failRange > 0) {
         renderOutput("  Encoding Fail Counts:", CHEAT_PREFIX);
         getLogNotation(logBuffer, stats->failStones);
-        snprintf(message, sizeof(message), "    Stones:   %-12"PRIu64" %s", stats->failStones, logBuffer);
+        snprintf(message, sizeof(message), "    Stones:   %-12" PRIu64 " %s", stats->failStones, logBuffer);
         renderOutput(message, CHEAT_PREFIX);
         getLogNotation(logBuffer, stats->failRange);
-        snprintf(message, sizeof(message), "    Value:    %-12"PRIu64" %s", stats->failRange, logBuffer);
+        snprintf(message, sizeof(message), "    Value:    %-12" PRIu64 " %s", stats->failRange, logBuffer);
         renderOutput(message, CHEAT_PREFIX);
     }
 
@@ -445,7 +445,7 @@ void renderCacheOverview(const CacheStats* stats, bool showFrag, bool showStoneD
     if (showStoneDist && stats->setEntries > 0) {
         renderStatBoard(stats->avgStones, "Average Stones", "%7.1f", CHEAT_PREFIX);
         renderStatBoard(stats->maxStones, "Maximum Stones", "%7.0f", CHEAT_PREFIX);
-        renderStatBoard(stats->over7,  "Freq > 7  (log10)", "%7.2f", CHEAT_PREFIX);
+        renderStatBoard(stats->over7, "Freq > 7  (log10)", "%7.2f", CHEAT_PREFIX);
         renderStatBoard(stats->over15, "Freq > 15 (log10)", "%7.2f", CHEAT_PREFIX);
     }
 
@@ -497,7 +497,7 @@ void renderCacheOverview(const CacheStats* stats, bool showFrag, bool showStoneD
 void renderEGDBOverview() {
     uint64_t egdbHits, egdbSize;
     int egdbMin, egdbMax;
-    
+
     getEGDBStats(&egdbSize, &egdbHits, &egdbMin, &egdbMax);
 
     if (egdbMax <= 0) {

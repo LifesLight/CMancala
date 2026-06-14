@@ -10,9 +10,9 @@ static bool solved;
 
 // --- Helper: Key ---
 
-static inline int FN(key)(Board* board, int color1) {
+static inline int FN(key)(Board *board, int color1) {
     // We really like getting another turn, this forces it to be explored first
-    if(color1 == board->color) return 1000;
+    if (color1 == board->color) return 1000;
     return color1 * getBoardEvaluation(board);
 }
 
@@ -82,7 +82,7 @@ static int FN(negamax)(Board *board, int alpha, int beta, const int depth) {
 #endif
 
     const int start = (board->color == 1) ? HBOUND_P1 : HBOUND_P2;
-    const int end   = (board->color == 1) ? LBOUND_P1 : LBOUND_P2;
+    const int end = (board->color == 1) ? LBOUND_P1 : LBOUND_P2;
 
     Board allMoves[6];
 
@@ -179,8 +179,8 @@ int FN(negamaxWithMove)(Board *board, int *bestMove, int alpha, int beta, const 
     bool nodeSolved = true;
 #endif
 
-    const int start = (board->color == 1)  ? HBOUND_P1 : HBOUND_P2;
-    const int end = (board->color == 1)    ? LBOUND_P1 : LBOUND_P2;
+    const int start = (board->color == 1) ? HBOUND_P1 : HBOUND_P2;
+    const int end = (board->color == 1) ? LBOUND_P1 : LBOUND_P2;
 
     Board allMoves[6];
     int moves[6];
@@ -273,7 +273,7 @@ void FN(distributionRoot)(Board *board, int *distribution, bool *solvedOutput, S
 #endif
 
     const int alpha = config->clip ? 0 : INT32_MIN + 1;
-    const int beta  = config->clip ? 1 : INT32_MAX;
+    const int beta = config->clip ? 1 : INT32_MAX;
 
 #if SOLVER_USE_CACHE
     bool nodeSolved = true;
@@ -323,7 +323,7 @@ void FN(distributionRoot)(Board *board, int *distribution, bool *solvedOutput, S
 
 // --- Public: Aspiration Root ---
 
-void FN(binarySearchRoot)(Context* context, SolverConfig *config) {
+void FN(binarySearchRoot)(Context *context, SolverConfig *config) {
     int bestMove = -1;
     int score = 0;
     int currentDepth = MAX_DEPTH;
@@ -335,9 +335,10 @@ void FN(binarySearchRoot)(Context* context, SolverConfig *config) {
 
     clock_t start = clock();
     nodeCount = 0;
-    double* depthTimes = context->metadata.lastDepthTimes;
+    double *depthTimes = context->metadata.lastDepthTimes;
     if (depthTimes != NULL) {
-        for (int i = 0; i < MAX_DEPTH; i++) depthTimes[i] = -1.0;
+        for (int i = 0; i < MAX_DEPTH; i++)
+            depthTimes[i] = -1.0;
     }
 
     int maxStones = getStoneCount();
@@ -393,7 +394,7 @@ void FN(binarySearchRoot)(Context* context, SolverConfig *config) {
 #endif
                 if (score < beta) {
                     R = score;
-                    guess = score; 
+                    guess = score;
                 } else {
                     L = score;
                     guess = score + 1;
@@ -452,7 +453,7 @@ void FN(binarySearchRoot)(Context* context, SolverConfig *config) {
     }
 }
 
-void FN(aspirationRoot)(Context* context, SolverConfig *config) {
+void FN(aspirationRoot)(Context *context, SolverConfig *config) {
     const int depthStep = 1;
     int currentDepth = 1;
     int bestMove = -1;
@@ -464,13 +465,14 @@ void FN(aspirationRoot)(Context* context, SolverConfig *config) {
     const int windowSize = 1;
     int window = windowSize;
     int alpha = INT32_MIN + 1;
-    int beta  = INT32_MAX;
+    int beta = INT32_MAX;
     int windowMisses = 0;
     clock_t start = clock();
     nodeCount = 0;
-    double* depthTimes = context->metadata.lastDepthTimes;
+    double *depthTimes = context->metadata.lastDepthTimes;
     if (depthTimes != NULL) {
-        for (int i = 0; i < MAX_DEPTH; i++) depthTimes[i] = -1.0;
+        for (int i = 0; i < MAX_DEPTH; i++)
+            depthTimes[i] = -1.0;
     }
     double lastTimeCaptured = 0.0;
     startProgress(config, PLAY_PREFIX);
@@ -489,8 +491,7 @@ void FN(aspirationRoot)(Context* context, SolverConfig *config) {
             score = FN(negamaxWithMove)(context->board, &bestMove, 0, 1, currentDepth, previousBest);
 #endif
             searchValid = true;
-        }
-        else {
+        } else {
 #if SOLVER_USE_CACHE
             score = FN(negamaxWithMove)(context->board, &bestMove, alpha, beta, currentDepth, &solved, previousBest);
 #else
@@ -500,13 +501,13 @@ void FN(aspirationRoot)(Context* context, SolverConfig *config) {
                 searchValid = true;
                 window = windowSize;
                 alpha = score - window;
-                beta  = score + window;
+                beta = score + window;
             } else {
                 // Window Miss
                 windowMisses++;
                 window *= 2;
                 alpha = score - window;
-                beta  = score + window;
+                beta = score + window;
             }
         }
 #if SOLVER_USE_CACHE

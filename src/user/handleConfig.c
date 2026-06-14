@@ -29,7 +29,7 @@ void renderConfigHelp() {
     renderOutput("  quit                             : Quit the application", CONFIG_PREFIX);
 }
 
-void printConfig(Config* config) {
+void printConfig(Config *config) {
     char message[256];
 
     renderOutput("Current configuration:", CONFIG_PREFIX);
@@ -83,15 +83,21 @@ void printConfig(Config* config) {
     renderOutput(message, CONFIG_PREFIX);
 
     if (getCacheSize() > 0) {
-        snprintf(message, sizeof(message), "  Cache size: %-12"PRIu64"", getCacheSize());
+        snprintf(message, sizeof(message), "  Cache size: %-12" PRIu64 "", getCacheSize());
         renderOutput(message, CONFIG_PREFIX);
     }
 
-    const char* compressStr = "unknown";
+    const char *compressStr = "unknown";
     switch (config->solverConfig.compressCache) {
-        case ALWAYS_COMPRESS: compressStr = "always"; break;
-        case NEVER_COMPRESS:  compressStr = "never"; break;
-        case AUTO:            compressStr = "auto"; break;
+        case ALWAYS_COMPRESS:
+            compressStr = "always";
+            break;
+        case NEVER_COMPRESS:
+            compressStr = "never";
+            break;
+        case AUTO:
+            compressStr = "auto";
+            break;
     }
     snprintf(message, sizeof(message), "  Compress: %s", compressStr);
     renderOutput(message, CONFIG_PREFIX);
@@ -140,7 +146,7 @@ void printConfig(Config* config) {
     renderOutput(message, CONFIG_PREFIX);
 }
 
-void handleConfigInput(bool* requestedStart, Config* config) {
+void handleConfigInput(bool *requestedStart, Config *config) {
     char input[256];
     getInput(input, CONFIG_PREFIX);
 
@@ -234,21 +240,18 @@ void handleConfigInput(bool* requestedStart, Config* config) {
     }
 
     if (strncmp(input, "compress ", 9) == 0) {
-        char* val = input + 9;
+        char *val = input + 9;
         CacheMode currentMode = config->solverConfig.compressCache;
         CacheMode newMode = currentMode;
 
         // Map inputs to CacheMode
         if (strcmp(val, "true") == 0 || strcmp(val, "1") == 0 || strcmp(val, "always") == 0) {
             newMode = ALWAYS_COMPRESS;
-        } 
-        else if (strcmp(val, "false") == 0 || strcmp(val, "0") == 0 || strcmp(val, "never") == 0) {
+        } else if (strcmp(val, "false") == 0 || strcmp(val, "0") == 0 || strcmp(val, "never") == 0) {
             newMode = NEVER_COMPRESS;
-        } 
-        else if (strcmp(val, "auto") == 0) {
+        } else if (strcmp(val, "auto") == 0) {
             newMode = AUTO;
-        } 
-        else {
+        } else {
             char message[256];
             snprintf(message, sizeof(message), "Invalid compress option \"%.200s\"", val);
             renderOutput(message, CONFIG_PREFIX);
@@ -257,16 +260,16 @@ void handleConfigInput(bool* requestedStart, Config* config) {
 
         // Check for state change
         if (newMode == currentMode) {
-            const char* modeStr = (currentMode == ALWAYS_COMPRESS) ? "always" : 
-                                  (currentMode == NEVER_COMPRESS) ? "never" : "auto";
+            const char *modeStr = (currentMode == ALWAYS_COMPRESS) ? "always" : (currentMode == NEVER_COMPRESS) ? "never"
+                                                                                                                : "auto";
             char message[256];
             snprintf(message, sizeof(message), "Compress already set to %s", modeStr);
             renderOutput(message, CONFIG_PREFIX);
         } else {
             config->solverConfig.compressCache = newMode;
 
-            const char* modeStr = (newMode == ALWAYS_COMPRESS) ? "always" : 
-                                  (newMode == NEVER_COMPRESS) ? "never" : "auto";
+            const char *modeStr = (newMode == ALWAYS_COMPRESS) ? "always" : (newMode == NEVER_COMPRESS) ? "never"
+                                                                                                        : "auto";
             char message[256];
             snprintf(message, sizeof(message), "Updated compress to %s", modeStr);
             renderOutput(message, CONFIG_PREFIX);
