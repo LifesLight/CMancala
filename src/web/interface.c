@@ -730,6 +730,7 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
             inp.inputMode = "numeric";
             inp.id = "cst-" + i;
             inp.onclick = (e) => { e.stopPropagation(); };
+            inp.oninput = () => { window.updateButtons(); };
             el.textContent = "";
             el.appendChild(inp);
         }
@@ -766,8 +767,21 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
         const dist = parseInt(document.getElementById("cfg-dist").value);
         const isCustom = (dist === 2);
         
+        let customInvalid = false;
+        if (isCustom) {
+            const cells = window.inSetup ? window.readCustomBoard() : window.lastCustomCells;
+            if (!cells) {
+                customInvalid = true;
+            } else {
+                let p1 = 0, p2 = 0;
+                for (let i = 0; i <= 5; i++) p1 += cells[i];
+                for (let i = 7; i <= 12; i++) p2 += cells[i];
+                if (p1 === 0 || p2 === 0) customInvalid = true;
+            }
+        }
+        
         const isWorking = !window.egdbReady && !window.egdbError;
-        if (goBtn) goBtn.classList.toggle("disabled", isWorking || (isCustom && !window.inSetup && !window.lastCustomCells));
+        if (goBtn) goBtn.classList.toggle("disabled", isWorking || customInvalid);
         if (resetBtn) resetBtn.classList.toggle("disabled", isWorking || window.inSetup);
 
         const cfgMode = document.getElementById("cfg-mode");
@@ -866,6 +880,7 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
     };
 
     document.getElementById("cfg-go").onclick = async () => {
+        if (document.getElementById("cfg-go").classList.contains("disabled")) return;
         const isWorking = !window.egdbReady && !window.egdbError;
         if (isWorking || Module._get_ai_thinking()) return;
 
