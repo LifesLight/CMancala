@@ -139,3 +139,11 @@ body.expert-mode .expert-btn { color: #0f0; border-color: #0f0; }
 .store-input::-webkit-outer-spin-button, .store-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .pit-input { font-size: calc(24 * var(--bs)); }
 .store-input { font-size: calc(32 * var(--bs)); }
+
+/* Game Over Overlay */
+.game-over-overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.85); background: rgba(30, 30, 30, 0.95); border: 2px solid #555; padding: calc(25 * var(--bs)) calc(40 * var(--bs)); border-radius: 12px; text-align: center; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.8); opacity: 0; pointer-events: none; transition: opacity 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 100; display: flex; flex-direction: column; align-items: center; gap: calc(20 * var(--bs)); }
+.game-over-overlay.show { opacity: 1; pointer-events: auto; transform: translate(-50%, -50%) scale(1); }
+.game-over-title { font-size: calc(32 * var(--bs)); font-weight: bold; margin: 0; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+.game-over-btn { background: #0a0; color: #000; border: none; padding: calc(10 * var(--bs)) calc(25 * var(--bs)); font-size: calc(16 * var(--bs)); font-weight: bold; cursor: pointer; border-radius: 6px; font-family: monospace; transition: background 0.2s, transform 0.1s; }
+.game-over-btn:hover { background: #0c0; transform: scale(1.05); }
+.game-over-btn:active { transform: scale(0.95); }

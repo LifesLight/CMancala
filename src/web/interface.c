@@ -531,6 +531,7 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
     window.customEditMode = false;
     window.inSetup = false;
     window.lastUsedSeed = 0;
+    window.lastCustomCells = null;
     
     window.loadedMode = -1;    // 0 = classic, 1 = avalanche
     window.loadedStones = 0;
@@ -691,7 +692,7 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
         const isCustom = (dist === 2);
         
         const isWorking = !window.egdbReady && !window.egdbError;
-        if (goBtn) goBtn.classList.toggle("disabled", isWorking || (isCustom && !window.inSetup));
+        if (goBtn) goBtn.classList.toggle("disabled", isWorking || (isCustom && !window.inSetup && !window.lastCustomCells));
         if (resetBtn) resetBtn.classList.toggle("disabled", isWorking || window.inSetup);
 
         const cfgMode = document.getElementById("cfg-mode");
@@ -765,7 +766,7 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
         document.getElementById('seed-row').style.display = e.target.value == '1' ? 'block' : 'none';
         if (window.inSetup) {
             if (window.customEditMode) window.exitCustomEdit();
-            if (e.target.value == '2') window.enterCustomEdit(null);
+            if (e.target.value == '2') window.enterCustomEdit(window.lastCustomCells);
         }
         window.updateButtons();
     };
@@ -795,7 +796,7 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
 
         const cfg = window.readSettings();
         const isCustom = (cfg.dist === 2);
-        if (isCustom && !window.inSetup) return;
+        if (isCustom && !window.inSetup && !window.lastCustomCells) return;
 
         const cacheInput = document.getElementById("cfg-cache");
         if (cacheInput) {
@@ -806,7 +807,13 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
         if (apInput) Module._set_autoplay(apInput.checked ? 1 : 0);
 
         if (isCustom) {
-            const cells = window.readCustomBoard();
+            let cells;
+            if (window.inSetup) {
+                cells = window.readCustomBoard();
+                window.lastCustomCells = cells;
+            } else {
+                cells = window.lastCustomCells;
+            }
             window.customEditMode = false;
             window.domCache = {};
             Module._restart_game(cfg.stones, 0, cfg.moveFunc, cfg.timeVal, cfg.startColor, 0, cfg.useBook);
@@ -847,7 +854,7 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
 
         if (cfg.dist === 2) {
             window.inSetup = true;
-            window.enterCustomEdit(null);
+            window.enterCustomEdit(window.lastCustomCells);
         } else if (cfg.dist === 1) {
             window.inSetup = true;
             Module._restart_game(cfg.stones, 1, cfg.moveFunc, cfg.timeVal, cfg.startColor, window.lastUsedSeed, cfg.useBook);
@@ -933,6 +940,16 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
     stepBtn.style.display = "none";
     stepBtn.onclick = () => Module._do_ai_step();
     bRel.appendChild(stepBtn);
+
+    const goOverlay = document.createElement("div"); goOverlay.id = "game-over-overlay"; goOverlay.className = "game-over-overlay";
+    const goTitle = document.createElement("div"); goTitle.id = "game-over-title"; goTitle.className = "game-over-title";
+    const goBtn = document.createElement("button"); goBtn.className = "game-over-btn"; goBtn.innerText = "Play Again";
+    goBtn.onclick = () => { 
+        const btn = document.getElementById("cfg-go"); 
+        if (btn) btn.click(); 
+    };
+    goOverlay.appendChild(goTitle); goOverlay.appendChild(goBtn);
+    bRel.appendChild(goOverlay);
 
     const sTxt = document.createElement("div"); sTxt.id = "status-text"; main.appendChild(sTxt);
     const hBtn = document.createElement("button"); hBtn.id = "hist-btn"; hBtn.className = "bottom-btn"; hBtn.innerText = "▼ history ▼";
@@ -1074,6 +1091,22 @@ EM_JS(void, launch_gui, (const char* v_ptr), {
         const isCheat = !!Module._get_is_cheated();
         if (mBoard.classList.contains("cheated") !== isCheat) mBoard.classList.toggle("cheated", isCheat);
         
+        const goOverlay = window.getEl("game-over-overlay");
+        if (goOverlay) {
+            if (gameOver && !window.inSetup && !window.customEditMode) {
+                const sP1 = Module._get_stone_count(6);
+                const sP2 = Module._get_stone_count(13);
+                const goTitle = window.getEl("game-over-title");
+                if (sP1 > sP2) { goTitle.textContent = "You Won"; }
+                else if (sP2 > sP1) { goTitle.textContent = "AI Won"; }
+                else { goTitle.textContent = "Tie"; }
+                goTitle.style.color = "";
+                goOverlay.classList.add("show");
+            } else {
+                goOverlay.classList.remove("show");
+            }
+        }
+
         const undoBtn = window.getEl("undo-btn");
         const cannotUndo = !Module._can_undo() || window.inSetup;
         if (undoBtn.classList.contains("disabled") !== cannotUndo) undoBtn.classList.toggle("disabled", cannotUndo);
